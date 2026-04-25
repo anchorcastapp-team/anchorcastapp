@@ -1,6 +1,6 @@
 {
   "name": "anchorcast",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "AI-powered worship presentation, sermon transcript and Bible casting app for churches",
   "main": "src/main.js",
   "author": "AnchorCast",
