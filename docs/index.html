@@ -668,7 +668,7 @@ h2 i{font-family:'Crimson Pro',serif;font-style:italic;color:var(--gold);font-we
 ════════════════════════════════════════════════════════ */
 
 /* ── Body scroll-lock when menu is open ── */
-body.menu-open{overflow:hidden;position:fixed;width:100%;top:0}
+body.menu-open{overflow:hidden}
 
 /* ── Nav & hamburger button ── */
 .mob-menu-btn{
@@ -1153,11 +1153,11 @@ footer{
 
 <div class="mob-menu" id="mobMenu">
   <div class="mob-menu-header">
-    <a href="index.html" class="mob-menu-logo" onclick="document.getElementById('mobMenu').classList.remove('open');document.body.classList.remove('menu-open');document.body.style.top='';return true;">
+    <a href="index.html" class="mob-menu-logo" onclick="document.getElementById('mobMenu').classList.remove('open');if(document.getElementById('mobMenuBtn'))document.getElementById('mobMenuBtn').textContent='☰';document.documentElement.style.overflow='';return true;">
       <div class="mob-menu-logo-mark">✝</div>
       <span>AnchorCast</span>
     </a>
-    <button class="mob-menu-close" id="mobMenuClose" onclick="(function(){var y=parseInt(document.body.style.top||0)*-1;document.getElementById('mobMenu').classList.remove('open');document.getElementById('mobMenuBtn').textContent='☰';document.body.classList.remove('menu-open');document.body.style.top='';window.scrollTo(0,y);})()">✕</button>
+    <button class="mob-menu-close" id="mobMenuClose" onclick="(function(){document.getElementById('mobMenu').classList.remove('open');var b=document.getElementById('mobMenuBtn');if(b)b.textContent='☰';document.documentElement.style.overflow='';})()">✕</button>
   </div>
     <a href="index.html">Home</a>
     <a href="pages/features.html">Features</a>
@@ -1365,49 +1365,69 @@ footer{
 
 <script>
 (function(){
-  /* ── Scroll progress bar ── */
-  const bar = document.getElementById('scrollProg');
-  const nav = document.getElementById('nav');
+  /* ── Scroll progress ── */
+  var bar = document.getElementById('scrollProg');
+  var navEl = document.getElementById('nav');
   window.addEventListener('scroll', function(){
     if(bar){
-      var pct = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+      var pct = (window.scrollY/(document.documentElement.scrollHeight-window.innerHeight))*100;
       bar.style.width = pct + '%';
     }
-    if(nav) nav.classList.toggle('scrolled', window.scrollY > 40);
+    if(navEl) navEl.classList.toggle('scrolled', window.scrollY > 40);
   }, {passive:true});
 
   /* ── Mobile menu ── */
-  var mobBtn   = document.getElementById('mobMenuBtn') || document.getElementById('mobBtn');
-  var mobMenu  = document.getElementById('mobMenu');
-  var closeBtn = document.getElementById('mobMenuClose');
+  var mobBtn  = document.getElementById('mobMenuBtn') || document.getElementById('mobBtn');
+  var mobMenu = document.getElementById('mobMenu');
 
   function openMenu(){
     if(!mobMenu) return;
     mobMenu.classList.add('open');
     if(mobBtn) mobBtn.textContent = '✕';
-    document.body.classList.add('menu-open');
-    document.body.style.top = '-' + window.scrollY + 'px';
+    /* Lock scroll without position:fixed to avoid iOS jump bug */
+    document.documentElement.style.overflow = 'hidden';
   }
   function closeMenu(){
     if(!mobMenu) return;
-    var scrollY = parseInt(document.body.style.top || '0') * -1;
     mobMenu.classList.remove('open');
     if(mobBtn) mobBtn.textContent = '☰';
-    document.body.classList.remove('menu-open');
-    document.body.style.top = '';
-    window.scrollTo(0, scrollY);
+    /* Restore scroll */
+    document.documentElement.style.overflow = '';
   }
 
-  if(mobBtn) mobBtn.addEventListener('click', function(){
-    mobMenu && mobMenu.classList.contains('open') ? closeMenu() : openMenu();
+  if(mobBtn){
+    mobBtn.addEventListener('click', function(e){
+      e.stopPropagation();
+      mobMenu && mobMenu.classList.contains('open') ? closeMenu() : openMenu();
+    });
+  }
+
+  /* Close btn inside menu header */
+  var closeBtn = document.getElementById('mobMenuClose');
+  if(closeBtn) closeBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    closeMenu();
   });
-  if(closeBtn) closeBtn.addEventListener('click', closeMenu);
-  if(mobMenu) mobMenu.querySelectorAll('a').forEach(function(a){
-    a.addEventListener('click', closeMenu);
-  });
+
+  /* Nav links in mobile menu — just close overlay, let browser navigate normally */
+  if(mobMenu){
+    mobMenu.querySelectorAll('a').forEach(function(a){
+      a.addEventListener('click', function(){
+        /* Don't preventDefault — let navigation happen */
+        /* Just close the menu cleanly */
+        mobMenu.classList.remove('open');
+        if(mobBtn) mobBtn.textContent = '☰';
+        document.documentElement.style.overflow = '';
+      });
+    });
+  }
+
+  /* Close on outside click */
   document.addEventListener('click', function(e){
     if(mobMenu && mobMenu.classList.contains('open')){
-      if(mobBtn && !mobBtn.contains(e.target) && !mobMenu.contains(e.target)) closeMenu();
+      if(mobBtn && !mobBtn.contains(e.target) && !mobMenu.contains(e.target)){
+        closeMenu();
+      }
     }
   });
 
@@ -1420,80 +1440,66 @@ footer{
     }, {threshold:0.05, rootMargin:'0px 0px -20px 0px'});
     document.querySelectorAll('.reveal').forEach(function(el){ ro.observe(el); });
   } else {
-    // Fallback for older browsers
     document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
   }
 
-  /* ── GitHub stats (index only) ── */
-  function loadGitHubStats(){
+  /* ── GitHub stats ── */
+  function loadStats(){
     fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp')
       .then(function(r){ return r.json(); })
-      .then(function(repo){
-        var stars = repo.stargazers_count || 0;
+      .then(function(d){
+        var s = d.stargazers_count || 0;
         ['starCount','ghStars','starCountHero'].forEach(function(id){
-          var el = document.getElementById(id); if(el) el.textContent = stars.toLocaleString();
+          var el = document.getElementById(id); if(el) el.textContent = s.toLocaleString();
         });
       }).catch(function(){});
-
     fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp/releases')
       .then(function(r){ return r.json(); })
       .then(function(releases){
-        if(!Array.isArray(releases) || !releases.length) return;
+        if(!Array.isArray(releases)||!releases.length) return;
         var ver = releases[0].tag_name || 'v1.2.0';
         var dl = 0;
         releases.forEach(function(r){
           (r.assets||[]).forEach(function(a){
-            if(a.name && (a.name.endsWith('.exe')||a.name.endsWith('.zip'))) dl += (a.download_count||0);
+            if(a.name&&(a.name.endsWith('.exe')||a.name.endsWith('.zip'))) dl+=(a.download_count||0);
           });
         });
         ['releaseVer','relTag'].forEach(function(id){
-          var el = document.getElementById(id); if(el) el.textContent = ver;
+          var el=document.getElementById(id); if(el) el.textContent=ver;
         });
-        if(dl > 0){
-          var dur=1400, start=performance.now();
+        if(dl>0){
+          var dur=1400,start=performance.now();
           (function tick(now){
-            var p=Math.min((now-start)/dur,1), ease=1-Math.pow(1-p,3), val=Math.round(ease*dl).toLocaleString();
+            var p=Math.min((now-start)/dur,1),ease=1-Math.pow(1-p,3),val=Math.round(ease*dl).toLocaleString();
             ['dlCount','statDl'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=val; });
             if(p<1) requestAnimationFrame(tick);
           })(performance.now());
         }
       }).catch(function(){});
   }
-  loadGitHubStats();
+  loadStats();
 
-  /* ── Docs sidebar toggle & scrollspy ── */
-  function initDocs(){
+  /* ── Docs sidebar ── */
+  (function(){
     var toggle  = document.getElementById('sidebarToggle');
     var sidebar = document.getElementById('docsSidebar');
     if(!sidebar) return;
-
-    function updateToggle(){
-      if(toggle) toggle.style.display = window.innerWidth <= 800 ? 'flex' : 'none';
-      if(window.innerWidth > 800 && sidebar) sidebar.classList.remove('expanded');
-    }
-    updateToggle();
-    window.addEventListener('resize', updateToggle);
-
-    if(sidebar) sidebar.querySelectorAll('.sidebar-link').forEach(function(l){
-      l.addEventListener('click', function(){
-        if(window.innerWidth <= 800 && sidebar) sidebar.classList.remove('expanded');
-      });
+    function upd(){ if(toggle) toggle.style.display = innerWidth<=800?'flex':'none'; if(innerWidth>800) sidebar.classList.remove('expanded'); }
+    upd(); window.addEventListener('resize', upd);
+    sidebar.querySelectorAll('.sidebar-link').forEach(function(l){
+      l.addEventListener('click', function(){ if(innerWidth<=800) sidebar.classList.remove('expanded'); });
     });
-
-    /* Scrollspy */
     var links = Array.from(document.querySelectorAll('.sidebar-link[href^="#"]'));
-    var heads = Array.from(document.querySelectorAll('.docs-content h1, .docs-content h2'));
-    if(!links.length || !heads.length) return;
-    function updateSpy(){
-      var cur = heads[0] ? heads[0].id : '';
-      heads.forEach(function(h){ if(h.id && window.scrollY >= h.offsetTop - 100) cur = h.id; });
-      links.forEach(function(l){ l.classList.toggle('active', l.getAttribute('href') === '#'+cur); });
+    var heads = Array.from(document.querySelectorAll('.docs-content h1,.docs-content h2'));
+    if(links.length&&heads.length){
+      function spy(){
+        var cur=heads[0]?heads[0].id:'';
+        heads.forEach(function(h){ if(h.id&&scrollY>=h.offsetTop-100) cur=h.id; });
+        links.forEach(function(l){ l.classList.toggle('active',l.getAttribute('href')==='#'+cur); });
+      }
+      window.addEventListener('scroll',spy,{passive:true}); spy();
     }
-    window.addEventListener('scroll', updateSpy, {passive:true});
-    updateSpy();
-  }
-  initDocs();
-
+  })();
 })();
 </script>
 </body>
