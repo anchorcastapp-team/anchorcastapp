@@ -183,7 +183,7 @@ whisper_server.py    # Local Whisper AI transcription server
 installer.nsh        # NSIS installer hooks (VC++, models, timer shortcut)
 data/kjv.json        # Bundled KJV Bible
 ndi-addon/           # Native NDI SDK addon
-assets/              # App icons, splash screen, demo GIFs
+assets/              # App icons, splash screen, demo GIFs.
 ```
 
 ---
