@@ -1,0 +1,148 @@
+{
+  "name": "anchorcast",
+  "version": "1.1.0",
+  "description": "AI-powered worship presentation, sermon transcript and Bible casting app for churches",
+  "main": "src/main.js",
+  "author": "AnchorCast",
+  "license": "MIT",
+  "scripts": {
+    "web": "node server.js",
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux",
+    "build": "electron-builder --win --mac",
+    "pack": "electron-builder --dir",
+    "prepare:build:win": "node scripts/prepare-build.js --win",
+    "prepare:build:mac": "node scripts/prepare-build.js --mac",
+    "prebuild:win": "npm run prepare:build:win",
+    "prebuild:mac": "npm run prepare:build:mac",
+    "prepack": "node scripts/prepare-build.js",
+    "generate-license": "node generate-license.js",
+    "generate": "node generate.js",
+    "build:timer": "electron-builder --config electron-builder-timer.json --win",
+    "start:timer": "electron src/timer-main.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.anchorcast.app",
+    "productName": "AnchorCast",
+    "copyright": "Copyright 2026 AnchorCast",
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "data/**/*",
+      "ndi-addon/index.js",
+      "ndi-addon/package.json",
+      "ndi-addon/build/Release/ndi_sender.node",
+      "src/timer-main.js",
+      "src/renderer/countdown-window.html",
+      "electron-builder-timer.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "assets/icon.ico",
+      "extraResources": [
+        {
+          "from": "ndi-addon/build/Release/Processing.NDI.Lib.x64.dll",
+          "to": "Processing.NDI.Lib.x64.dll"
+        }
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.utilities",
+      "extraResources": [
+        {
+          "from": "ndi-addon/build/Release/libndi.dylib",
+          "to": "libndi.dylib"
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "unicode": true,
+      "language": "1033",
+      "warningsAsErrors": false,
+      "include": "installer.nsh"
+    },
+    "extraResources": [
+      {
+        "from": "whisper_server.py",
+        "to": "whisper_server.py"
+      },
+      {
+        "from": "setup_whisper.bat",
+        "to": "setup_whisper.bat"
+      },
+      {
+        "from": "setup_whisper.sh",
+        "to": "setup_whisper.sh"
+      },
+      {
+        "from": "ndi-addon/build/Release/ndi_sender.node",
+        "to": "ndi_sender.node"
+      },
+      {
+        "from": "install-dependencies.bat",
+        "to": "install-dependencies.bat"
+      },
+      {
+        "from": "python",
+        "to": "python"
+      },
+      {
+        "from": "models",
+        "to": "models"
+      },
+      {
+        "from": "vc_redist.x64.exe",
+        "to": "vc_redist.x64.exe"
+      }
+    ],
+    "asarUnpack": [
+      "assets/Data/**",
+      "assets/Media/**",
+      "assets/Presentations/**",
+      "python/**"
+    ],
+    "fileAssociations": [
+      {
+        "ext": "acsch",
+        "name": "AnchorCast Schedule",
+        "description": "AnchorCast schedule file",
+        "role": "Editor",
+        "icon": "assets/icon.ico"
+      },
+      {
+        "ext": "anchorcast-license",
+        "name": "AnchorCast License File",
+        "description": "AnchorCast Registration File",
+        "role": "Viewer"
+      }
+    ]
+  }
+}

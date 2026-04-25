@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Register AnchorCast</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    background:#0a0a1a;color:#e0e0e0;display:flex;flex-direction:column;
+    height:100vh;overflow:hidden}
+  .header{background:linear-gradient(135deg,#0d0d20,#1a1a35);
+    padding:20px 28px;text-align:center;border-bottom:1px solid rgba(201,168,76,.2);flex-shrink:0}
+  .anchor{font-size:30px;margin-bottom:6px;color:#4a9eff}
+  .logo{color:#c9a84c;font-size:18px;font-weight:700;letter-spacing:1.5px}
+  .logo-sub{color:#555;font-size:10px;letter-spacing:2px;margin-top:3px}
+  .body{flex:1;padding:18px 26px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+  h2{font-size:16px;color:#fff;font-weight:700;margin-bottom:2px}
+  .desc{font-size:12px;color:#666;line-height:1.6}
+  .desc a{color:#c9a84c;cursor:pointer;text-decoration:none}
+  .desc a:hover{text-decoration:underline}
+  .steps{background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.15);
+    border-radius:8px;padding:11px 14px;font-size:11px;color:#999;line-height:2}
+  .steps b{color:#c9a84c}
+  .field{display:flex;flex-direction:column;gap:5px}
+  label{font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  input{background:#0d0d20;border:1px solid rgba(255,255,255,.12);border-radius:7px;
+    color:#e0e0e0;font-size:13px;padding:11px 13px;outline:none;
+    transition:border-color .15s;font-family:inherit;width:100%}
+  input:focus{border-color:#c9a84c}
+  input::placeholder{color:#3a3a4a}
+  .btn{padding:13px;border:none;border-radius:8px;cursor:pointer;
+    font-size:13px;font-weight:700;font-family:inherit;width:100%;
+    transition:opacity .15s;letter-spacing:.3px}
+  .btn:hover{opacity:.88}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn-primary{background:linear-gradient(135deg,#c9a84c,#e0bf6a);color:#000}
+  .status{font-size:12px;min-height:16px;line-height:1.5;text-align:center;margin-top:2px}
+  .hwid{font-family:monospace;font-size:10px;color:#444;text-align:center;
+    background:rgba(255,255,255,.03);border-radius:5px;padding:6px;
+    border:1px solid rgba(255,255,255,.05)}
+  .oss{text-align:center;font-size:11px;color:#444}
+  .oss a{color:#c9a84c;cursor:pointer;text-decoration:none}
+  .oss a:hover{text-decoration:underline}
+  .footer{padding:10px 26px;border-top:1px solid rgba(255,255,255,.05);
+    text-align:center;font-size:10px;color:#333;flex-shrink:0}
+  /* Success screen */
+  .success{display:none;flex-direction:column;align-items:center;justify-content:center;
+    flex:1;padding:28px;text-align:center;gap:14px}
+  .success.show{display:flex}
+  .s-icon{font-size:52px}
+  .s-title{font-size:18px;font-weight:700;color:#2ecc71}
+  .s-email{background:#0d0d20;border:1px solid rgba(46,204,113,.25);border-radius:8px;
+    padding:12px 18px;font-size:13px;color:#2ecc71;font-weight:600;width:100%;max-width:360px}
+  .s-steps{background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.15);
+    border-radius:8px;padding:14px 18px;font-size:12px;color:#aaa;
+    line-height:2.2;text-align:left;width:100%;max-width:360px}
+  .s-steps b{color:#c9a84c}
+  .s-note{font-size:11px;color:#555;line-height:1.7;max-width:320px}
+  .s-spam{background:rgba(255,165,0,.08);border:1px solid rgba(255,165,0,.3);
+    border-radius:8px;padding:11px 14px;font-size:12px;color:#f0a030;
+    line-height:1.7;text-align:center;width:100%;max-width:360px}
+  .s-spam b{color:#f5b840}
+  .btn-back{padding:9px 24px;background:transparent;border:1px solid rgba(255,255,255,.1);
+    border-radius:7px;color:#555;font-size:11px;cursor:pointer;font-family:inherit}
+  .btn-back:hover{color:#c9a84c;border-color:rgba(201,168,76,.3)}
+</style>
+</head><body>
+
+<div class="header">
+  <div class="anchor">⚓</div>
+  <div class="logo">ANCHORCAST</div>
+  <div class="logo-sub">LIVE SERMON DISPLAY</div>
+</div>
+
+<!-- FORM VIEW -->
+<div class="body" id="formView">
+  <div>
+    <h2>Register AnchorCast</h2>
+    <p class="desc" style="margin-top:5px">
+      AnchorCast is <a onclick="openGitHub()">free &amp; open source</a>.
+      Registration is free and helps us know our users for support.
+    </p>
+  </div>
+  <div class="steps">
+    <b>How it works:</b><br>
+    1. Fill in your details below<br>
+    2. Click <b>Send Registration Email</b><br>
+    3. Check your inbox and click the link<br>
+    4. AnchorCast opens and registers automatically ✅
+  </div>
+  <div class="field">
+    <label>Full Name *</label>
+    <input id="nameInput" type="text" placeholder="e.g. John Smith" autocomplete="name"/>
+  </div>
+  <div class="field">
+    <label>Email Address *</label>
+    <input id="emailInput" type="email" placeholder="e.g. john@church.org" autocomplete="email"/>
+  </div>
+  <div class="field">
+    <label>Church / Organisation <span style="color:#444;font-weight:400">(optional)</span></label>
+    <input id="churchInput" type="text" placeholder="e.g. Grace Community Church" autocomplete="organization"/>
+  </div>
+  <div>
+    <button class="btn btn-primary" id="sendBtn" onclick="sendEmail()">
+      📧 Send Registration Email
+    </button>
+    <div class="status" id="status"></div>
+  </div>
+  <div class="hwid" id="hwIdDisplay">Hardware ID: loading…</div>
+  <div class="oss">
+    Free &amp; Open Source —
+    <a onclick="openGitHub()">github.com/anchorcastapp-team/anchorcastapp</a>
+  </div>
+</div>
+
+<!-- SUCCESS VIEW (shown after email sent) -->
+<div class="success" id="successView">
+  <div class="s-icon">📧</div>
+  <div class="s-title">Registration Email Sent!</div>
+  <div class="s-email" id="sentToBox">✉ Email sent to: …</div>
+  <div class="s-steps">
+    <b>Next steps:</b><br>
+    1. Open your email inbox<br>
+    2. Find the email from AnchorCast<br>
+    3. Click <b>Complete Registration</b><br>
+    4. AnchorCast opens and registers automatically ✅
+  </div>
+  <div class="s-spam">
+    📬 <b>Don't see the email?</b><br>
+    Check your <b>Junk</b> or <b>Spam</b> folder —<br>
+    registration emails sometimes land there.
+  </div>
+  <button class="btn-back" onclick="showForm()">← Back / Resend Email</button>
+</div>
+
+<div class="footer">Already have a link? Click it in your email client to activate.</div>
+
+<script>
+  // On load: check if email was already sent — show success screen if so
+  (async () => {
+    try {
+      const hwId = await window.electronAPI.getHardwareId();
+      document.getElementById('hwIdDisplay').textContent = 'Hardware ID: ' + hwId;
+    } catch(e) {
+      document.getElementById('hwIdDisplay').textContent = 'Hardware ID: unavailable';
+    }
+    try {
+      const state = await window.electronAPI.getEmailSentState();
+      if (state && state.sent && state.email) {
+        // Pre-fill the form with saved details
+        if (state.fullName) document.getElementById('nameInput').value = state.fullName;
+        if (state.email)    document.getElementById('emailInput').value = state.email;
+        if (state.church)   document.getElementById('churchInput').value = state.church;
+        // Show success screen immediately
+        showSuccess(state.email);
+      }
+    } catch(_) {}
+  })();
+
+  function openGitHub() {
+    window.electronAPI?.openExternal('https://github.com/anchorcastapp-team/anchorcastapp');
+  }
+
+  function showForm() {
+    // Clear bad/corrupted field values (e.g. "true" stored from old bug)
+    const emailField = document.getElementById('emailInput');
+    if (emailField && emailField.value && !emailField.value.includes('@')) {
+      emailField.value = '';
+    }
+    document.getElementById('formView').style.display = 'flex';
+    document.getElementById('successView').classList.remove('show');
+    document.getElementById('status').textContent = '';
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('sendBtn').textContent = '📧 Send Registration Email';
+  }
+
+  function showSuccess(email) {
+    document.getElementById('sentToBox').textContent = '✉ Email sent to: ' + email;
+    document.getElementById('formView').style.display = 'none';
+    document.getElementById('successView').classList.add('show');
+  }
+
+  async function sendEmail() {
+    const name   = document.getElementById('nameInput').value.trim();
+    const email  = document.getElementById('emailInput').value.trim();
+    const church = document.getElementById('churchInput').value.trim();
+    const status = document.getElementById('status');
+    const btn    = document.getElementById('sendBtn');
+
+    if (!name)  { status.style.color='#e74c3c'; status.textContent='⚠ Please enter your full name.'; return; }
+    if (!email || !email.includes('@')) {
+      status.style.color='#e74c3c'; status.textContent='⚠ Please enter a valid email address.'; return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Sending…';
+    status.style.color='#888';
+    status.textContent='';
+
+    try {
+      const r = await window.electronAPI.sendRegistrationEmail(name, email, church);
+      if (r.success) {
+        showSuccess(email);
+      } else {
+        status.style.color='#e74c3c';
+        status.textContent='❌ ' + (r.error || 'Failed to send. Please try again.');
+        btn.disabled = false;
+        btn.textContent = '📧 Send Registration Email';
+      }
+    } catch(e) {
+      status.style.color='#e74c3c';
+      status.textContent='❌ ' + (e.message || 'Could not send email. Check internet connection.');
+      btn.disabled = false;
+      btn.textContent = '📧 Send Registration Email';
+    }
+  }
+</script>
+</body></html>

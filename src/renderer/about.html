@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>About AnchorCast</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    background:#0a0a1a;color:#e0e0e0;display:flex;flex-direction:column;
+    height:100vh;overflow:hidden}
+  .header{background:linear-gradient(135deg,#0d0d20,#1a1a35);
+    padding:22px 28px;text-align:center;
+    border-bottom:1px solid rgba(201,168,76,.25);flex-shrink:0}
+  .anchor{font-size:36px;margin-bottom:6px;color:#4a9eff}
+  .logo{color:#c9a84c;font-size:19px;font-weight:700;letter-spacing:1.5px}
+  .logo-sub{color:#666;font-size:10px;letter-spacing:2.5px;margin-top:3px}
+
+  .body{flex:1;padding:16px 22px;display:flex;flex-direction:column;
+    gap:11px;overflow-y:auto}
+  .body::-webkit-scrollbar{width:4px}
+  .body::-webkit-scrollbar-track{background:transparent}
+  .body::-webkit-scrollbar-thumb{background:rgba(201,168,76,.3);border-radius:2px}
+
+  /* Info card */
+  .info-card{background:#0f0f22;border:1px solid rgba(255,255,255,.1);
+    border-radius:10px;overflow:hidden;flex-shrink:0}
+  .info-row{display:flex;justify-content:space-between;align-items:flex-start;
+    padding:11px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .info-row:last-child{border-bottom:none}
+  .info-lbl{color:#8888aa;font-size:11px;font-weight:500;
+    flex-shrink:0;min-width:100px;padding-top:1px}
+  .info-val{color:#d0d0e8;font-size:11px;text-align:right;line-height:1.6}
+  .info-val a{color:#c9a84c;cursor:pointer;text-decoration:none;font-weight:600}
+  .info-val a:hover{color:#e0bf6a;text-decoration:underline}
+  .doc-btn{display:inline-flex;align-items:center;gap:5px;
+    padding:7px 12px;border-radius:6px;border:none;cursor:pointer;
+    font-size:11px;font-weight:700;font-family:inherit;transition:opacity .15s}
+  .doc-btn:hover{opacity:.85}
+  .doc-btn-primary{background:rgba(201,168,76,.15);
+    border:1px solid rgba(201,168,76,.4);color:#c9a84c}
+  .doc-btn-secondary{background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.15);color:#9090b8}
+
+  /* Registration card */
+  .reg-card{border-radius:10px;padding:14px 16px;flex-shrink:0}
+  .reg-card.registered{background:rgba(46,204,113,.08);
+    border:1px solid rgba(46,204,113,.25)}
+  .reg-card.unregistered{background:rgba(255,165,0,.07);
+    border:1px solid rgba(255,165,0,.25)}
+  .reg-badge{display:inline-flex;align-items:center;gap:5px;
+    font-size:10px;font-weight:700;letter-spacing:.6px;
+    text-transform:uppercase;margin-bottom:7px}
+  .reg-name{font-size:15px;font-weight:700;color:#f0f0ff;margin-bottom:3px}
+  .reg-email{font-size:12px;color:#2ecc71;font-weight:600}
+  .reg-church{font-size:11px;color:#8888aa;margin-top:3px}
+  .reg-date{font-size:10px;color:#5a5a7a;margin-top:4px}
+
+  /* Support card */
+  .support-card{background:#0f0f22;border:1px solid rgba(255,255,255,.1);
+    border-radius:10px;padding:18px 20px;flex-shrink:0}
+  .support-title{font-size:14px;font-weight:700;color:#e8e8f5;
+    text-align:center;margin-bottom:5px}
+  .support-sub{font-size:12px;color:#7a7a9a;text-align:center;
+    line-height:1.7;margin-bottom:14px}
+  .btn-row{display:flex;gap:10px}
+  .btn-paypal{flex:1;padding:12px 8px;border:none;border-radius:8px;
+    cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;
+    background:#1565c0;color:#fff;display:flex;align-items:center;
+    justify-content:center;gap:7px;transition:opacity .15s}
+  .btn-paypal:hover{opacity:.85}
+  .btn-star{flex:1;padding:12px 8px;border:1px solid rgba(201,168,76,.5);
+    border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;
+    font-family:inherit;background:rgba(201,168,76,.12);color:#c9a84c;
+    display:flex;align-items:center;justify-content:center;
+    gap:7px;transition:opacity .15s}
+  .btn-star:hover{opacity:.85}
+  .btn-register{width:100%;padding:12px;border:none;border-radius:8px;
+    cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;
+    background:linear-gradient(135deg,#c9a84c,#e0bf6a);color:#000}
+  .btn-register:hover{opacity:.88}
+
+  .oss{text-align:center;font-size:11px;color:#4a4a6a}
+  .oss a{color:#6060a0;cursor:pointer;text-decoration:none}
+  .oss a:hover{color:#c9a84c}
+  .dot{color:#c9a84c;font-size:8px;vertical-align:middle;margin:0 4px}
+</style>
+</head><body>
+
+<div class="header">
+  <div class="anchor">⚓</div>
+  <div class="logo">ANCHORCAST</div>
+  <div class="logo-sub">LIVE SERMON DISPLAY</div>
+</div>
+
+<div class="body">
+
+  <div class="info-card">
+
+    <!-- Version -->
+    <div class="info-row">
+      <span class="info-lbl">Version</span>
+      <span class="info-val" id="version">v1.1.3</span>
+    </div>
+
+    <!-- Description -->
+    <div class="info-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <span class="info-lbl">Description</span>
+      <div style="font-size:12px;color:#d0d0e8;line-height:1.8;font-weight:500">
+        Free &amp; Open Source, AI-Powered Worship Presentation, Live Sermon
+        Transcription, and Bible Verse Display for churches everywhere.
+      </div>
+      <div style="font-size:11px;color:#9090b8;line-height:2.1">
+        <span style="color:#c9a84c;font-weight:700">Features: </span>
+        Live Transcription
+        <span class="dot">●</span> AI Verse Detection
+        <span class="dot">●</span> Song Manager
+        <span class="dot">●</span> Genius Lyrics Search
+        <span class="dot">●</span> Timer Display
+        <span class="dot">●</span> Presentation Editor
+        <span class="dot">●</span> NDI Output
+        <span class="dot">●</span> Remote Control
+        <span class="dot">●</span> Theme Manager
+        <span class="dot">●</span> Sermon Intelligence
+        <span class="dot">●</span> Analytics
+      </div>
+    </div>
+
+    <!-- Documentation -->
+    <div class="info-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+      <span class="info-lbl">Documentation</span>
+      <div style="display:flex;gap:8px;width:100%">
+        <button class="doc-btn doc-btn-primary" onclick="openHelp(event)">
+          📖 Built-in Docs
+        </button>
+        <button class="doc-btn doc-btn-secondary"
+          onclick="openUrl('https://github.com/anchorcastapp-team/anchorcastapp/wiki')">
+          🌐 Online Docs / Wiki
+        </button>
+      </div>
+    </div>
+
+    <!-- Developers -->
+    <div class="info-row">
+      <span class="info-lbl">Developers</span>
+      <span class="info-val">Godbless Keku &amp; NK Ofodile</span>
+    </div>
+
+    <!-- Contact -->
+    <div class="info-row">
+      <span class="info-lbl">Contact</span>
+      <span class="info-val">
+        <a onclick="openUrl('mailto:info@kaitamtech.com')">info@kaitamtech.com</a>
+      </span>
+    </div>
+
+    <!-- Source Code -->
+    <div class="info-row">
+      <span class="info-lbl">Source Code</span>
+      <span class="info-val">
+        <a onclick="openUrl('https://github.com/anchorcastapp-team/anchorcastapp')">
+          github.com/anchorcastapp-team/anchorcastapp
+        </a>
+      </span>
+    </div>
+
+  </div>
+
+  <!-- Registration status — loaded dynamically -->
+  <div class="reg-card" id="regCard">
+    <div class="reg-badge" style="color:#666">Loading…</div>
+  </div>
+
+  <!-- Support section -->
+  <div class="support-card">
+    <div class="support-title">❤ Support this Project</div>
+    <div class="support-sub">
+      AnchorCast is built with love for churches everywhere.<br>
+      Donations help keep development going — thank you!
+    </div>
+    <div class="btn-row">
+      <button class="btn-paypal"
+        onclick="openUrl('https://paypal.me/rommeltechdev')">
+        <span>💳</span> Donate via PayPal
+      </button>
+      <button class="btn-star"
+        onclick="openUrl('https://github.com/anchorcastapp-team/anchorcastapp')">
+        <span>⭐</span> Star on GitHub
+      </button>
+    </div>
+  </div>
+
+  <div class="oss">
+    Free &amp; Open Source —
+    <a onclick="openUrl('https://github.com/anchorcastapp-team/anchorcastapp')">
+      github.com/anchorcastapp-team/anchorcastapp
+    </a>
+  </div>
+
+</div>
+
+<script>
+  function openUrl(url) {
+    if (window.electronAPI?.openExternal) window.electronAPI.openExternal(url);
+  }
+  function openHelp(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (window.electronAPI?.openHelpWindow) {
+      window.electronAPI.openHelpWindow();
+      setTimeout(() => window.close(), 200);
+    }
+  }
+
+  async function init() {
+    // Version
+    try {
+      const info = await window.electronAPI.getAppInfo();
+      if (info?.version) document.getElementById('version').textContent = 'v' + info.version;
+    } catch(_) {}
+
+    // Registration
+    const card = document.getElementById('regCard');
+    try {
+      const reg = await window.electronAPI.getRegistrationStatus();
+      if (reg?.registered) {
+        const date = reg.registeredAt
+          ? new Date(reg.registeredAt).toLocaleDateString('en-US',
+              {year:'numeric',month:'long',day:'numeric'})
+          : '';
+        card.className = 'reg-card registered';
+        card.innerHTML =
+          '<div class="reg-badge" style="color:#2ecc71">✅ Registered</div>' +
+          '<div class="reg-name">' + (reg.fullName||'') + '</div>' +
+          '<div class="reg-email">' + (reg.email||'') + '</div>' +
+          (reg.churchName ? '<div class="reg-church">' + reg.churchName + '</div>' : '') +
+          (date ? '<div class="reg-date">Registered on ' + date + '</div>' : '');
+      } else {
+        card.className = 'reg-card unregistered';
+        card.innerHTML =
+          '<div class="reg-badge" style="color:#f0a030">⚠ Not Registered</div>' +
+          '<div style="font-size:12px;color:#9090b0;margin:6px 0 12px;line-height:1.6">' +
+            'Register for free to unlock all features and support development.</div>' +
+          '<button class="btn-register" onclick="window.close()">Register Now →</button>';
+      }
+    } catch(e) {
+      card.innerHTML = '<div class="reg-badge" style="color:#5a5a7a">Registration status unavailable</div>';
+    }
+  }
+
+  init();
+</script>
+</body></html>

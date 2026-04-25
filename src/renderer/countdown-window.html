@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AnchorCast — Timer</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+<style>
+:root{
+  --bg:#07080f;--surface:#0e0f1a;--card:#13152a;--border:#1e2240;--border-lit:#2e3360;
+  --gold:#c9a84c;--gold-dim:#7a6228;--gold-glow:rgba(201,168,76,.15);
+  --text:#edf1ff;--sub:#8890b8;--dim:#454870;
+  --green:#0fd3a4;--green-bg:rgba(15,211,164,.08);--green-border:rgba(15,211,164,.25);
+  --live:#e74c3c;--blue:#3b82f6;
+  --radius:12px;--transition:all .18s ease;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);
+  display:flex;flex-direction:column}
+
+/* ── TOP BAR ── */
+.topbar{
+  display:flex;align-items:center;gap:12px;padding:14px 22px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  flex-shrink:0
+}
+.topbar-icon{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,var(--gold),#e8c870);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;flex-shrink:0
+}
+.topbar-title{font-size:17px;font-weight:700;letter-spacing:.3px;color:var(--text)}
+.topbar-sub{font-size:11px;color:var(--sub);margin-top:1px}
+.live-badge{
+  margin-left:auto;display:none;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;
+  border:1px solid rgba(231,76,60,.4);background:rgba(231,76,60,.1);
+  color:#ff8f86;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase
+}
+.live-badge.on{display:inline-flex}
+.live-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--live);
+  box-shadow:0 0 8px var(--live);animation:pulse 1.4s ease-in-out infinite
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── MAIN LAYOUT ── */
+.main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0;overflow:hidden}
+
+/* ── LEFT PANEL ── */
+.left{
+  padding:10px 16px;display:flex;flex-direction:column;gap:8px;
+  overflow-y:auto;border-right:1px solid var(--border)
+}
+.left::-webkit-scrollbar{width:4px}
+.left::-webkit-scrollbar-thumb{background:var(--border-lit);border-radius:2px}
+
+/* Sections */
+.section-label{
+  font-size:10px;font-weight:700;color:var(--sub);
+  letter-spacing:1.2px;text-transform:uppercase;margin-bottom:5px
+}
+.section{display:flex;flex-direction:column}
+
+/* Title input */
+.title-input{
+  width:100%;background:var(--card);border:1px solid var(--border-lit);
+  border-radius:var(--radius);color:var(--text);padding:12px 14px;
+  font-family:inherit;font-size:14px;font-weight:500;outline:none;
+  transition:var(--transition)
+}
+.title-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-glow)}
+.title-input::placeholder{color:var(--dim)}
+
+/* Mode toggle */
+.mode-row{display:flex;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:4px;gap:4px}
+.mode-btn{
+  flex:1;padding:8px 10px;border:none;border-radius:8px;cursor:pointer;
+  font-family:inherit;font-size:13px;font-weight:600;color:var(--sub);
+  background:transparent;transition:var(--transition);display:flex;
+  align-items:center;justify-content:center;gap:7px
+}
+.mode-btn.active{background:var(--gold-glow);color:var(--gold);
+  border:1px solid var(--gold-dim);box-shadow:0 2px 8px rgba(201,168,76,.12)}
+.mode-btn:hover:not(.active){background:rgba(255,255,255,.04);color:var(--text)}
+
+/* Time inputs */
+.time-row{display:flex;align-items:center;gap:12px}
+.num-group{display:flex;flex-direction:column;align-items:center;gap:5px}
+.num-label{font-size:10px;color:var(--sub);font-weight:600;letter-spacing:.8px;text-transform:uppercase}
+.nbox{
+  width:90px;background:var(--card);border:1px solid var(--border-lit);
+  border-radius:var(--radius);color:var(--text);padding:8px 6px;
+  text-align:center;font-family:'Rajdhani',monospace;font-size:38px;font-weight:700;
+  outline:none;transition:var(--transition)
+}
+.nbox:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-glow)}
+.time-sep{font-size:36px;font-weight:700;color:var(--dim);padding-bottom:18px;
+  font-family:'Rajdhani',monospace}
+
+/* Quick time pills */
+.quick-row{display:flex;gap:7px;flex-wrap:wrap}
+.quick-pill{
+  padding:7px 14px;border-radius:8px;border:1px solid var(--border);
+  background:var(--card);color:var(--sub);cursor:pointer;
+  font-family:inherit;font-size:12px;font-weight:700;
+  transition:var(--transition)
+}
+.quick-pill:hover{border-color:var(--border-lit);color:var(--text)}
+.quick-pill.active{
+  background:var(--gold-glow);border-color:var(--gold-dim);color:var(--gold)
+}
+
+/* Location */
+.loc-row{display:flex;gap:8px}
+.loc-btn{
+  flex:1;padding:10px 8px;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--card);color:var(--sub);cursor:pointer;
+  font-family:inherit;font-size:12px;font-weight:600;
+  transition:var(--transition);display:flex;
+  align-items:center;justify-content:center;gap:6px
+}
+.loc-btn:hover{border-color:var(--border-lit);color:var(--text)}
+.loc-btn.active{
+  background:var(--green-bg);border-color:var(--green-border);color:var(--green)
+}
+
+/* Font size */
+.font-row{display:flex;align-items:center;gap:8px}
+.font-btn{
+  width:38px;height:38px;border:1px solid var(--border);border-radius:10px;
+  background:var(--card);color:var(--sub);cursor:pointer;
+  font-family:inherit;font-size:14px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  transition:var(--transition)
+}
+.font-btn:hover{border-color:var(--border-lit);color:var(--text)}
+.font-track{
+  flex:1;height:6px;background:var(--card);border-radius:3px;
+  border:1px solid var(--border);position:relative;overflow:hidden
+}
+.font-fill{height:100%;background:linear-gradient(90deg,var(--gold-dim),var(--gold));
+  border-radius:3px;transition:width .2s ease;width:50%}
+.font-val{font-size:13px;font-weight:700;color:var(--sub);
+  min-width:44px;text-align:right}
+.font-reset{
+  padding:8px 12px;border:1px solid var(--border);border-radius:8px;
+  background:var(--card);color:var(--dim);cursor:pointer;
+  font-family:inherit;font-size:11px;font-weight:600;
+  transition:var(--transition)
+}
+.font-reset:hover{color:var(--sub);border-color:var(--border-lit)}
+
+/* Flash faster button */
+.btn-flash{
+  display:none;align-items:center;justify-content:center;gap:7px;
+  padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;
+  cursor:pointer;border:1px solid rgba(231,76,60,.4);
+  background:rgba(231,76,60,.12);color:#e74c3c;
+  user-select:none;-webkit-user-select:none;
+  transition:background .15s,transform .1s;
+}
+.btn-flash.visible{display:flex}
+.btn-flash:active,.btn-flash.pressing{
+  background:rgba(231,76,60,.3);transform:scale(.97);
+}
+
+/* Clock section */
+.clock-section{margin-top:14px;padding:14px;border-radius:10px;
+  border:1px solid var(--border);background:var(--surface)}
+.clock-toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.clock-toggle-label{font-size:12px;font-weight:600;color:var(--text);flex:1}
+.clock-switch{position:relative;width:40px;height:22px;flex-shrink:0}
+.clock-switch input{opacity:0;width:0;height:0}
+.clock-switch-slider{
+  position:absolute;inset:0;border-radius:11px;cursor:pointer;
+  background:var(--border);transition:.2s}
+.clock-switch input:checked + .clock-switch-slider{background:var(--gold)}
+.clock-switch-slider:before{
+  content:'';position:absolute;height:16px;width:16px;
+  left:3px;bottom:3px;border-radius:50%;background:#fff;transition:.2s}
+.clock-switch input:checked + .clock-switch-slider:before{transform:translateX(18px)}
+.clock-opts{display:flex;flex-direction:column;gap:8px}
+.clock-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.clock-row-label{font-size:10px;color:var(--sub);width:52px;flex-shrink:0;
+  text-transform:uppercase;letter-spacing:.06em}
+.clock-pill{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;
+  border:1px solid var(--border);background:var(--card);color:var(--sub);
+  cursor:pointer;transition:all .15s}
+.clock-pill.active{border-color:var(--gold-dim);background:var(--gold-glow);color:var(--gold)}
+
+/* Action buttons */
+.action-row{display:flex;gap:10px}
+.btn-start{
+  flex:1;padding:12px;border:none;border-radius:var(--radius);
+  background:linear-gradient(135deg,var(--gold),#e8c870);color:#0a0a10;
+  cursor:pointer;font-family:inherit;font-size:14px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:var(--transition);letter-spacing:.3px
+}
+.btn-start:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn-start.running{
+  background:linear-gradient(135deg,#1e5fa8,#3b82f6);color:#fff
+}
+.btn-stop{
+  flex:1;padding:12px;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--card);color:var(--sub);
+  cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:var(--transition)
+}
+.btn-stop:hover{border-color:rgba(231,76,60,.4);color:#ff8f86;
+  background:rgba(231,76,60,.06)}
+
+.hint{font-size:11px;color:var(--dim);line-height:1.6;padding-top:2px}
+.hint strong{color:var(--sub)}
+
+/* Font/color controls */
+.fc-row{display:flex;gap:8px;align-items:center}
+.fc-select{
+  flex:1;background:var(--card);border:1px solid var(--border-lit);
+  border-radius:10px;color:var(--text);padding:9px 11px;
+  font-family:inherit;font-size:12px;outline:none;cursor:pointer;
+  transition:var(--transition)
+}
+.fc-select:focus{border-color:var(--gold)}
+.fc-color{
+  width:42px;height:42px;border:1px solid var(--border-lit);
+  border-radius:10px;cursor:pointer;padding:3px;
+  background:var(--card);outline:none;flex-shrink:0
+}
+.fc-color:focus{border-color:var(--gold)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sub-label{font-size:10px;color:var(--dim);margin-bottom:4px;font-weight:600;
+  letter-spacing:.5px;text-transform:uppercase}
+
+/* ── RIGHT PANEL — PREVIEW ── */
+.right{
+  display:flex;flex-direction:column;background:var(--surface);
+  padding:20px 18px;gap:14px;overflow:hidden;min-width:0
+}
+.preview-label{font-size:10px;font-weight:700;color:var(--sub);
+  letter-spacing:1.2px;text-transform:uppercase}
+.preview-card{
+  flex:1;border-radius:16px;border:1px solid var(--border);
+  background:linear-gradient(145deg,#0b0d1e,#070810);
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;position:relative;overflow:hidden;
+  min-height:0;width:100%
+}
+/* Inner stage — fixed logical size, scaled down to fit card */
+.preview-stage{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:16px;gap:6px
+}
+.preview-card::before{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 60%,rgba(201,168,76,.07),transparent 65%);
+  pointer-events:none
+}
+.preview-card::after{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(ellipse at 80% 20%,rgba(59,130,246,.05),transparent 50%);
+  pointer-events:none
+}
+.p-title{
+  font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  color:#ddd0a3;text-align:center;
+  padding:0 12px;line-height:1.5;
+  word-break:break-word;max-width:100%;overflow:hidden
+}
+.p-time{
+  font-family:'Rajdhani',monospace;
+  font-size:56px;           /* overridden by JS based on scale + container */
+  font-weight:700;color:#fff;
+  line-height:1;
+  text-shadow:0 0 24px rgba(201,168,76,.2);
+  transition:color .3s ease;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:clip;
+  max-width:100%
+}
+.p-mode{
+  font-size:10px;color:var(--dim);letter-spacing:.12em;
+  text-transform:uppercase;z-index:1;margin-top:8px
+}
+.p-pos{
+  position:absolute;bottom:14px;right:16px;
+  font-size:11px;color:var(--dim);z-index:1
+}
+.warn-badge{
+  position:absolute;top:14px;left:14px;z-index:2;
+  display:none;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:999px;
+  border:1px solid rgba(231,76,60,.5);background:rgba(231,76,60,.15);
+  color:#ff8f86;font-size:11px;font-weight:700;letter-spacing:.08em
+}
+.warn-badge.show{display:inline-flex}
+@keyframes previewBlink{0%,100%{opacity:1}50%{opacity:.15}}
+.p-time.warning{color:#e74c3c !important;animation:previewBlink var(--preview-blink-speed,1s) infinite}
+.p-time.overtime{color:#e74c3c !important;animation:previewBlink var(--preview-blink-speed,1s) infinite}
+
+
+/* Meta info cards */
+.meta-cards{display:flex;gap:8px}
+.meta-card{
+  flex:1;background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:10px 12px;text-align:center
+}
+.meta-card-val{font-size:15px;font-weight:700;color:var(--text);margin-bottom:2px}
+.meta-card-lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.8px}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-icon">⏱</div>
+  <div>
+    <div class="topbar-title">Timer</div>
+    <div class="topbar-sub">Countdown &amp; Count-up Display</div>
+  </div>
+  <div class="live-badge" id="liveBadge">
+    <span class="live-dot"></span>Live
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT: Controls -->
+  <div class="left">
+
+    <div class="section">
+      <div class="section-label">Title / Message</div>
+      <input id="titleInput" class="title-input"
+        placeholder="e.g. The service is about to start"
+        value="The service is about to start"/>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Timer Mode</div>
+      <div class="mode-row">
+        <button class="mode-btn active" id="modeCountdownBtn">
+          <span>⏳</span> Countdown
+        </button>
+        <button class="mode-btn" id="modeCountupBtn">
+          <span>◎</span> Count Up
+        </button>
+      </div>
+    </div>
+
+    <div class="section" id="durationSection">
+      <div class="section-label">Duration</div>
+      <div class="time-row">
+        <div class="num-group">
+          <input id="minutesInput" class="nbox" type="number" min="0" value="30"/>
+          <div class="num-label">Minutes</div>
+        </div>
+        <div class="time-sep">:</div>
+        <div class="num-group">
+          <input id="secondsInput" class="nbox" type="number" min="0" max="59" value="0"/>
+          <div class="num-label">Seconds</div>
+        </div>
+      </div>
+      <div class="quick-row" style="margin-top:12px">
+        <button class="quick-pill" data-min="1">1 min</button>
+        <button class="quick-pill" data-min="3">3 min</button>
+        <button class="quick-pill" data-min="5">5 min</button>
+        <button class="quick-pill" data-min="10">10 min</button>
+        <button class="quick-pill" data-min="15">15 min</button>
+        <button class="quick-pill active" data-min="30">30 min</button>
+        <button class="quick-pill" data-min="45">45 min</button>
+        <button class="quick-pill" data-min="60">60 min</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Screen Location</div>
+      <div class="loc-row">
+        <button class="loc-btn" id="posCenterBtn">⊕ Center</button>
+        <button class="loc-btn" id="posTopBtn">↑ Top</button>
+        <button class="loc-btn active" id="posEdgeBtn">⌒ Edge</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Font Size</div>
+      <div class="font-row">
+        <button class="font-btn" id="fontDownBtn">A−</button>
+        <div class="font-track"><div class="font-fill" id="fontFill"></div></div>
+        <button class="font-btn" id="fontUpBtn">A+</button>
+        <div class="font-val" id="fontSizeValue">100%</div>
+        <button class="font-reset" id="fontResetBtn">Reset</button>
+      </div>
+    </div>
+
+    <!-- Title + Timer styles combined in one compact section -->
+    <div class="section">
+      <div class="section-label">Text Style</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+        <!-- Title Style -->
+        <div style="background:var(--card);border:1px solid var(--border);
+          border-radius:8px;padding:8px 10px">
+          <div style="font-size:9px;font-weight:700;color:var(--dim);
+            text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Title</div>
+          <select class="fc-select" id="labelFontSelect" style="width:100%;margin-bottom:6px">
+            <option value="Cinzel">Cinzel (Default)</option>
+            <option value="DM Sans">DM Sans</option>
+            <option value="Segoe UI">Segoe UI</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Arial">Arial</option>
+            <option value="Verdana">Verdana</option>
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Trebuchet MS">Trebuchet MS</option>
+            <option value="Tahoma">Tahoma</option>
+            <option value="Impact">Impact</option>
+          </select>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="color" class="fc-color" id="labelColorPicker" value="#ffffff"/>
+            <span style="font-size:11px;color:var(--sub)" id="labelColorVal">#ffffff</span>
+          </div>
+        </div>
+
+        <!-- Timer Number Style -->
+        <div style="background:var(--card);border:1px solid var(--border);
+          border-radius:8px;padding:8px 10px">
+          <div style="font-size:9px;font-weight:700;color:var(--dim);
+            text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Number</div>
+          <select class="fc-select" id="timerFontSelect" style="width:100%;margin-bottom:6px">
+            <option value="Cinzel">Cinzel (Default)</option>
+            <option value="Rajdhani">Rajdhani</option>
+            <option value="Courier New">Courier New</option>
+            <option value="Segoe UI">Segoe UI</option>
+            <option value="Arial">Arial</option>
+            <option value="Verdana">Verdana</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Impact">Impact</option>
+            <option value="Tahoma">Tahoma</option>
+            <option value="Trebuchet MS">Trebuchet MS</option>
+          </select>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="color" class="fc-color" id="timerColorPicker" value="#ffffff"/>
+            <span style="font-size:11px;color:var(--sub)" id="timerColorVal">#ffffff</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Clock / Date Display -->
+    <div class="section">
+      <div class="clock-section">
+        <div class="clock-toggle-row">
+          <span class="clock-toggle-label">🕐 Clock &amp; Date Display</span>
+          <label class="clock-switch">
+            <input type="checkbox" id="clockToggle">
+            <span class="clock-switch-slider"></span>
+          </label>
+        </div>
+        <div class="clock-opts" id="clockOpts" style="display:none">
+          <div class="clock-row">
+            <span class="clock-row-label">Format</span>
+            <button class="clock-pill active" data-clock-format="12h">12h</button>
+            <button class="clock-pill" data-clock-format="24h">24h</button>
+          </div>
+          <div class="clock-row">
+            <span class="clock-row-label">Date</span>
+            <button class="clock-pill active" data-clock-date="show">Show Date</button>
+            <button class="clock-pill" data-clock-date="hide">Hide Date</button>
+          </div>
+          <div class="clock-row">
+            <span class="clock-row-label">Position</span>
+            <button class="clock-pill active" data-clock-pos="top-left">↖ Top Left</button>
+            <button class="clock-pill" data-clock-pos="top-right">↗ Top Right</button>
+            <button class="clock-pill" data-clock-pos="bot-left">↙ Bot Left</button>
+            <button class="clock-pill" data-clock-pos="bot-right">↘ Bot Right</button>
+            <button class="clock-pill" data-clock-pos="center">⊙ Center</button>
+          </div>
+          <div class="clock-row">
+            <span class="clock-row-label">Color</span>
+            <input type="color" id="clockColorPicker" value="#ffffff"
+              style="width:32px;height:24px;border:none;border-radius:4px;
+              cursor:pointer;background:none;padding:0">
+            <span style="font-size:10px;color:var(--sub)">Text color</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="action-row">
+        <button class="btn-start" id="startBtn">▶ &nbsp;Start</button>
+        <button class="btn-stop" id="stopBtn">■ &nbsp;Stop</button>
+        <button class="btn-flash" id="flashBtn" title="Hold to flash faster">⚡ Flash Faster</button>
+      </div>
+      <div class="hint" style="margin-top:10px">
+        Reset returns to <strong>Edge</strong> position and <strong>100%</strong> font size.<br>
+        <span style="color:var(--dim)">Closing this window does <strong style="color:var(--sub)">not</strong> stop the running timer.</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Preview -->
+  <div class="right">
+    <div class="preview-label">Live Preview</div>
+
+    <div class="preview-card" id="previewBox">
+      <div class="warn-badge" id="warnBadge">⚠ Warning</div>
+      <div class="preview-stage">
+        <div class="p-title" id="previewTitle">THE SERVICE IS ABOUT TO START</div>
+        <div class="p-time" id="previewTime">30:00</div>
+        <div class="p-mode" id="previewMode">Countdown</div>
+      </div>
+      <div class="p-pos" id="previewPos">Edge · 100%</div>
+    </div>
+
+    <div class="meta-cards">
+      <div class="meta-card">
+        <div class="meta-card-val" id="metaLocation">Edge</div>
+        <div class="meta-card-lbl">Location</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-card-val" id="metaFontSize">100%</div>
+        <div class="meta-card-lbl">Font Scale</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-card-val" id="metaMode">Countdown</div>
+        <div class="meta-card-lbl">Mode</div>
+      </div>
+    </div>
+
+    <!-- Projection Background Panel -->
+    <div id="bgPanel" style="margin-top:14px;padding:12px;border-radius:10px;
+      border:1px solid var(--border);background:var(--surface)">
+      <div style="font-size:10px;font-weight:700;color:var(--sub);
+        letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">
+        Projection Background
+      </div>
+      <!-- Type tabs -->
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <button class="bg-type-btn active" data-type="default"
+          style="flex:1;padding:5px;border-radius:6px;font-size:11px;font-weight:600;
+          border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer">
+          Default
+        </button>
+        <button class="bg-type-btn" data-type="solid"
+          style="flex:1;padding:5px;border-radius:6px;font-size:11px;font-weight:600;
+          border:1px solid var(--border);background:var(--card);color:var(--sub);cursor:pointer">
+          Solid
+        </button>
+        <button class="bg-type-btn" data-type="image"
+          style="flex:1;padding:5px;border-radius:6px;font-size:11px;font-weight:600;
+          border:1px solid var(--border);background:var(--card);color:var(--sub);cursor:pointer">
+          Image
+        </button>
+        <button class="bg-type-btn" data-type="video"
+          style="flex:1;padding:5px;border-radius:6px;font-size:11px;font-weight:600;
+          border:1px solid var(--border);background:var(--card);color:var(--sub);cursor:pointer">
+          Video
+        </button>
+      </div>
+      <!-- Solid color picker -->
+      <div id="bgSolidPanel" style="display:none;align-items:center;gap:8px">
+        <input type="color" id="bgColorPicker" value="#000000"
+          style="width:40px;height:32px;border:none;border-radius:6px;cursor:pointer;
+          background:none;padding:0">
+        <span style="font-size:11px;color:var(--sub)">Pick a color</span>
+        <button id="bgApplyColor" style="margin-left:auto;padding:5px 12px;border-radius:6px;
+          font-size:11px;font-weight:700;border:1px solid var(--gold-dim);
+          background:var(--gold-glow);color:var(--gold);cursor:pointer">Apply</button>
+      </div>
+      <!-- Image picker -->
+      <div id="bgImagePanel" style="display:none;gap:8px;align-items:center">
+        <div id="bgImageName" style="font-size:11px;color:var(--sub);flex:1;
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap">No image selected</div>
+        <button id="bgPickImage" style="padding:5px 12px;border-radius:6px;
+          font-size:11px;font-weight:700;border:1px solid var(--border-lit);
+          background:var(--card);color:var(--text);cursor:pointer">Browse…</button>
+        <button id="bgApplyImage" style="padding:5px 12px;border-radius:6px;
+          font-size:11px;font-weight:700;border:1px solid var(--gold-dim);
+          background:var(--gold-glow);color:var(--gold);cursor:pointer">Apply</button>
+      </div>
+      <!-- Video picker -->
+      <div id="bgVideoPanel" style="display:none;gap:8px;align-items:center">
+        <div id="bgVideoName" style="font-size:11px;color:var(--sub);flex:1;
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap">No video selected</div>
+        <button id="bgPickVideo" style="padding:5px 12px;border-radius:6px;
+          font-size:11px;font-weight:700;border:1px solid var(--border-lit);
+          background:var(--card);color:var(--text);cursor:pointer">Browse…</button>
+        <button id="bgApplyVideo" style="padding:5px 12px;border-radius:6px;
+          font-size:11px;font-weight:700;border:1px solid var(--gold-dim);
+          background:var(--gold-glow);color:var(--gold);cursor:pointer">Apply</button>
+      </div>
+      <!-- Disabled overlay for main app mode -->
+      <div id="bgDisabledOverlay" style="display:none;position:absolute;inset:0;
+        background:rgba(0,0,0,.55);border-radius:10px;align-items:center;
+        justify-content:center;font-size:11px;color:var(--sub);text-align:center;
+        padding:8px;pointer-events:all;z-index:10">
+        🔒 Background control available<br>in Standalone Timer only
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+let timerMode='countdown', timerPosition='edge', timerScale=1.0, timerLive=false;
+
+function setActive(group, activeId) {
+  group.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', id === activeId);
+  });
+}
+
+function updateLiveVisuals() {
+  const badge    = document.getElementById('liveBadge');
+  const startBtn = document.getElementById('startBtn');
+  if (badge)    badge.classList.toggle('on', timerLive);
+  if (startBtn) {
+    startBtn.classList.toggle('running', timerLive);
+    startBtn.textContent = timerLive ? '⏸  Running…' : '▶  Start';
+    // Visual indicator: blue when running
+    if (timerLive) {
+      startBtn.style.background = 'linear-gradient(135deg,#1e5fa8,#3b82f6)';
+      startBtn.style.color      = '#fff';
+    } else {
+      startBtn.style.background = '';
+      startBtn.style.color      = '';
+    }
+  }
+}
+
+function fitPreviewFont() {
+  const card = document.getElementById('previewBox');
+  const pt   = document.getElementById('previewTime');
+  if (!card || !pt) return;
+  const cardW = card.clientWidth  - 32;  // padding
+  const cardH = card.clientHeight - 80;  // leave room for title/mode/pos
+  // Start from a base size scaled by user's timerScale, then clamp to fit
+  const desired = Math.round(56 * timerScale);
+  // Measure at desired size
+  pt.style.fontSize = desired + 'px';
+  // If wider than card, scale down proportionally
+  if (pt.scrollWidth > cardW) {
+    const ratio = cardW / pt.scrollWidth;
+    pt.style.fontSize = Math.floor(desired * ratio * 0.95) + 'px';
+  }
+  // Also clamp height
+  const h = parseInt(pt.style.fontSize);
+  const maxByHeight = Math.floor(cardH * 0.6);
+  if (h > maxByHeight) pt.style.fontSize = maxByHeight + 'px';
+}
+
+function updatePreview() {
+  const title = document.getElementById('titleInput').value || '';
+  const m     = String(document.getElementById('minutesInput').value || '0');
+  const s     = String(document.getElementById('secondsInput').value || '0').padStart(2, '0');
+  const pct   = Math.round(timerScale * 100);
+  const loc   = timerPosition.charAt(0).toUpperCase() + timerPosition.slice(1);
+  const mode  = timerMode === 'countdown' ? 'Countdown' : 'Count Up';
+
+  document.getElementById('previewTitle').textContent = title.toUpperCase();
+  const pt = document.getElementById('previewTime');
+  pt.textContent = `${m}:${s}`;
+  // Fit font to preview card — never overflow
+  fitPreviewFont();
+
+  document.getElementById('previewMode').textContent = mode;
+  document.getElementById('previewPos').textContent  = `${loc} · ${pct}%`;
+  document.getElementById('fontSizeValue').textContent = `${pct}%`;
+  document.getElementById('metaLocation').textContent  = loc;
+  document.getElementById('metaFontSize').textContent  = `${pct}%`;
+  document.getElementById('metaMode').textContent      = mode;
+
+  // Font fill bar — 40% = 0.4 scale, 200% = 2.0. Map 0.4–2.0 → 0–100%
+  const fillPct = ((timerScale - 0.4) / 1.6) * 100;
+  document.getElementById('fontFill').style.width = `${Math.max(2, fillPct)}%`;
+
+  // Apply font/color to preview
+  const timerFont  = document.getElementById('timerFontSelect')?.value  || 'Cinzel';
+  const timerColor = document.getElementById('timerColorPicker')?.value || '#ffffff';
+  const labelFont  = document.getElementById('labelFontSelect')?.value  || 'Cinzel';
+  const labelColor = document.getElementById('labelColorPicker')?.value || '#ffffff';
+  const pt2 = document.getElementById('previewTime');
+  const ptitle = document.getElementById('previewTitle');
+  if (pt2) { pt2.style.fontFamily = `'${timerFont}', monospace`; pt2.style.color = timerColor; }
+  if (ptitle) { ptitle.style.fontFamily = `'${labelFont}', serif`; ptitle.style.color = labelColor; }
+  document.getElementById('timerColorVal').textContent = timerColor;
+  document.getElementById('labelColorVal').textContent = labelColor;
+
+  updateLiveVisuals();
+}
+
+async function pushTimerScale() {
+  try { await window.electronAPI?.timerScale?.({ scale: timerScale, position: timerPosition }); }
+  catch(_) {}
+}
+
+// Live countdown preview variables
+let previewInterval = null;
+let previewEndTime  = null;
+let previewTotalSecs = 0;
+let previewMode = 'countdown';
+let previewWarnSecs = 60;
+let _previewBlinkSpeed = 1.0;  // normal speed — held button goes to 0.25s, releases to 1s
+let _previewEnded = false;
+
+// Flash faster handled by #flashBtn (mousedown/mouseup/mouseleave)
+
+function startPreviewCountdown(seconds, mode) {
+  stopPreviewCountdown();
+  _previewBlinkSpeed = 1.0;
+  _previewEnded = false;
+  document.documentElement.style.setProperty('--preview-blink-speed', '1s');
+  // Hide flash button on new timer start
+  const _fb = document.getElementById('flashBtn');
+  if (_fb) _fb.classList.remove('visible', 'pressing');
+  previewTotalSecs = seconds;
+  previewMode = mode;
+  previewWarnSecs = seconds <= 300 ? 60 : Math.ceil(seconds * 0.1);
+  previewEndTime  = mode === 'countdown' ? Date.now() + seconds * 1000 : Date.now();
+  previewInterval = setInterval(tickPreview, 500);
+  tickPreview();
+}
+
+function stopPreviewCountdown() {
+  if (previewInterval) { clearInterval(previewInterval); previewInterval = null; }
+  const pt = document.getElementById('previewTime');
+  const wb = document.getElementById('warnBadge');
+  const fb = document.getElementById('flashBtn');
+  if (pt) { pt.classList.remove('warning','overtime'); }
+  if (wb) wb.classList.remove('show');
+  if (fb) { fb.classList.remove('visible','pressing'); }
+  document.documentElement.style.setProperty('--preview-blink-speed', '1s');
+  // Restore original title if it was changed by end message
+  const titleInp = document.getElementById('titleInput');
+  if (titleInp && titleInp.dataset.origValue !== undefined) {
+    titleInp.value = titleInp.dataset.origValue;
+    titleInp.style.color = '';
+    delete titleInp.dataset.origValue;
+  }
+  _previewEnded = false;
+  _previewBlinkSpeed = 1.0;
+  document.documentElement.style.setProperty('--preview-blink-speed', '1s');
+}
+
+function tickPreview() {
+  const pt = document.getElementById('previewTime');
+  const wb = document.getElementById('warnBadge');
+  if (!pt || !previewEndTime) return;
+  const now = Date.now();
+  let secs;
+  if (previewMode === 'countdown') {
+    secs = Math.max(0, Math.ceil((previewEndTime - now) / 1000));
+    const mins = Math.floor(secs / 60);
+    const s    = String(secs % 60).padStart(2,'0');
+    pt.textContent = `${mins}:${s}`;
+    const isWarn  = secs <= previewWarnSecs && secs > 0;
+    const isOver  = secs === 0;
+    pt.classList.toggle('warning',  isWarn);
+    pt.classList.toggle('overtime', isOver);
+    // Show Flash Faster button during WARNING (red) and overtime
+    const fb = document.getElementById('flashBtn');
+    if (fb) fb.classList.toggle('visible', isWarn || isOver || _previewEnded);
+    // Override inline color during warning/overtime
+    const userColor = document.getElementById('timerColorPicker')?.value || '#ffffff';
+    pt.style.color = (isWarn || isOver) ? '#e74c3c' : userColor;
+    if (wb) {
+      wb.classList.toggle('show', isWarn || isOver);
+      wb.textContent = isOver ? '⏰ Time Up!' : '⚠ Warning';
+    }
+    if (isOver && !_previewEnded) {
+      _previewEnded = true;
+      const wb = document.getElementById('warnBadge');
+      if (wb) { wb.classList.add('show'); wb.textContent = '⏰ Time Up!'; }
+      // Show end message in the title input area
+      const titleInp = document.getElementById('titleInput');
+      if (titleInp && titleInp.dataset.origValue === undefined) {
+        titleInp.dataset.origValue = titleInp.value;
+        titleInp.value = 'Thank you. Kindly conclude your session.';
+        titleInp.style.color = '#e74c3c';
+      }
+      // Keep blinking — don't call stopPreviewCountdown()
+      // Spacebar will speed up the blink
+    }
+  } else {
+    secs = Math.floor((now - previewEndTime) / 1000);
+    const mins = Math.floor(secs / 60);
+    const s    = String(secs % 60).padStart(2,'0');
+    pt.textContent = `${mins}:${s}`;
+  }
+}
+
+let _ignoreNextSync = false; // prevent echo-back from our own showTimer call
+
+async function startTimer() {
+  const minutes    = parseInt(document.getElementById('minutesInput').value || '0', 10);
+  const secs       = parseInt(document.getElementById('secondsInput').value || '0', 10);
+  const seconds    = (minutes * 60) + secs;
+  const label      = document.getElementById('titleInput').value || '';
+  const timerFont  = document.getElementById('timerFontSelect')?.value  || 'Cinzel';
+  const timerColor = document.getElementById('timerColorPicker')?.value || '#ffffff';
+  const labelFont  = document.getElementById('labelFontSelect')?.value  || 'Cinzel';
+  const labelColor = document.getElementById('labelColorPicker')?.value || '#ffffff';
+
+  _ignoreNextSync = true; // ignore the echo-back sync from main
+
+  if (!window.electronAPI?.showTimer) {
+    _showCountdownToast('⚠ electronAPI not available', 'error');
+    _ignoreNextSync = false;
+    return;
+  }
+
+  const result = await window.electronAPI.showTimer({
+    mode: timerMode, seconds, label, scale: timerScale, position: timerPosition,
+    timerFont, timerColor, labelFont, labelColor
+  });
+
+  if (result?.error) {
+    _showCountdownToast('⚠ ' + result.error, 'error');
+    _ignoreNextSync = false;
+    return; // Stop — do not start preview or mark as live
+  }
+
+  if (result && result.projected === false) {
+    // Still blocked — informational fallback (shouldn't reach here anymore)
+    _showCountdownToast('⚠ Open Projection first, then start the timer.', 'error');
+    _ignoreNextSync = false;
+    return;
+  }
+
+  timerLive = true;
+  startPreviewCountdown(seconds, timerMode);
+  updatePreview();
+  setTimeout(() => { _ignoreNextSync = false; }, 300);
+}
+
+function _showCountdownToast(msg, type) {
+  let t = document.getElementById('_cdToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_cdToast';
+    t.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);' +
+      'padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;z-index:9999;' +
+      'pointer-events:none;transition:opacity .25s;white-space:nowrap';
+    document.body.appendChild(t);
+  }
+  t.style.background = type === 'error' ? 'rgba(231,76,60,.9)' : 'rgba(201,168,76,.9)';
+  t.style.color = type === 'error' ? '#fff' : '#000';
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+
+async function stopTimer() {
+  // Stop the actual projection timer
+  await window.electronAPI?.stopTimer?.();
+  timerLive = false;
+  stopPreviewCountdown();
+  updatePreview();
+}
+
+// Close window WITHOUT stopping the running timer
+function closeWindowOnly() {
+  window.close();
+}
+
+// Mode
+function _updateDurationVisibility() {
+  const sec = document.getElementById('durationSection');
+  if (sec) sec.style.display = timerMode === 'countdown' ? '' : 'none';
+}
+document.getElementById('modeCountdownBtn').addEventListener('click', () => {
+  timerMode = 'countdown';
+  setActive(['modeCountdownBtn','modeCountupBtn'], 'modeCountdownBtn');
+  _updateDurationVisibility();
+  updatePreview();
+});
+document.getElementById('modeCountupBtn').addEventListener('click', () => {
+  timerMode = 'countup';
+  setActive(['modeCountdownBtn','modeCountupBtn'], 'modeCountupBtn');
+  _updateDurationVisibility();
+  updatePreview();
+});
+
+// Quick pills
+document.querySelectorAll('.quick-pill').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.quick-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('minutesInput').value = btn.dataset.min;
+  document.getElementById('secondsInput').value = 0;
+  updatePreview();
+}));
+
+// Location
+document.getElementById('posCenterBtn').addEventListener('click', async () => {
+  timerPosition = 'center';
+  setActive(['posCenterBtn','posTopBtn','posEdgeBtn'], 'posCenterBtn');
+  updatePreview(); await pushTimerScale();
+});
+document.getElementById('posTopBtn').addEventListener('click', async () => {
+  timerPosition = 'top';
+  setActive(['posCenterBtn','posTopBtn','posEdgeBtn'], 'posTopBtn');
+  updatePreview(); await pushTimerScale();
+});
+document.getElementById('posEdgeBtn').addEventListener('click', async () => {
+  timerPosition = 'edge';
+  setActive(['posCenterBtn','posTopBtn','posEdgeBtn'], 'posEdgeBtn');
+  updatePreview(); await pushTimerScale();
+});
+
+// Font
+document.getElementById('fontDownBtn').addEventListener('click', async () => {
+  timerScale = Math.max(0.4, +(timerScale - 0.1).toFixed(1));
+  updatePreview(); await pushTimerScale();
+});
+document.getElementById('fontUpBtn').addEventListener('click', async () => {
+  timerScale = Math.min(2.0, +(timerScale + 0.1).toFixed(1));
+  updatePreview(); await pushTimerScale();
+});
+document.getElementById('fontResetBtn').addEventListener('click', async () => {
+  timerScale = 1.0; timerPosition = 'edge';
+  setActive(['posCenterBtn','posTopBtn','posEdgeBtn'], 'posEdgeBtn');
+  updatePreview(); await pushTimerScale();
+});
+
+// Inputs
+['titleInput','minutesInput','secondsInput',
+  'timerFontSelect','labelFontSelect','timerColorPicker','labelColorPicker'
+].forEach(id => {
+  document.getElementById(id)?.addEventListener('input', updatePreview);
+  document.getElementById(id)?.addEventListener('change', updatePreview);
+});
+
+// Start / Stop
+document.getElementById('startBtn').addEventListener('click', startTimer);
+document.getElementById('stopBtn').addEventListener('click', stopTimer);
+
+// ── Projection Background Panel ───────────────────────────────────────────────
+(async function initBgPanel() {
+  const isStandalone = await window.electronAPI?.isTimerStandalone?.().catch(() => false);
+  const overlay = document.getElementById('bgDisabledOverlay');
+  const panel   = document.getElementById('bgPanel');
+
+  // Grey out in main app — show overlay, block interaction
+  if (!isStandalone) {
+    if (panel)   { panel.style.position = 'relative'; panel.style.overflow = 'hidden'; }
+    if (overlay) { overlay.style.display = 'flex'; }
+    return; // no wiring needed
+  }
+
+  let _bgType    = 'default';
+  let _imagePath = null;
+  let _videoPath = null;
+
+  // Tab switching
+  document.querySelectorAll('.bg-type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _bgType = btn.dataset.type;
+      document.querySelectorAll('.bg-type-btn').forEach(b => {
+        const active = b.dataset.type === _bgType;
+        b.style.color    = active ? 'var(--gold)' : 'var(--sub)';
+        b.style.borderColor = active ? 'var(--gold-dim)' : 'var(--border)';
+        b.style.background  = active ? 'var(--gold-glow)' : 'var(--card)';
+      });
+      document.getElementById('bgSolidPanel').style.display = _bgType === 'solid' ? 'flex' : 'none';
+      document.getElementById('bgImagePanel').style.display = _bgType === 'image' ? 'flex' : 'none';
+      document.getElementById('bgVideoPanel').style.display = _bgType === 'video' ? 'flex' : 'none';
+      // Apply default immediately
+      if (_bgType === 'default') {
+        window.electronAPI?.setProjectionBg?.({ type: 'default' });
+      }
+    });
+  });
+
+  // Solid color — apply on button click
+  document.getElementById('bgApplyColor')?.addEventListener('click', () => {
+    const color = document.getElementById('bgColorPicker')?.value || '#000000';
+    window.electronAPI?.setProjectionBg?.({ type: 'solid', color });
+  });
+
+  // Image — browse then apply
+  document.getElementById('bgPickImage')?.addEventListener('click', async () => {
+    const p = await window.electronAPI?.pickBgFile?.('image');
+    if (!p) return;
+    _imagePath = p;
+    const nameEl = document.getElementById('bgImageName');
+    if (nameEl) nameEl.textContent = p.split(/[\\/]/).pop();
+  });
+  document.getElementById('bgApplyImage')?.addEventListener('click', () => {
+    if (!_imagePath) return;
+    window.electronAPI?.setProjectionBg?.({ type: 'image', path: _imagePath });
+  });
+
+  // Video — browse then apply
+  document.getElementById('bgPickVideo')?.addEventListener('click', async () => {
+    const p = await window.electronAPI?.pickBgFile?.('video');
+    if (!p) return;
+    _videoPath = p;
+    const nameEl = document.getElementById('bgVideoName');
+    if (nameEl) nameEl.textContent = p.split(/[\\/]/).pop();
+  });
+  document.getElementById('bgApplyVideo')?.addEventListener('click', () => {
+    if (!_videoPath) return;
+    window.electronAPI?.setProjectionBg?.({ type: 'video', path: _videoPath });
+  });
+})();
+
+// Flash Faster button — hold to speed up blink, release to restore
+const flashBtn = document.getElementById('flashBtn');
+function _flashStart() {
+  // Button is only visible when in warning or overtime — if visible, allow flash
+  if (!flashBtn.classList.contains('visible')) return;
+  flashBtn.classList.add('pressing');
+  document.documentElement.style.setProperty('--preview-blink-speed', '0.2s');
+  window.electronAPI?.timerFlashSpeed?.({ speed: 0.2 });
+}
+function _flashStop() {
+  flashBtn.classList.remove('pressing');
+  // Always return to 1s — fixed normal speed
+  document.documentElement.style.setProperty('--preview-blink-speed', '1s');
+  window.electronAPI?.timerFlashSpeed?.({ speed: 1 });
+}
+flashBtn.addEventListener('mousedown', _flashStart);
+flashBtn.addEventListener('mouseup',   _flashStop);
+flashBtn.addEventListener('mouseleave',_flashStop);
+// Touch support for tablets
+flashBtn.addEventListener('touchstart', (e) => { e.preventDefault(); _flashStart(); });
+flashBtn.addEventListener('touchend',   _flashStop);
+
+updatePreview();
+
+// ── Sync with any running timer when window opens ────────────────────────────
+(async () => {
+  try {
+    const state = await window.electronAPI?.getTimerState?.();
+    if (state?.running) {
+      // Pre-fill controls with current timer settings
+      const mins = Math.floor(state.seconds / 60);
+      const secs = state.seconds % 60;
+      const minsEl = document.getElementById('minutesInput');
+      const secsEl = document.getElementById('secondsInput');
+      if (minsEl) minsEl.value = mins;
+      if (secsEl) secsEl.value = secs;
+      if (state.mode === 'countup') {
+        timerMode = 'countup';
+        setActive(['modeCountdownBtn','modeCountupBtn'], 'modeCountupBtn');
+        _updateDurationVisibility();
+      } else {
+        timerMode = 'countdown';
+        setActive(['modeCountdownBtn','modeCountupBtn'], 'modeCountdownBtn');
+        _updateDurationVisibility();
+      }
+      const titleEl = document.getElementById('titleInput');
+      if (titleEl && state.label) titleEl.value = state.label;
+      if (state.position) {
+        timerPosition = state.position;
+        setActive(['posCenterBtn','posTopBtn','posEdgeBtn'],
+          state.position === 'center' ? 'posCenterBtn'
+          : state.position === 'top'  ? 'posTopBtn' : 'posEdgeBtn');
+      }
+      if (state.scale) timerScale = state.scale;
+      updatePreview();
+      // Start the live preview countdown from remaining time
+      startPreviewCountdown(state.remaining, state.mode);
+      timerLive = true;
+      updateLiveVisuals();
+    }
+  } catch(e) {}
+})();
+
+// ── Clock / Date Controls ─────────────────────────────────────────────────────
+(function initClockPanel() {
+  let _clockOn     = false;
+  let _clockFormat = '12h';
+  let _clockDate   = 'show';
+  let _clockPos    = 'top-left';
+  let _clockColor  = '#ffffff';
+
+  function _sendClock() {
+    if (_clockOn) {
+      window.electronAPI?.showClock?.({
+        format:   _clockFormat,
+        showDate: _clockDate === 'show',
+        position: _clockPos,
+        color:    _clockColor,
+      });
+    } else {
+      window.electronAPI?.hideClock?.();
+    }
+  }
+
+  // Toggle switch
+  const toggle = document.getElementById('clockToggle');
+  const opts   = document.getElementById('clockOpts');
+  toggle?.addEventListener('change', () => {
+    _clockOn = toggle.checked;
+    if (opts) opts.style.display = _clockOn ? 'flex' : 'none';
+    _sendClock();
+  });
+
+  // Format pills
+  document.querySelectorAll('[data-clock-format]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _clockFormat = btn.dataset.clockFormat;
+      document.querySelectorAll('[data-clock-format]').forEach(b =>
+        b.classList.toggle('active', b.dataset.clockFormat === _clockFormat));
+      _sendClock();
+    });
+  });
+
+  // Date pills
+  document.querySelectorAll('[data-clock-date]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _clockDate = btn.dataset.clockDate;
+      document.querySelectorAll('[data-clock-date]').forEach(b =>
+        b.classList.toggle('active', b.dataset.clockDate === _clockDate));
+      _sendClock();
+    });
+  });
+
+  // Position pills
+  document.querySelectorAll('[data-clock-pos]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _clockPos = btn.dataset.clockPos;
+      document.querySelectorAll('[data-clock-pos]').forEach(b =>
+        b.classList.toggle('active', b.dataset.clockPos === _clockPos));
+      _sendClock();
+    });
+  });
+
+  // Color picker
+  document.getElementById('clockColorPicker')?.addEventListener('input', (e) => {
+    _clockColor = e.target.value;
+    _sendClock();
+  });
+})();
+
+// Listen for timer-state-sync from main (when another window starts a timer)
+window.electronAPI?.on?.('timer-state-sync', (state) => {
+  if (!state) return;
+  if (_ignoreNextSync) return;
+
+  timerLive = true;
+  const mins = Math.floor((state.seconds || 0) / 60);
+  const secs = (state.seconds || 0) % 60;
+  const minsEl = document.getElementById('minutesInput');
+  const secsEl = document.getElementById('secondsInput');
+  if (minsEl) minsEl.value = mins;
+  if (secsEl) secsEl.value = secs;
+
+  timerMode = state.mode || 'countdown';
+  timerPosition = state.position || 'edge';
+  timerScale = state.scale || 1;
+
+  setActive(['modeCountdownBtn','modeCountupBtn'],
+    timerMode === 'countdown' ? 'modeCountdownBtn' : 'modeCountupBtn');
+  setActive(['posCenterBtn','posTopBtn','posEdgeBtn'],
+    timerPosition === 'center' ? 'posCenterBtn'
+    : timerPosition === 'top'  ? 'posTopBtn' : 'posEdgeBtn');
+
+  const titleEl = document.getElementById('titleInput');
+  if (titleEl && state.label) titleEl.value = state.label;
+
+  updatePreview();
+  stopPreviewCountdown();
+
+  const serverNow = Number(state.serverNow || Date.now());
+  const clientNow = Date.now();
+  const skewMs = clientNow - serverNow;
+  const startedAt = Number(state.startedAt || 0);
+
+  let previewSeconds = state.remaining || state.seconds || 0;
+  if (startedAt > 0) {
+    if (timerMode === 'countdown') {
+      previewSeconds = Math.max(0, Math.ceil(((startedAt + (state.seconds * 1000) + skewMs) - clientNow) / 1000));
+    } else {
+      previewSeconds = Math.max(0, Math.floor((clientNow - (startedAt + skewMs)) / 1000));
+    }
+  }
+
+  startPreviewCountdown(previewSeconds, state.mode);
+  timerLive = true;
+  updateLiveVisuals();
+});
+
+// Listen for timer stopped from main
+window.electronAPI?.on?.('timer-stopped', () => {
+  timerLive = false;
+  stopPreviewCountdown();
+  updateLiveVisuals();
+});
+
+window.electronAPI?.on?.('timer-scale-sync', (data) => {
+  if (!data) return;
+  if (typeof data.scale === 'number') timerScale = data.scale;
+  if (data.position) timerPosition = data.position;
+  setActive(['posCenterBtn','posTopBtn','posEdgeBtn'],
+    timerPosition === 'center' ? 'posCenterBtn'
+    : timerPosition === 'top' ? 'posTopBtn' : 'posEdgeBtn');
+  updatePreview();
+  updateLiveVisuals();
+});
+
+// Refit preview font whenever window/card is resized
+const _ro = new ResizeObserver(() => fitPreviewFont());
+const _previewCard = document.getElementById('previewBox');
+if (_previewCard) _ro.observe(_previewCard);
+</script>
+</body></html>

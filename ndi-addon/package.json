@@ -1,0 +1,13 @@
+{
+  "name": "anchorcast-ndi-sender",
+  "version": "1.0.0",
+  "description": "Native NDI sender addon for AnchorCast using the official NDI SDK",
+  "main": "index.js",
+  "scripts": {
+    "build": "node-gyp rebuild",
+    "rebuild": "node-gyp rebuild"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.0.0"
+  }
+}

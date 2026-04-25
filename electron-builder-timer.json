@@ -1,0 +1,41 @@
+{
+  "appId": "com.anchorcast.timer",
+  "productName": "AnchorCast Timer",
+  "copyright": "Copyright 2026 AnchorCast",
+  "files": [
+    "src/timer-main.js",
+    "src/preload.js",
+    "src/renderer/countdown-window.html",
+    "src/renderer/projection.html",
+    "assets/**/*"
+  ],
+  "extraResources": [],
+  "win": {
+    "target": [
+      "nsis",
+      "portable"
+    ],
+    "icon": "assets/icon.ico",
+    "extraResources": [
+      {
+        "from": "ndi-addon/build/Release/Processing.NDI.Lib.x64.dll",
+        "to": "Processing.NDI.Lib.x64.dll"
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "unicode": true,
+    "language": "1033",
+    "warningsAsErrors": false
+  },
+  "directories": {
+    "output": "dist"
+  },
+  "extraMetadata": {
+    "main": "src/timer-main.js"
+  }
+}

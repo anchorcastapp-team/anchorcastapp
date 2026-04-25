@@ -1,0 +1,6 @@
+AnchorCast branding assets
+- anchorcast-logo.png
+- icon.png
+- icon.ico
+- anchorcast-splash.png
+Theme file: src/renderer/css/anchorcast-theme.css

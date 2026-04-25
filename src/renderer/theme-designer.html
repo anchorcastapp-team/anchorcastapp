@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08101d">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self'; img-src 'self' data: blob: file: https:; media-src 'self' blob: data: file:;">
+<title>Theme Editor — AnchorCast</title>
+<script src="js/electron-shim.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,600;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#08080f;--deep:#0c0c17;--panel:#10101c;--card:#16162a;
+  --border:#252540;--border-lit:#343458;
+  --gold:#c9a84c;--gold-b:#e8c870;--gold-d:#6a5220;
+  --text:#ddddf0;--sub:#8888aa;--dim:#4a4a68;--live:#e74c3c;--r:5px;
+}
+html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;background:var(--void);color:var(--text)}
+button{font-family:inherit;cursor:pointer}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border-lit);border-radius:4px}
+
+/* ── TITLE BAR ── */
+#titleBar{height:40px;background:var(--deep);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0;-webkit-app-region:drag}
+#titleBar *{-webkit-app-region:no-drag}
+#themeTitle{font-size:11px;font-weight:600;color:var(--sub)}
+.sp{flex:1}
+.hbtn{padding:5px 12px;border-radius:var(--r);font-size:11px;font-weight:600;cursor:pointer;border:1px solid;transition:all .12s;font-family:inherit}
+.hbtn-gold{background:rgba(201,168,76,.15);border-color:var(--gold);color:var(--gold)}
+.hbtn-gold:hover{background:rgba(201,168,76,.28)}
+.hbtn-ghost{background:transparent;border-color:var(--border-lit);color:var(--sub)}
+.hbtn-ghost:hover{color:var(--text);border-color:var(--text)}
+
+/* ── TOOLBAR ── */
+#toolbar{height:44px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:4px;flex-shrink:0}
+.tsep{width:1px;height:24px;background:var(--border);margin:0 4px;flex-shrink:0}
+.tbtn{padding:5px 10px;border-radius:var(--r);border:1px solid var(--border);background:var(--card);color:var(--text);font-size:11px;transition:all .12s;white-space:nowrap}
+.tbtn:hover{background:var(--border-lit)}
+.tbtn.active{background:rgba(201,168,76,.12);border-color:var(--gold-d);color:var(--gold)}
+.tlabel{font-size:10px;color:var(--sub);margin-right:2px}
+
+/* ── MAIN LAYOUT ── */
+#main{display:flex;flex:1;min-height:0;overflow:hidden}
+
+/* ── LEFT: Slide list sidebar ── */
+#slidesSide{width:190px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#slidesSideHdr{padding:5px 10px;font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+#slidesList{flex:1;overflow-y:auto;padding:6px}
+.slide-item{border-radius:4px;overflow:hidden;cursor:pointer;border:2px solid var(--border);margin-bottom:6px;transition:border-color .12s}
+.slide-item:hover{border-color:var(--border-lit)}
+.slide-item.active{border-color:var(--gold)}
+.slide-canvas-mini{width:100%;aspect-ratio:16/9;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:7px}
+.slide-label-mini{padding:2px 5px;font-size:9px;color:var(--text);background:var(--deep);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── CENTER: Canvas area ── */
+#canvasCol{flex:1;display:flex;flex-direction:column;min-width:0;background:#111;overflow:hidden}
+#canvasWrap{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;background:#111}
+#slideCanvas{position:relative;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.8);cursor:default}
+#bgLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#bgVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:0}
+#bgOverlayDiv{position:absolute;inset:0;pointer-events:none;z-index:2}
+#mediaLabel{position:absolute;bottom:6px;right:8px;font-size:8px;background:rgba(0,0,0,.6);color:#888;padding:2px 6px;border-radius:3px;pointer-events:none}
+.canvas-footer{height:28px;background:var(--panel);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 12px;font-size:9px;color:var(--dim);gap:12px;flex-shrink:0}
+.zoom-btn{padding:2px 7px;background:var(--card);border:1px solid var(--border);border-radius:3px;color:var(--sub);font-size:10px;cursor:pointer}
+.zoom-btn:hover{color:var(--text)}
+
+/* ── Text boxes on canvas ── */
+.text-box{position:absolute;cursor:move;user-select:none;box-sizing:border-box}
+.text-box.selected{outline:2px solid var(--gold)}
+.text-box.selected .tb-resize-handle{display:block}
+.tb-content{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none}
+.tb-resize-handle{display:none;position:absolute;width:8px;height:8px;background:var(--gold);border:1px solid #000;border-radius:1px}
+.rh-tl{top:-4px;left:-4px;cursor:nw-resize}
+.rh-tr{top:-4px;right:-4px;cursor:ne-resize}
+.rh-bl{bottom:-4px;left:-4px;cursor:sw-resize}
+.rh-br{bottom:-4px;right:-4px;cursor:se-resize}
+.rh-tm{top:-4px;left:calc(50% - 4px);cursor:n-resize}
+.rh-bm{bottom:-4px;left:calc(50% - 4px);cursor:s-resize}
+.rh-ml{top:calc(50% - 4px);left:-4px;cursor:w-resize}
+.rh-mr{top:calc(50% - 4px);right:-4px;cursor:e-resize}
+.tb-rotate-handle{display:none;position:absolute;top:-28px;left:calc(50% - 8px);width:16px;height:16px;background:var(--gold);border-radius:50%;cursor:crosshair;border:1px solid #000}
+.text-box.selected .tb-rotate-handle{display:block}
+
+/* ── RIGHT: Inspector ── */
+#inspector{width:270px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.ins-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.ins-tab{flex:1;padding:8px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--dim);border-bottom:2px solid transparent;cursor:pointer;text-align:center;transition:all .12s}
+.ins-tab:hover{color:var(--sub)}
+.ins-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+#inspectorBody{flex:1;overflow-y:auto;padding:12px}
+.ig{margin-bottom:12px}
+.il{font-size:10px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;display:block}
+.ii,.is{width:100%;background:var(--card);border:1px solid var(--border-lit);border-radius:var(--r);color:var(--text);font-family:inherit;font-size:12px;padding:5px 8px;outline:none}
+.ii:focus,.is:focus{border-color:var(--gold-d)}
+.irow{display:flex;gap:6px;align-items:center}
+.irow .ii{flex:1}
+.range{width:100%;accent-color:var(--gold);margin-top:2px;cursor:pointer}
+.color-row{display:flex;align-items:center;gap:6px}
+.cswatch{width:28px;height:28px;border-radius:var(--r);border:1px solid var(--border-lit);cursor:pointer;flex-shrink:0;transition:transform .12s}
+.cswatch:hover{transform:scale(1.12)}
+input[type=color]{opacity:0;position:absolute;pointer-events:none;width:1px;height:1px}
+.idivider{height:1px;background:var(--border);margin:10px 0}
+.isec{font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.ibtn{width:100%;padding:7px;background:rgba(201,168,76,.08);border:1px solid var(--gold-d);border-radius:var(--r);color:var(--gold);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px;transition:background .12s}
+.ibtn:hover{background:rgba(201,168,76,.18)}
+.ibtn-red{background:rgba(231,76,60,.07);border-color:rgba(192,57,43,.4);color:var(--live)}
+.ibtn-red:hover{background:rgba(231,76,60,.18)}
+.hint{font-size:10px;color:var(--dim);margin-top:4px;line-height:1.5}
+.check-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text)}
+
+/* ── Status bar ── */
+#statusBar{height:22px;background:var(--deep);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 12px;font-size:9px;color:var(--dim);gap:14px;flex-shrink:0}
+
+/* ── Context menu ── */
+#ctxMenu{position:fixed;display:none;min-width:190px;background:var(--card);border:1px solid var(--border-lit);border-radius:7px;box-shadow:0 8px 24px rgba(0,0,0,.6);z-index:999;padding:4px 0}
+.ctx-i{padding:8px 14px;font-size:12px;color:var(--text);cursor:pointer;transition:background .1s}
+.ctx-i:hover{background:rgba(255,255,255,.06)}
+.ctx-i.red{color:var(--live)}
+.ctx-sep{height:1px;background:var(--border);margin:3px 0}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border-lit);border-radius:7px;padding:6px 16px;font-size:12px;color:var(--gold-b);z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+</style>
+</head>
+<body style="background:#08101d;display:flex;flex-direction:column;height:100vh;overflow:hidden">
+
+<!-- Title bar -->
+<div id="titleBar">
+  <button class="hbtn hbtn-ghost" onclick="closeManager()" style="padding:2px 8px;margin-right:4px;font-size:11px" title="Back to app">← Back</button>
+  <span style="font-size:12px;color:var(--gold)">🎨</span>
+  <span style="font-size:12px;font-weight:700;color:var(--gold-b)">Theme Editor</span>
+  <span id="themeTitle" style="font-size:11px;color:var(--sub)">— Untitled</span>
+  <div class="sp"></div>
+  <select id="categorySelect" class="ii" style="width:130px;padding:3px 6px;font-size:11px" onchange="setCategory(this.value)">
+    <option value="song">🎵 Song Theme</option>
+    <option value="scripture">📖 Scripture Theme</option>
+    <option value="presentation">📑 Presentation Theme</option>
+  </select>
+  <div class="tsep"></div>
+  <button class="hbtn hbtn-ghost" onclick="newTheme()">+ New</button>
+  <button class="hbtn hbtn-gold" onclick="saveAll()">✓ Save</button>
+  <button class="hbtn hbtn-ghost" onclick="closeManager()">✕</button>
+</div>
+
+<!-- Toolbar -->
+<div id="toolbar">
+  <span class="tlabel">Add:</span>
+  <button class="tbtn" onclick="addTextBox('main')">T Text</button>
+  <div class="tsep"></div>
+  <span class="tlabel">BG:</span>
+  <button class="tbtn" onclick="pickBgImage()">🖼 Image</button>
+  <button class="tbtn" onclick="pickBgVideo()">▶ Video</button>
+  <button class="tbtn" onclick="clearBg()">✕ Clear</button>
+  <div class="tsep"></div>
+  <button class="tbtn" onclick="deleteSelected()" id="btnDel" disabled>🗑 Delete</button>
+  <button class="tbtn" onclick="bringForward()" id="btnFwd" disabled>↑ Fwd</button>
+  <button class="tbtn" onclick="sendBackward()" id="btnBwd" disabled>↓ Back</button>
+  <div class="tsep"></div>
+  <button class="tbtn" onclick="undo()" id="btnUndo" disabled>↩ Undo</button>
+  <button class="tbtn" onclick="redo()" id="btnRedo" disabled>↪ Redo</button>
+  <div class="tsep"></div>
+  <button class="tbtn" onclick="autoSplitSlide()" id="btnSplit" title="Split text box into multiple slides when text overflows">⊞ Auto-Split</button>
+  <div class="sp"></div>
+  <span class="tlabel">Theme:</span>
+  <select id="themeSelect" class="ii" style="width:150px;padding:3px 6px;font-size:11px" onchange="selectTheme(this.value)"></select>
+</div>
+
+<!-- Hidden file inputs -->
+<input type="file" id="bgImgInput" accept="image/*" style="display:none" onchange="loadBgImage(this)">
+<input type="file" id="bgVidInput" accept="video/*" style="display:none" onchange="loadBgVideo(this)">
+<input type="color" id="colorPicker" onchange="pickerChange()">
+
+<div id="main">
+  <!-- Slide list sidebar -->
+  <div id="slidesSide">
+    <div id="slidesSideHdr">
+      <span>Slides</span>
+      <span id="catBadge" style="font-size:8px;color:var(--gold);background:rgba(201,168,76,.1);padding:1px 5px;border-radius:3px">SONG</span>
+    </div>
+    <div id="slidesList"></div>
+  </div>
+
+  <!-- Canvas -->
+  <div id="canvasCol">
+    <div id="canvasWrap" oncontextmenu="showCtx(event)" ondrop="handleDrop(event)" ondragover="event.preventDefault()">
+      <div id="slideCanvas">
+        <div id="bgLayer">
+          <video id="bgVideo" loop muted playsinline style="display:none"></video>
+          <div id="bgOverlayDiv"></div>
+        </div>
+        <!-- text boxes rendered here by JS -->
+        <div id="mediaLabel"></div>
+      </div>
+    </div>
+    <div class="canvas-footer">
+      <button class="zoom-btn" onclick="zoom(-0.1)">−</button>
+      <span id="zoomLabel">100%</span>
+      <button class="zoom-btn" onclick="zoom(0.1)">+</button>
+      <button class="zoom-btn" onclick="fitCanvas()">Fit</button>
+      <span class="sp"></span>
+      <span id="statusPos">—</span>
+      <span id="statusSize">—</span>
+    </div>
+  </div>
+
+  <!-- Inspector -->
+  <div id="inspector">
+    <div class="ins-tabs">
+      <div class="ins-tab active" id="itab-box"  onclick="setInsTab('box')">Box</div>
+      <div class="ins-tab"        id="itab-text" onclick="setInsTab('text')">Text</div>
+      <div class="ins-tab"        id="itab-bg"   onclick="setInsTab('bg')">Background</div>
+      <div class="ins-tab"        id="itab-info" onclick="setInsTab('info')">Info</div>
+    </div>
+    <div id="inspectorBody"><div class="hint" style="padding:16px;text-align:center">Select a text box or click the canvas to edit background</div></div>
+  </div>
+</div>
+
+<!-- Status bar -->
+<div id="statusBar">
+  <span id="sbTheme">Theme: —</span>
+  <span id="sbCat">Category: Song</span>
+  <span id="sbBoxes">Boxes: 0</span>
+  <span class="sp"></span>
+  <span>Click to select · Drag to move · Corner handles to resize</span>
+</div>
+
+<!-- Context menu -->
+<div id="ctxMenu">
+  <div class="ctx-i" onclick="addTextBox('main')">+ Add Text</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-i" onclick="pickBgImage()">🖼 Set Background Image…</div>
+  <div class="ctx-i" onclick="pickBgVideo()">▶ Set Background Video…</div>
+  <div class="ctx-i" onclick="clearBg()">✕ Clear Background</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-i" onclick="deleteSelected()" id="ctxDel" style="display:none" class="red">🗑 Delete Selected Box</div>
+  <div class="ctx-sep" id="ctxDelSep" style="display:none"></div>
+  <div class="ctx-i" onclick="autoSplitSlide()">⊞ Auto-Split Long Text</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-i" onclick="newTheme()">+ New Theme</div>
+  <div class="ctx-i" onclick="saveAll()">✓ Save Themes</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+const CW = 1920, CH = 1080; // logical canvas size
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let themes = [];
+let activeId = null;
+let activeCategory = 'song';
+let selIdx = null;   // selected text-box index
+let sc = 1;          // canvas scale
+let inspTab = 'box';
+let pickerProp = null;
+
+// drag/resize state
+let isDragging = false, isResizing = false, isRotating = false;
+let dragStart = {x:0,y:0}, dragObjStart = {x:0,y:0,w:0,h:0};
+let resizeHandle = '';
+
+// undo/redo
+const MAXH = 50;
+let undoStack = [], redoStack = [];
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  // Load themes from disk
+  if (window.electronAPI) {
+    try { themes = await window.electronAPI.getThemes() || []; } catch(e) { themes = []; }
+  }
+  if (!themes.length) themes = defaultThemes();
+  else {
+    defaultThemes().forEach(bt => { if (!themes.find(t=>t.id===bt.id)) themes.unshift(bt); });
+  }
+  themes = normalizeThemes(themes);
+
+  // Query open params AFTER init (avoids timing issue with IPC events)
+  let openParams = null;
+  if (window.electronAPI?.getThemeDesignerParams) {
+    try { openParams = await window.electronAPI.getThemeDesignerParams(); } catch(e) {}
+  }
+
+  // Set category from params, or default to 'song'
+  const startCat = openParams?.category || 'song';
+  setCategory(startCat);
+
+  // If a specific theme was requested, select it
+  if (openParams?.themeId) {
+    selectTheme(openParams.themeId);
+  } else if (openParams?.category && !openParams?.themeId) {
+    // "New theme" request — create one in the right category
+    newTheme();
+  } else {
+    const list = themes.filter(t => t.category === activeCategory);
+    if (list.length && !activeId) activeId = list[0].id;
+    refresh();
+  }
+
+  requestAnimationFrame(() => requestAnimationFrame(fitCanvas));
+  window.addEventListener('resize', fitCanvas);
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+  document.addEventListener('keydown', onKey);
+  document.addEventListener('click', hideCtx);
+
+  // Handle case where window is already open and user requests a different theme/category
+  if (window.electronAPI) {
+    window.electronAPI.on('theme-designer-open', data => {
+      if (!data) return;
+      if (data.category) setCategory(data.category);
+      if (data.themeId) selectTheme(data.themeId);
+      else if (data.category && !data.themeId) newTheme();
+    });
+  }
+});
+
+function defaultThemes() {
+  return [
+    { id:'song_sanctuary', category:'song', name:'Sanctuary', builtIn:true,
+      bgType:'solid', bgColor1:'#000000', bgOverlay:0, bgImage:null, bgVideo:null,
+      boxes:[{ role:'main', x:80, y:200, w:1760, h:680, text:'song text line one\nsong text line two\nsong text line three\nsong text line four',
+        fontFamily:'DM Sans', fontSize:72, color:'#ffffff', align:'center', valign:'center',
+        bold:true, italic:false, lineSpacing:1.4, textTransform:'none', fontWeight:700, letterSpacing:0,
+        shadow:true, shadowColor:'#000000', shadowBlur:8, shadowOffsetX:0, shadowOffsetY:2,
+        bgFill:'', bgOpacity:0, borderW:0, borderColor:'#ffffff', borderRadius:0 }] },
+    { id:'song_worship', category:'song', name:'Worship Gold', builtIn:true,
+      bgType:'solid', bgColor1:'#0a0a1e', bgOverlay:0, bgImage:null, bgVideo:null,
+      boxes:[{ role:'main', x:120, y:240, w:1680, h:600, text:'song text line one\nsong text line two\nsong text line three\nsong text line four',
+        fontFamily:'Cinzel', fontSize:68, color:'#c9a84c', align:'center', valign:'center',
+        bold:false, italic:false, lineSpacing:1.4, textTransform:'none', fontWeight:400, letterSpacing:0,
+        shadow:true, shadowColor:'#000000', shadowBlur:8, shadowOffsetX:0, shadowOffsetY:2,
+        bgFill:'', bgOpacity:0, borderW:0, borderColor:'#c9a84c', borderRadius:0 }] },
+    { id:'scr_sanctuary', category:'scripture', name:'Sanctuary', builtIn:true,
+      bgType:'solid', bgColor1:'#10082a', bgOverlay:0, bgImage:null, bgVideo:null,
+      boxes:[
+        { role:'main', x:60, y:60, w:1800, h:960,
+          text:'Genesis 1:1-2 (KJV)\nIn the beginning God created the heaven and the earth.',
+          fontFamily:'Crimson Pro', fontSize:56, color:'#ede6d8', align:'center', valign:'center',
+          bold:false, italic:false, lineSpacing:1.7, textTransform:'none', fontWeight:400, letterSpacing:0,
+          shadow:true, shadowColor:'#000000', shadowBlur:8, shadowOffsetX:0, shadowOffsetY:2,
+          bgFill:'', bgOpacity:0, borderW:0, borderColor:'#fff', borderRadius:0,
+          refFontFamily:'Cinzel', refFontSize:52, refColor:'#c9a84c', refBold:true, refLineSpacing:1.4 }
+      ]},
+    { id:'pres_classic', category:'presentation', name:'Classic Dark', builtIn:true,
+      bgType:'solid', bgColor1:'#0a0a1e', bgOverlay:0, bgImage:null, bgVideo:null,
+      boxes:[
+        { role:'title', x:120, y:280, w:1680, h:320, text:'PRESENTATION TITLE',
+          fontFamily:'Cinzel', fontSize:80, color:'#ffffff', align:'center', valign:'center',
+          bold:true, italic:false, lineSpacing:1.2, textTransform:'none', fontWeight:700, letterSpacing:0,
+          shadow:true, shadowColor:'#000000', shadowBlur:8, shadowOffsetX:0, shadowOffsetY:2,
+          bgFill:'', bgOpacity:0, borderW:0, borderColor:'#fff', borderRadius:0 },
+        { role:'subtitle', x:120, y:640, w:1680, h:200, text:'Subtitle or verse reference',
+          fontFamily:'Cinzel', fontSize:40, color:'#c9a84c', align:'center', valign:'center',
+          bold:false, italic:true, lineSpacing:1.3, textTransform:'none', fontWeight:400, letterSpacing:0,
+          shadow:true, shadowColor:'#000000', shadowBlur:8, shadowOffsetX:0, shadowOffsetY:2,
+          bgFill:'', bgOpacity:0, borderW:0, borderColor:'#c9a84c', borderRadius:0 }
+      ]},
+  ];
+}
+
+function getTheme() { return themes.find(t => t.id === activeId) || null; }
+function getBox() { const t=getTheme(); return (selIdx!==null && t?.boxes?.[selIdx]) ? t.boxes[selIdx] : null; }
+
+function normalizeBoxStyle(box = {}, category = activeCategory) {
+  const next = { ...box };
+  next.textTransform = next.textTransform || 'none';
+  next.fontWeight = Number(next.fontWeight || (next.bold ? 700 : 400));
+  next.letterSpacing = Number(next.letterSpacing ?? 0);
+  next.lineSpacing = Number(next.lineSpacing || 1.4);
+  next.shadow = next.shadow !== false;
+  next.shadowColor = next.shadowColor || '#000000';
+  next.shadowBlur = Number(next.shadowBlur ?? 8);
+  next.shadowOffsetX = Number(next.shadowOffsetX ?? 0);
+  next.shadowOffsetY = Number(next.shadowOffsetY ?? 2);
+  if (!next.fontFamily) next.fontFamily = category === 'song' ? 'DM Sans' : 'Cinzel';
+  if (category === 'song' && next.fontFamily === 'Cinzel' && (next.textTransform || 'none') === 'none') {
+    next.fontFamily = 'DM Sans';
+  }
+  return next;
+}
+
+function normalizeThemes(list = []) {
+  return (list || []).map(t => ({
+    ...t,
+    category:      t.category || 'scripture',   // FIX: ensure category always present
+    textTransform: t.textTransform || 'none',
+    boxes: Array.isArray(t.boxes) ? t.boxes.map(b => normalizeBoxStyle(b, t.category || 'scripture')) : []
+  }));
+}
+
+// ─── UNDO/REDO ────────────────────────────────────────────────────────────────
+function snap() {
+  undoStack.push(JSON.stringify({themes, activeId, selIdx}));
+  if (undoStack.length > MAXH) undoStack.shift();
+  redoStack = [];
+  updateHistBtns();
+}
+function undo() {
+  if (!undoStack.length) return;
+  redoStack.push(JSON.stringify({themes, activeId, selIdx}));
+  const s = JSON.parse(undoStack.pop());
+  themes = s.themes; activeId = s.activeId; selIdx = s.selIdx;
+  refresh(); updateHistBtns();
+}
+function redo() {
+  if (!redoStack.length) return;
+  undoStack.push(JSON.stringify({themes, activeId, selIdx}));
+  const s = JSON.parse(redoStack.pop());
+  themes = s.themes; activeId = s.activeId; selIdx = s.selIdx;
+  refresh(); updateHistBtns();
+}
+function updateHistBtns() {
+  const bu = document.getElementById('btnUndo'); if(bu) bu.disabled = !undoStack.length;
+  const br = document.getElementById('btnRedo'); if(br) br.disabled = !redoStack.length;
+}
+
+// ─── CATEGORY ─────────────────────────────────────────────────────────────────
+function setCategory(cat) {
+  activeCategory = cat;
+  document.getElementById('categorySelect').value = cat;
+  document.getElementById('catBadge').textContent = cat.toUpperCase();
+  document.getElementById('sbCat').textContent = 'Category: ' + cat.charAt(0).toUpperCase() + cat.slice(1);
+  populateThemeSelect();
+  const list = themes.filter(t => t.category === cat);
+  if (!list.length) { activeId = null; } else { activeId = list[0].id; }
+  selIdx = null;
+  refresh();
+}
+
+function populateThemeSelect() {
+  const sel = document.getElementById('themeSelect');
+  sel.innerHTML = '';
+  themes.filter(t => t.category === activeCategory).forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id; opt.textContent = t.name + (t.builtIn ? ' ✦' : '');
+    if (t.id === activeId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function selectTheme(id) {
+  activeId = id; selIdx = null;
+  populateThemeSelect();
+  document.getElementById('themeSelect').value = id;
+  refresh();
+}
+
+// ─── CANVAS FIT ───────────────────────────────────────────────────────────────
+function fitCanvas() {
+  const wrap = document.getElementById('canvasWrap');
+  if (!wrap) return;
+  const aw = wrap.clientWidth - 40, ah = wrap.clientHeight - 40;
+  if (aw <= 0 || ah <= 0) { requestAnimationFrame(fitCanvas); return; }
+  sc = Math.min(aw / CW, ah / CH);
+  applyScale();
+}
+
+function zoom(delta) {
+  sc = Math.max(0.1, Math.min(2, sc + delta));
+  applyScale();
+}
+
+function applyScale() {
+  const cv = document.getElementById('slideCanvas');
+  cv.style.width  = Math.round(CW * sc) + 'px';
+  cv.style.height = Math.round(CH * sc) + 'px';
+  document.getElementById('zoomLabel').textContent = Math.round(sc * 100) + '%';
+  drawCanvas();
+}
+
+// ─── REFRESH ──────────────────────────────────────────────────────────────────
+function refresh() {
+  populateThemeSelect();
+  renderSlideList();
+  drawCanvas();
+  renderInspector();
+  updateStatusBar();
+}
+
+// ─── SLIDE LIST ───────────────────────────────────────────────────────────────
+function renderSlideList() {
+  const list = document.getElementById('slidesList');
+  list.innerHTML = '';
+  const catThemes = themes.filter(t => t.category === activeCategory);
+  catThemes.forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'slide-item' + (t.id === activeId ? ' active' : '');
+    const mini = document.createElement('div');
+    mini.className = 'slide-canvas-mini';
+    mini.style.background = _bgCss(t);
+    // Show video icon badge for video backgrounds
+    if (t.bgType === 'video') {
+      // Video: show dark bg with video icon + filename hint
+      mini.style.background = t.bgColor1
+        ? `linear-gradient(135deg,${t.bgColor1}cc,#000c)`
+        : 'linear-gradient(135deg,#001830,#000)';
+      const badge = document.createElement('div');
+      badge.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:1';
+      const fname = (t.bgVideo || '').split('/').pop().split('\\').pop();
+      badge.innerHTML = '<div style="font-size:16px">▶</div>' +
+        '<div style="font-size:8px;color:#4cf;text-align:center;padding:0 3px;word-break:break-all;max-width:90%">' +
+        (fname ? fname.slice(0,20) : 'Video BG') + '</div>';
+      mini.appendChild(badge);
+    } else if (t.bgType === 'image' && t.bgImage) {
+      // Image: show actual thumbnail via background-image (base64 data URL)
+      mini.style.background = `url('${_toMediaUrl(t.bgImage)}') center/cover no-repeat`;
+      const badge = document.createElement('div');
+      badge.style.cssText = 'position:absolute;top:3px;right:4px;font-size:9px;background:rgba(0,0,0,.55);color:#afc;padding:1px 4px;border-radius:2px;z-index:1;backdrop-filter:blur(2px)';
+      badge.textContent = '🖼';
+      mini.appendChild(badge);
+    }
+    // Mini text preview
+    if (t.boxes?.length) {
+      const b = t.boxes[0];
+      const d = document.createElement('div');
+      d.style.cssText = `font-size:${Math.max(5, Math.round(b.fontSize/22))}px;color:${b.color||'#fff'};
+        font-family:'${b.fontFamily||'DM Sans'}',sans-serif;text-align:center;padding:3px;
+        font-weight:${b.bold?'700':'400'};overflow:hidden;width:100%;line-height:1.2`;
+      d.textContent = b.text?.split('\n').slice(0,3).join(' · ') || '';
+      mini.appendChild(d);
+    }
+    const label = document.createElement('div');
+    label.className = 'slide-label-mini';
+    label.textContent = t.name;
+    item.appendChild(mini);
+    item.appendChild(label);
+    item.addEventListener('click', () => selectTheme(t.id));
+    list.appendChild(item);
+  });
+}
+
+// ─── CANVAS DRAWING ───────────────────────────────────────────────────────────
+// Convert file:// paths to media:// protocol which Electron allows from localhost
+function _toMediaUrl(url) {
+  if (!url) return url;
+  if (url.startsWith('data:')) return url;  // base64 — use as-is
+  if (url.startsWith('file:///')) {
+    // file:///C:/path → media:///C:/path
+    return 'media://' + url.slice('file://'.length);
+  }
+  if (url.startsWith('file://')) {
+    return 'media://' + url.slice('file://'.length);
+  }
+  return url;
+}
+
+function drawCanvas() {
+  const cv = document.getElementById('slideCanvas');
+  const t  = getTheme();
+
+  // Background
+  const bgLayer = document.getElementById('bgLayer');
+  const bgVideo = document.getElementById('bgVideo');
+  const bgOverlay = document.getElementById('bgOverlayDiv');
+  const mediaLabel = document.getElementById('mediaLabel');
+
+  if (!t) { bgLayer.style.background='#111'; return; }
+
+  const ov = (t.bgOverlay||0)/100;
+  bgOverlay.style.cssText = `position:absolute;inset:0;pointer-events:none;background:rgba(0,0,0,${ov})`;
+
+  if (t.bgType === 'video' && t.bgVideo) {
+    // Video: set bgLayer to black, show the <video> element inside it
+    bgLayer.style.cssText = 'position:absolute;inset:0;pointer-events:none;background:#000';
+    bgVideo.style.display = 'block';
+    const mediaSrc = _toMediaUrl(t.bgVideo);
+    if (bgVideo.src !== mediaSrc) {
+      bgVideo.src = mediaSrc;
+    }
+    bgVideo.play().catch(() => {
+      console.warn('[ThemeDesigner] Video autoplay blocked — check media:// protocol');
+    });
+    mediaLabel.textContent = '▶ Video BG';
+  } else if (t.bgType === 'image' && t.bgImage) {
+    // Image: apply directly as CSS background on bgLayer (convert file:// → media://)
+    const imgSrc = _toMediaUrl(t.bgImage);
+    bgLayer.style.cssText = `position:absolute;inset:0;pointer-events:none;background:url('${imgSrc}') center/cover no-repeat`;
+    bgVideo.style.display = 'none';
+    bgVideo.src = '';
+    mediaLabel.textContent = '🖼 Image BG';
+  } else {
+    // Solid / gradient
+    bgLayer.style.cssText = `position:absolute;inset:0;pointer-events:none;background:${_bgCss(t)}`;
+    bgVideo.style.display = 'none';
+    bgVideo.src = '';
+    mediaLabel.textContent = '';
+  }
+
+  // Remove old text boxes
+  cv.querySelectorAll('.text-box').forEach(e => e.remove());
+
+  // Draw text boxes
+  (t.boxes || []).forEach((box, i) => {
+    const el = document.createElement('div');
+    el.className = 'text-box' + (i === selIdx ? ' selected' : '');
+    el.dataset.idx = i;
+    el.style.left   = (box.x * sc) + 'px';
+    el.style.top    = (box.y * sc) + 'px';
+    el.style.width  = (box.w * sc) + 'px';
+    el.style.height = (box.h * sc) + 'px';
+
+    // Background fill
+    if (box.bgFill && box.bgOpacity > 0) {
+      const r=parseInt(box.bgFill.slice(1,3),16)||0;
+      const g=parseInt(box.bgFill.slice(3,5),16)||0;
+      const b2=parseInt(box.bgFill.slice(5,7),16)||0;
+      el.style.background = `rgba(${r},${g},${b2},${box.bgOpacity/100})`;
+    }
+    // Border
+    if (box.borderW > 0) {
+      el.style.border = `${box.borderW * sc}px solid ${box.borderColor || '#fff'}`;
+      if (box.borderRadius > 0) el.style.borderRadius = (box.borderRadius * sc) + 'px';
+    }
+
+    // Text content
+    const content = document.createElement('div');
+    content.className = 'tb-content';
+    content.style.flexDirection = 'column';
+    content.style.justifyContent = _valignCss(box.valign);
+    content.style.alignItems = _alignItemsCss(box.align);
+    content.style.padding = '8px';
+    content.style.textAlign = box.align || 'center';
+
+    const nb = normalizeBoxStyle(box, t.category);
+    const shadowVal = nb.shadow === false ? 'none' : `${(Number(nb.shadowOffsetX||0) * sc).toFixed(1)}px ${(Number(nb.shadowOffsetY||2) * sc).toFixed(1)}px ${(Math.max(0, Number(nb.shadowBlur ?? 8)) * sc).toFixed(1)}px ${nb.shadowColor || '#000000'}`;
+
+    // Ref font settings come from Preferences > Scripture > Reference tab (State.settings)
+    const _refPrefs = (typeof State !== 'undefined' && State.settings) ? State.settings : {};
+    const hasRefProps = t.category === 'scripture' && box.role === 'main';
+    const fullText = nb.text || '';
+    const lines = fullText.split('\n');
+
+    if (hasRefProps && lines.length >= 2) {
+      const refLine = lines[0];
+      const bodyText = lines.slice(1).join('\n');
+
+      const refSpan = document.createElement('div');
+      refSpan.style.fontFamily = `'${_refPrefs.scriptureRefFontFamily||'Cinzel'}',serif`;
+      refSpan.style.fontSize = ((_refPrefs.scriptureRefFontSize||38) * sc) + 'px';
+      refSpan.style.color = _refPrefs.scriptureRefFontColor || '#c9a84c';
+      const _rfBold = _refPrefs.scriptureRefFontStyle === 'bold' || _refPrefs.scriptureRefFontStyle === 'bold-italic';
+      refSpan.style.fontWeight = _rfBold ? '700' : '500';
+      refSpan.style.lineHeight = '1.4';
+      refSpan.style.textAlign = _refPrefs.scriptureRefTextAlign || (box.align || 'center');
+      refSpan.style.width = '100%';
+      refSpan.style.textShadow = shadowVal;
+      refSpan.style.marginBottom = (4 * sc) + 'px';
+      refSpan.textContent = refLine;
+      content.appendChild(refSpan);
+
+      const bodySpan = document.createElement('div');
+      bodySpan.style.fontFamily = `'${nb.fontFamily||'DM Sans'}',serif`;
+      bodySpan.style.fontSize = ((nb.fontSize||52) * sc) + 'px';
+      bodySpan.style.color = nb.color || '#fff';
+      bodySpan.style.fontWeight = String(nb.fontWeight || (nb.bold ? 700 : 400));
+      bodySpan.style.fontStyle = nb.italic ? 'italic' : 'normal';
+      bodySpan.style.lineHeight = String(nb.lineSpacing || 1.4);
+      bodySpan.style.letterSpacing = ((Number(nb.letterSpacing || 0)) * sc) + 'px';
+      bodySpan.style.textTransform = nb.textTransform || 'none';
+      bodySpan.style.whiteSpace = 'pre-wrap';
+      bodySpan.style.width = '100%';
+      bodySpan.style.textShadow = shadowVal;
+      bodySpan.textContent = bodyText;
+      content.appendChild(bodySpan);
+    } else {
+      const span = document.createElement('div');
+      span.style.fontFamily  = `'${nb.fontFamily||'DM Sans'}',serif`;
+      span.style.fontSize    = ((nb.fontSize||52) * sc) + 'px';
+      span.style.color       = nb.color || '#fff';
+      span.style.fontWeight  = String(nb.fontWeight || (nb.bold ? 700 : 400));
+      span.style.fontStyle   = nb.italic ? 'italic' : 'normal';
+      span.style.lineHeight  = String(nb.lineSpacing || 1.4);
+      span.style.letterSpacing = ((Number(nb.letterSpacing || 0)) * sc) + 'px';
+      span.style.textTransform = nb.textTransform || 'none';
+      span.style.whiteSpace  = 'pre-wrap';
+      span.style.width       = '100%';
+      span.style.textShadow  = shadowVal;
+      span.textContent = fullText;
+      content.appendChild(span);
+    }
+    el.appendChild(content);
+
+    // Resize handles
+    ['tl','tm','tr','ml','mr','bl','bm','br'].forEach(pos => {
+      const h = document.createElement('div');
+      h.className = `tb-resize-handle rh-${pos}`;
+      h.dataset.rh = pos;
+      el.appendChild(h);
+    });
+    // Rotate handle
+    const rh = document.createElement('div');
+    rh.className = 'tb-rotate-handle';
+    rh.dataset.rotate = '1';
+    el.appendChild(rh);
+
+    el.addEventListener('mousedown', e => onBoxMouseDown(e, i));
+    el.addEventListener('dblclick', e => startInlineEdit(e, i));
+    cv.appendChild(el);
+  });
+
+  updateStatusBar();
+}
+
+function _bgCss(t) {
+  if (!t) return '#111';
+  if (t.bgType === 'image' && t.bgImage) { const u = _toMediaUrl(t.bgImage); return `url('${u}') center/cover no-repeat`; }
+  if (t.bgType === 'video') {
+    // Show dark overlay with a video icon indicator (thumbnail not available from blob)
+    return t.bgColor1 ? `linear-gradient(135deg,${t.bgColor1}cc,#000a)` : 'linear-gradient(135deg,#001a20,#000)';
+  }
+  if (t.bgType === 'solid')  return t.bgColor1 || '#000';
+  if (t.bgType === 'linear') return `linear-gradient(135deg,${t.bgColor1||'#111'},${t.bgColor2||'#000'})`;
+  if (t.bgType === 'radial') return `radial-gradient(ellipse at 35% 45%,${t.bgColor1||'#111'} 0%,${t.bgColor2||'#000'} 70%,#000 100%)`;
+  return t.bgColor1 || '#000';
+}
+function _valignCss(v) { return v==='top'?'flex-start':v==='bottom'?'flex-end':'center'; }
+function _alignItemsCss(a) { return a==='left'?'flex-start':a==='right'?'flex-end':'center'; }
+
+// ─── ADD TEXT BOX ─────────────────────────────────────────────────────────────
+function addTextBox(role) {
+  let t = getTheme();
+  if (!t) { newTheme(); t = getTheme(); }
+  if (t.builtIn) { cloneTheme(); t = getTheme(); }
+  snap();
+  const box = {
+    role: role || 'main',
+    x: 80, y: 200, w: 1760, h: 680,
+    text: 'Double click to edit',
+    fontFamily:'DM Sans', fontSize:56,
+    color:'#ffffff',
+    align:'center', valign:'center',
+    bold:false, italic:false, lineSpacing:1.4, textTransform:'none', fontWeight:400, letterSpacing:0,
+    shadow:true, shadowColor:'#000000', shadowBlur:8, shadowOffsetX:0, shadowOffsetY:2,
+    bgFill:'', bgOpacity:0, borderW:0, borderColor:'#ffffff', borderRadius:0
+  };
+  // Ref font is controlled from Preferences > Scripture > Reference tab, not stored in box
+  t.boxes.push(box);
+  selIdx = t.boxes.length - 1;
+  refresh();
+}
+
+// ─── INLINE TEXT EDITING ──────────────────────────────────────────────────────
+let _inlineEditIdx = null;
+
+function startInlineEdit(e, idx) {
+  e.stopPropagation();
+  e.preventDefault();
+  let t = getTheme(); if (!t || !t.boxes[idx]) return;
+  if (t.builtIn) {
+    cloneTheme();
+    t = getTheme();
+    if (!t || !t.boxes[idx]) return;
+    drawCanvas();
+    renderInspector();
+  }
+  if (_inlineEditIdx === idx) return;
+  if (_inlineEditIdx !== null) stopInlineEdit();
+
+  _inlineEditIdx = idx;
+  selIdx = idx;
+
+  const boxEl = document.querySelector(`.text-box[data-idx="${idx}"]`);
+  if (!boxEl) return;
+  const contentWrapper = boxEl.querySelector('.tb-content');
+  if (!contentWrapper) return;
+  const allDivs = contentWrapper.querySelectorAll(':scope > div');
+  if (!allDivs.length) return;
+
+  boxEl.style.cursor = 'text';
+  boxEl.style.userSelect = 'text';
+  contentWrapper.style.pointerEvents = 'auto';
+
+  allDivs.forEach(d => {
+    d.contentEditable = 'true';
+    d.style.cursor = 'text';
+    d.style.outline = 'none';
+    d.style.caretColor = '#fff';
+    d.addEventListener('blur', _onInlineEditBlur);
+    d.addEventListener('keydown', _onInlineEditKey);
+  });
+
+  const lastDiv = allDivs[allDivs.length - 1];
+  lastDiv.focus();
+  const sel = window.getSelection();
+  const range = document.createRange();
+  range.selectNodeContents(lastDiv);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function _onInlineEditBlur(e) {
+  setTimeout(() => {
+    if (_inlineEditIdx === null) return;
+    const boxEl = document.querySelector(`.text-box[data-idx="${_inlineEditIdx}"]`);
+    if (!boxEl) { stopInlineEdit(); return; }
+    const active = document.activeElement;
+    if (active && boxEl.contains(active) && active.contentEditable === 'true') return;
+    stopInlineEdit();
+  }, 0);
+}
+
+function _onInlineEditKey(e) {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    stopInlineEdit();
+  }
+}
+
+function stopInlineEdit() {
+  if (_inlineEditIdx === null) return;
+  const t = getTheme();
+  const boxEl = document.querySelector(`.text-box[data-idx="${_inlineEditIdx}"]`);
+  if (boxEl && t && t.boxes[_inlineEditIdx]) {
+    const contentWrapper = boxEl.querySelector('.tb-content');
+    const allDivs = contentWrapper?.querySelectorAll(':scope > div') || [];
+
+    let newText = '';
+    allDivs.forEach((d, i) => {
+      d.removeEventListener('blur', _onInlineEditBlur);
+      d.removeEventListener('keydown', _onInlineEditKey);
+      d.contentEditable = 'false';
+      d.style.cursor = '';
+      if (i > 0) newText += '\n';
+      newText += (d.innerText || '');
+    });
+
+    if (contentWrapper) contentWrapper.style.pointerEvents = '';
+    boxEl.style.cursor = '';
+    boxEl.style.userSelect = '';
+
+    if (newText !== t.boxes[_inlineEditIdx].text) {
+      snap();
+      t.boxes[_inlineEditIdx].text = newText;
+    }
+  }
+  _inlineEditIdx = null;
+  refresh();
+}
+
+// ─── MOUSE HANDLING ───────────────────────────────────────────────────────────
+function onBoxMouseDown(e, idx) {
+  e.stopPropagation();
+  if (_inlineEditIdx === idx) return;
+  if (e.target.contentEditable === 'true' || e.target.closest?.('[contenteditable="true"]')) return;
+  if (_inlineEditIdx !== null) stopInlineEdit();
+  const cv = document.getElementById('slideCanvas');
+  const cvRect = cv.getBoundingClientRect();
+  const t = getTheme(); if (!t) return;
+
+  if (selIdx !== idx) { selIdx = idx; drawCanvas(); renderInspector(); }
+
+  if (e.target.dataset.rotate === '1') {
+    isRotating = true; return;
+  }
+  if (e.target.dataset.rh) {
+    isResizing = true;
+    resizeHandle = e.target.dataset.rh;
+    dragStart = { x: e.clientX, y: e.clientY };
+    dragObjStart = { ...t.boxes[idx] };
+    e.preventDefault(); return;
+  }
+  isDragging = true;
+  dragStart = { x: e.clientX, y: e.clientY };
+  dragObjStart = { x: t.boxes[idx].x, y: t.boxes[idx].y };
+  e.preventDefault();
+}
+
+document.getElementById('slideCanvas').addEventListener('mousedown', e => {
+  if (e.target.dataset.idx !== undefined) return;
+  if (_inlineEditIdx !== null) stopInlineEdit();
+  selIdx = null; drawCanvas(); renderInspector();
+});
+
+function onMove(e) {
+  const t = getTheme(); if (!t || selIdx === null) return;
+  const box = t.boxes[selIdx]; if (!box) return;
+  const dx = (e.clientX - dragStart.x) / sc;
+  const dy = (e.clientY - dragStart.y) / sc;
+
+  if (isDragging) {
+    box.x = Math.round(dragObjStart.x + dx);
+    box.y = Math.round(dragObjStart.y + dy);
+    drawCanvas(); updatePosInputs();
+  } else if (isResizing) {
+    const o = dragObjStart;
+    let nx=o.x, ny=o.y, nw=o.w, nh=o.h;
+    if (resizeHandle.includes('r')) nw = Math.max(50, Math.round(o.w + dx));
+    if (resizeHandle.includes('l')) { nx = Math.round(o.x + dx); nw = Math.max(50, Math.round(o.w - dx)); }
+    if (resizeHandle.includes('b')) nh = Math.max(30, Math.round(o.h + dy));
+    if (resizeHandle.includes('t')) { ny = Math.round(o.y + dy); nh = Math.max(30, Math.round(o.h - dy)); }
+    box.x = nx; box.y = ny; box.w = nw; box.h = nh;
+    drawCanvas(); updatePosInputs();
+  }
+}
+
+function onUp() {
+  if (isDragging || isResizing) { snap(); }
+  isDragging = false; isResizing = false; isRotating = false;
+}
+
+function onKey(e) {
+  if (_inlineEditIdx !== null) {
+    if (e.key === 'Escape') { stopInlineEdit(); e.preventDefault(); }
+    return;
+  }
+  if ((e.ctrlKey||e.metaKey) && e.key==='z') { e.preventDefault(); undo(); return; }
+  if ((e.ctrlKey||e.metaKey) && (e.key==='y'||(e.shiftKey&&e.key==='Z'))) { e.preventDefault(); redo(); return; }
+  if (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT') return;
+  if ((e.key==='Delete'||e.key==='Backspace') && selIdx!==null) { deleteSelected(); }
+  if (selIdx!==null && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) {
+    e.preventDefault(); const t=getTheme(); const b=t?.boxes?.[selIdx]; if(!b) return;
+    const d=e.shiftKey?10:1;
+    if(e.key==='ArrowLeft')  b.x-=d; if(e.key==='ArrowRight') b.x+=d;
+    if(e.key==='ArrowUp')    b.y-=d; if(e.key==='ArrowDown')  b.y+=d;
+    snap(); drawCanvas(); updatePosInputs();
+  }
+}
+
+// ─── BACKGROUND ───────────────────────────────────────────────────────────────
+async function pickBgImage() {
+  if (window.electronAPI?.isWeb) {
+    document.getElementById('bgImgInput').click();
+    return;
+  }
+  if (window.electronAPI?.pickBgMedia) {
+    const r = await window.electronAPI.pickBgMedia({ type: 'image' });
+    if (r?.canceled) return;
+    let t = getTheme(); if (!t) return;
+    if (t.builtIn) { cloneTheme(); t = getTheme(); }
+    snap();
+    // Store as media:// path (Electron-safe) — fall back to base64 if needed
+    const cleanImgPath = r.filePath.split('\\').join('/');
+    const mediaImgUrl = 'media:///' + (cleanImgPath.startsWith('/') ? cleanImgPath.slice(1) : cleanImgPath);
+    // Verify it loads, then store the media:// URL directly (avoids huge base64 in saved themes)
+    const testImg = new Image();
+    testImg.onload = () => {
+      t.bgType = 'image'; t.bgImage = mediaImgUrl; t.bgVideo = null;
+      refresh(); renderBgInspectorEl();
+    };
+    testImg.onerror = () => {
+      // Fallback: convert to base64
+      fetch(mediaImgUrl).then(r2 => r2.blob()).then(blob => {
+        const reader = new FileReader();
+        reader.onload = e2 => {
+          t.bgType = 'image'; t.bgImage = e2.target.result; t.bgVideo = null;
+          refresh(); renderBgInspectorEl();
+        };
+        reader.readAsDataURL(blob);
+      }).catch(() => {});
+    };
+    testImg.src = mediaImgUrl;
+  } else {
+    document.getElementById('bgImgInput').click();
+  }
+}
+
+async function pickBgVideo() {
+  if (window.electronAPI?.isWeb) {
+    document.getElementById('bgVidInput').click();
+    return;
+  }
+  if (window.electronAPI?.pickBgMedia) {
+    const r = await window.electronAPI.pickBgMedia({ type: 'video' });
+    if (r?.canceled) return;
+    let t = getTheme(); if (!t) return;
+    if (t.builtIn) { cloneTheme(); t = getTheme(); }
+    snap();
+    t.bgType = 'video';
+    // Store as media:// so Electron allows it from the localhost renderer
+    const cleanPath = r.filePath.split('\\').join('/');
+    t.bgVideo = 'media:///' + (cleanPath.startsWith('/') ? cleanPath.slice(1) : cleanPath);
+    t.bgImage = null;
+    refresh(); renderBgInspectorEl();
+    toast('▶ Video background set');
+  } else {
+    document.getElementById('bgVidInput').click();
+  }
+}
+
+function loadBgImage(input) {
+  const file = input.files?.[0]; if (!file) return;
+  let t = getTheme(); if (!t) return;
+  if (t.builtIn) { cloneTheme(); t = getTheme(); }
+  snap();
+  const reader = new FileReader();
+  reader.onload = e => {
+    t.bgType = 'image'; t.bgImage = e.target.result; t.bgVideo = null;
+    refresh(); renderBgInspectorEl();
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function loadBgVideo(input) {
+  const file = input.files?.[0]; if (!file) return;
+  let t = getTheme(); if (!t) return;
+  if (t.builtIn) { cloneTheme(); t = getTheme(); }
+  snap();
+  const path = file.path;
+  if (path) {
+    const vPath = path.replace(/\\/g, '/'); t.bgType = 'video'; t.bgVideo = 'media:///' + (vPath.startsWith('/') ? vPath.slice(1) : vPath);
+    t.bgImage = null; refresh(); renderBgInspectorEl();
+    toast('▶ Video background set');
+  } else {
+    t.bgType = 'video'; t.bgVideo = URL.createObjectURL(file);
+    t.bgImage = null; refresh(); renderBgInspectorEl();
+    toast('▶ Video background set');
+  }
+  input.value = '';
+}
+
+function clearBg() {
+  let t = getTheme(); if (!t) return;
+  if (t.builtIn) { cloneTheme(); t = getTheme(); }
+  snap();
+  t.bgType = 'solid'; t.bgImage = null; t.bgVideo = null;
+  refresh();
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files?.[0]; if (!file) return;
+  let t = getTheme(); if (!t) return;
+  if (t.builtIn) { cloneTheme(); t = getTheme(); }
+  snap();
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = ev => { t.bgType='image'; t.bgImage=ev.target.result; t.bgVideo=null; refresh(); };
+    reader.readAsDataURL(file);
+  } else if (file.type.startsWith('video/')) {
+    t.bgType='video'; t.bgVideo=file.path||URL.createObjectURL(file); t.bgImage=null;
+    refresh();
+  }
+  toast('📂 Background set from drop');
+}
+
+// ─── EDIT OPS ─────────────────────────────────────────────────────────────────
+function deleteSelected() {
+  if (selIdx===null) return;
+  const t=getTheme(); if(!t) return;
+  if(t.builtIn){cloneTheme();}
+  snap();
+  getTheme().boxes.splice(selIdx, 1);
+  selIdx = null; refresh();
+}
+function bringForward() {
+  const t=getTheme(); if(!t||selIdx===null||selIdx>=t.boxes.length-1) return;
+  snap(); [t.boxes[selIdx],t.boxes[selIdx+1]]=[t.boxes[selIdx+1],t.boxes[selIdx]]; selIdx++; refresh();
+}
+function sendBackward() {
+  const t=getTheme(); if(!t||selIdx===null||selIdx<=0) return;
+  snap(); [t.boxes[selIdx],t.boxes[selIdx-1]]=[t.boxes[selIdx-1],t.boxes[selIdx]]; selIdx--; refresh();
+}
+
+// ─── INSPECTOR ───────────────────────────────────────────────────────────────
+function setInsTab(tab) {
+  inspTab = tab;
+  ['box','text','bg','info'].forEach(t => document.getElementById('itab-'+t)?.classList.toggle('active', t===tab));
+  renderInspector();
+}
+
+function renderInspector() {
+  const el = document.getElementById('inspectorBody');
+  const t  = getTheme();
+  const box = getBox();
+
+  // Update toolbar buttons
+  ['btnDel','btnFwd','btnBwd'].forEach(id => {
+    const btn = document.getElementById(id); if(btn) btn.disabled = selIdx===null||!t;
+  });
+  const ctxDel = document.getElementById('ctxDel'); const ctxDs = document.getElementById('ctxDelSep');
+  if(ctxDel) ctxDel.style.display = selIdx!==null ? '' : 'none';
+  if(ctxDs) ctxDs.style.display  = selIdx!==null ? '' : 'none';
+
+  if (inspTab === 'box')  renderBoxInspector(el, t, box);
+  else if (inspTab === 'text') renderTextInspector(el, t, box);
+  else if (inspTab === 'bg')   renderBgInspector(el, t);
+  else renderInfoInspector(el, t);
+}
+
+function renderBoxInspector(el, t, box) {
+  if (!box) { el.innerHTML = '<div class="hint" style="padding:16px;text-align:center">Select a text box to edit its position and border</div>'; return; }
+  const b = box;
+  el.innerHTML = `
+    <div class="isec">Position & Size</div>
+    <div class="ig"><label class="il">X (px)</label><div class="irow">
+      <input class="ii" id="iX" type="number" value="${Math.round(b.x)}" oninput="updBox('x',+this.value)">
+      <label class="il" style="flex:0;white-space:nowrap">Y</label>
+      <input class="ii" id="iY" type="number" value="${Math.round(b.y)}" oninput="updBox('y',+this.value)">
+    </div></div>
+    <div class="ig"><label class="il">Width (px)</label><div class="irow">
+      <input class="ii" id="iW" type="number" value="${Math.round(b.w)}" oninput="updBox('w',+this.value)">
+      <label class="il" style="flex:0;white-space:nowrap">H</label>
+      <input class="ii" id="iH" type="number" value="${Math.round(b.h)}" oninput="updBox('h',+this.value)">
+    </div></div>
+    <div class="ig"><label class="il">Snap to</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px">
+        <button class="ibtn" onclick="snapBox('tl')" style="font-size:10px">↖ Top Left</button>
+        <button class="ibtn" onclick="snapBox('tc')" style="font-size:10px">↑ Top Ctr</button>
+        <button class="ibtn" onclick="snapBox('tr')" style="font-size:10px">↗ Top Right</button>
+        <button class="ibtn" onclick="snapBox('ml')" style="font-size:10px">← Mid Left</button>
+        <button class="ibtn" onclick="snapBox('mc')" style="font-size:10px">⊕ Center</button>
+        <button class="ibtn" onclick="snapBox('mr')" style="font-size:10px">→ Mid Right</button>
+        <button class="ibtn" onclick="snapBox('bl')" style="font-size:10px">↙ Bot Left</button>
+        <button class="ibtn" onclick="snapBox('bc')" style="font-size:10px">↓ Bot Ctr</button>
+        <button class="ibtn" onclick="snapBox('br')" style="font-size:10px">↘ Bot Right</button>
+      </div>
+    </div>
+    <div class="idivider"></div>
+    <div class="isec">Border</div>
+    <div class="ig"><label class="il">Border Width — <span id="vBW">${b.borderW||0}</span>px</label>
+      <input type="range" class="range" min="0" max="20" value="${b.borderW||0}" id="iBW"
+        oninput="updBox('borderW',+this.value);document.getElementById('vBW').textContent=this.value"></div>
+    <div class="ig"><label class="il">Border Color</label>
+      <div class="color-row">
+        <div class="cswatch" style="background:${b.borderColor||'#fff'}" onclick="openPicker('borderColor','${b.borderColor||'#ffffff'}')"></div>
+        <span style="font-size:11px;color:var(--sub)">${b.borderColor||'#ffffff'}</span>
+      </div></div>
+    <div class="ig"><label class="il">Border Radius — <span id="vBR">${b.borderRadius||0}</span>px</label>
+      <input type="range" class="range" min="0" max="100" value="${b.borderRadius||0}"
+        oninput="updBox('borderRadius',+this.value);document.getElementById('vBR').textContent=this.value"></div>
+    <div class="idivider"></div>
+    <div class="isec">Box Fill</div>
+    <div class="ig"><label class="il">Fill Color</label>
+      <div class="color-row">
+        <div class="cswatch" style="background:${b.bgFill||'#000000'}" onclick="openPicker('bgFill','${b.bgFill||'#000000'}')"></div>
+        <span style="font-size:11px;color:var(--sub)">${b.bgFill||'none'}</span>
+      </div></div>
+    <div class="ig"><label class="il">Fill Opacity — <span id="vBO">${b.bgOpacity||0}</span>%</label>
+      <input type="range" class="range" min="0" max="100" value="${b.bgOpacity||0}"
+        oninput="updBox('bgOpacity',+this.value);document.getElementById('vBO').textContent=this.value"></div>
+    <button class="ibtn ibtn-red" onclick="deleteSelected()">🗑 Delete This Box</button>`;
+}
+
+function renderTextInspector(el, t, box) {
+  if (!box) { el.innerHTML = '<div class="hint" style="padding:16px;text-align:center">Select a text box to edit text</div>'; return; }
+  const b = normalizeBoxStyle(box, t?.category);
+  const fonts = ['DM Sans','Cinzel','Crimson Pro','Lora','Playfair Display','Georgia','Arial','Times New Roman','Impact'];
+  el.innerHTML = `
+    <div class="isec">Text Content</div>
+    <div class="ig"><textarea class="ii" rows="5" id="iText" style="resize:vertical;line-height:1.4"
+      oninput="updBox('text',this.value)">${b.text||''}</textarea></div>
+    <div class="ig"><label class="il">Font</label>
+      <select class="is" onchange="updBox('fontFamily',this.value)">
+        ${fonts.map(f=>`<option${b.fontFamily===f?' selected':''}>${f}</option>`).join('')}
+      </select></div>
+    <div class="ig"><label class="il">Transform</label>
+      <select class="is" onchange="updBox('textTransform',this.value)">
+        <option${(b.textTransform||'none')==='none'?' selected':''} value="none">Normal</option>
+        <option${b.textTransform==='uppercase'?' selected':''} value="uppercase">Uppercase</option>
+        <option${b.textTransform==='lowercase'?' selected':''} value="lowercase">Lowercase</option>
+        <option${b.textTransform==='capitalize'?' selected':''} value="capitalize">Capitalize</option>
+      </select></div>
+    <div class="ig"><label class="il">Size — <span id="vFS">${b.fontSize||52}</span>px</label>
+      <input type="range" class="range" min="12" max="160" value="${b.fontSize||52}"
+        oninput="updBox('fontSize',+this.value);document.getElementById('vFS').textContent=this.value"></div>
+    <div class="ig"><label class="il">Weight — <span id="vFW">${b.fontWeight||400}</span></label>
+      <input type="range" class="range" min="100" max="900" step="100" value="${b.fontWeight||400}"
+        oninput="updBox('fontWeight',+this.value);document.getElementById('vFW').textContent=this.value"></div>
+    <div class="ig"><label class="il">Color</label>
+      <div class="color-row">
+        <div class="cswatch" style="background:${b.color||'#fff'}" onclick="openPicker('color','${b.color||'#ffffff'}')"></div>
+        <span style="font-size:11px;color:var(--sub)">${b.color||'#ffffff'}</span>
+      </div></div>
+    <div class="ig"><label class="il">Align</label>
+      <select class="is" onchange="updBox('align',this.value)">
+        <option${(b.align||'center')==='center'?' selected':''} value="center">Center</option>
+        <option${b.align==='left'?' selected':''} value="left">Left</option>
+        <option${b.align==='right'?' selected':''} value="right">Right</option>
+      </select></div>
+    <div class="ig"><label class="il">Vertical Align</label>
+      <select class="is" onchange="updBox('valign',this.value)">
+        <option${(b.valign||'center')==='center'?' selected':''} value="center">Middle</option>
+        <option${b.valign==='top'?' selected':''} value="top">Top</option>
+        <option${b.valign==='bottom'?' selected':''} value="bottom">Bottom</option>
+      </select></div>
+    <div class="ig"><div class="irow">
+      <label class="check-row"><input type="checkbox" ${b.bold?'checked':''} onchange="updBox('bold',this.checked); if(this.checked && (getBox()?.fontWeight||400) < 700) updBox('fontWeight',700);"> Bold</label>
+      <label class="check-row"><input type="checkbox" ${b.italic?'checked':''} onchange="updBox('italic',this.checked)"> Italic</label>
+      <label class="check-row"><input type="checkbox" ${b.shadow !== false ? 'checked':''} onchange="updBox('shadow',this.checked)"> Shadow</label>
+    </div></div>
+    <div class="ig"><label class="il">Line Spacing — <span id="vLS">${(b.lineSpacing||1.4).toFixed(1)}</span></label>
+      <input type="range" class="range" min="1" max="2.5" step="0.1" value="${b.lineSpacing||1.4}"
+        oninput="updBox('lineSpacing',+this.value);document.getElementById('vLS').textContent=(+this.value).toFixed(1)"></div>
+    <div class="ig"><label class="il">Letter Spacing — <span id="vLTR">${Number(b.letterSpacing||0).toFixed(1)}</span>px</label>
+      <input type="range" class="range" min="-2" max="12" step="0.1" value="${b.letterSpacing||0}"
+        oninput="updBox('letterSpacing',+this.value);document.getElementById('vLTR').textContent=(+this.value).toFixed(1)"></div>
+    <div class="idivider"></div>
+    <div class="isec">Shadow</div>
+    <div class="ig"><label class="il">Shadow Color</label>
+      <div class="color-row">
+        <div class="cswatch" style="background:${b.shadowColor||'#000000'}" onclick="openPicker('shadowColor','${b.shadowColor||'#000000'}')"></div>
+        <span style="font-size:11px;color:var(--sub)">${b.shadowColor||'#000000'}</span>
+      </div></div>
+    <div class="ig"><label class="il">Blur — <span id="vSBlur">${b.shadowBlur??8}</span>px</label>
+      <input type="range" class="range" min="0" max="40" step="1" value="${b.shadowBlur??8}"
+        oninput="updBox('shadowBlur',+this.value);document.getElementById('vSBlur').textContent=this.value"></div>
+    <div class="ig"><label class="il">Offset X — <span id="vSOX">${b.shadowOffsetX??0}</span>px</label>
+      <input type="range" class="range" min="-20" max="20" step="1" value="${b.shadowOffsetX??0}"
+        oninput="updBox('shadowOffsetX',+this.value);document.getElementById('vSOX').textContent=this.value"></div>
+    <div class="ig"><label class="il">Offset Y — <span id="vSOY">${b.shadowOffsetY??2}</span>px</label>
+      <input type="range" class="range" min="-20" max="20" step="1" value="${b.shadowOffsetY??2}"
+        oninput="updBox('shadowOffsetY',+this.value);document.getElementById('vSOY').textContent=this.value"></div>`;
+}
+
+function renderBgInspector(el, t) {
+  if (!t) { el.innerHTML = '<div class="hint" style="padding:16px;text-align:center">Select a theme first</div>'; return; }
+  const bgTypes = ['solid','radial','linear','image','video'];
+  el.innerHTML = `
+    <div class="isec">Background</div>
+    <div class="ig"><label class="il">Type</label>
+      <select class="is" onchange="updTheme('bgType',this.value);renderBgInspectorEl()">
+        ${bgTypes.map(x=>`<option${t.bgType===x?' selected':''} value="${x}">${x.charAt(0).toUpperCase()+x.slice(1)}</option>`).join('')}
+      </select></div>
+    <div id="bgInspExtra"></div>`;
+  renderBgInspectorEl();
+}
+
+function renderBgInspectorEl() {
+  const t = getTheme(); if (!t) return;
+  const el = document.getElementById('bgInspExtra'); if (!el) return;
+  if (t.bgType === 'image' || t.bgType === 'video') {
+    el.innerHTML = `
+      <div class="ig">
+        <div id="bgPrevBox" onclick="${t.bgType==='image'?'pickBgImage()':'pickBgVideo()'}"
+          style="width:100%;height:80px;border-radius:var(--r);border:1px dashed var(--border-lit);cursor:pointer;
+          display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--dim);
+          ${t.bgImage?`background:url('${t.bgImage}') center/cover no-repeat`:'background:var(--card)'}">
+          ${t.bgImage?'':(t.bgType==='video'?'▶ Click to load video':'📷 Click to load image')}
+        </div>
+        <button class="ibtn" style="margin-top:6px" onclick="${t.bgType==='image'?'pickBgImage()':'pickBgVideo()'}">
+          ${t.bgType==='video'?'▶ Set Video…':'🖼 Set Image…'}
+        </button>
+        <button class="ibtn ibtn-red" onclick="clearBg()" style="margin-top:4px">✕ Remove</button>
+      </div>
+      <div class="ig"><label class="il">Overlay Darkness — <span id="vOV">${t.bgOverlay||0}</span>%</label>
+        <input type="range" class="range" min="0" max="90" value="${t.bgOverlay||0}"
+          oninput="updTheme('bgOverlay',+this.value);document.getElementById('vOV').textContent=this.value"></div>`;
+  } else {
+    el.innerHTML = `
+      <div class="ig"><label class="il">Color 1</label>
+        <div class="color-row">
+          <div class="cswatch" style="background:${t.bgColor1||'#000'}" onclick="openPickerTheme('bgColor1','${t.bgColor1||'#000000'}')"></div>
+          <span style="font-size:11px;color:var(--sub)">${t.bgColor1||'#000000'}</span>
+        </div></div>
+      ${t.bgType!=='solid'?`<div class="ig"><label class="il">Color 2</label>
+        <div class="color-row">
+          <div class="cswatch" style="background:${t.bgColor2||'#000'}" onclick="openPickerTheme('bgColor2','${t.bgColor2||'#000000'}')"></div>
+          <span style="font-size:11px;color:var(--sub)">${t.bgColor2||'#000000'}</span>
+        </div></div>`:''}
+      <div class="isec" style="margin-top:10px">Quick Presets</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        ${[['Black','#000000','#000000'],['Navy','#001040','#000010'],['Dark Blue','#060820','#000418'],
+           ['Deep Purple','#130820','#050008'],['Crimson','#200408','#080000'],['Forest','#061208','#000800'],
+           ['Gold Dark','#1a1408','#080600'],['Charcoal','#181820','#080808']]
+          .map(([n,c1,c2])=>`<button class="ibtn" style="background:linear-gradient(135deg,${c1},${c2});color:#fff;border:none;font-size:10px"
+            onclick="updTheme('bgColor1','${c1}');updTheme('bgColor2','${c2}');updTheme('bgType','${t.bgType==='solid'?'solid':'radial'}')">${n}</button>`).join('')}
+      </div>`;
+  }
+}
+
+function renderInfoInspector(el, t) {
+  if (!t) { el.innerHTML = '<div class="hint" style="padding:16px">Select a theme</div>'; return; }
+  el.innerHTML = `
+    <div class="isec">Theme Info</div>
+    <div class="ig"><label class="il">Name</label>
+      <input class="ii" value="${t.name}" ${t.builtIn?'disabled':''}
+        oninput="updThemeName(this.value)"></div>
+    <div class="ig"><label class="il">Category</label>
+      <select class="is" onchange="updTheme('category',this.value)">
+        <option${t.category==='song'?' selected':''} value="song">Song</option>
+        <option${t.category==='scripture'?' selected':''} value="scripture">Scripture</option>
+        <option${t.category==='presentation'?' selected':''} value="presentation">Presentation</option>
+      </select></div>
+    <div class="hint">${t.builtIn?'Built-in theme — editing will create a custom copy.':'Custom theme — saved in your profile.'}</div>
+    <div class="idivider"></div>
+    <button class="ibtn" onclick="applyToLive()">⭐ Set as Default</button>
+    <button class="ibtn" onclick="cloneTheme()" style="margin-top:6px">⊕ Duplicate Theme</button>
+    ${!t.builtIn?`<button class="ibtn ibtn-red" onclick="deleteTheme()" style="margin-top:6px">🗑 Delete Theme</button>`:''}
+    <div class="idivider"></div>
+    <div class="hint">${t.boxes?.length||0} text box(es) · Background: ${t.bgType}</div>`;
+}
+
+// ─── UPDATE HELPERS ──────────────────────────────────────────────────────────
+function updBox(key, val) {
+  let t = getTheme(); if (!t) return;
+  if (t.builtIn) { cloneTheme(); t = getTheme(); }
+  const b = t.boxes?.[selIdx]; if (!b) return;
+  b[key] = val; drawCanvas();
+}
+
+function updTheme(key, val) {
+  let t = getTheme(); if (!t) return;
+  if (t.builtIn) { cloneTheme(); t = getTheme(); }
+  getTheme()[key] = val; drawCanvas();
+}
+
+function updThemeName(val) {
+  let t = getTheme(); if (!t || t.builtIn) return;
+  t.name = val || 'Untitled';
+  renderSlideList(); populateThemeSelect();
+  document.getElementById('sbTheme').textContent = 'Theme: ' + t.name;
+}
+
+function updatePosInputs() {
+  const b = getBox(); if (!b) return;
+  ['X','Y','W','H'].forEach(p => {
+    const el = document.getElementById('i'+p);
+    if (el) el.value = Math.round(b[p.toLowerCase()]);
+  });
+}
+
+function snapBox(pos) {
+  const t=getTheme(); const b=getBox(); if(!t||!b) return;
+  if(t.builtIn){cloneTheme();}
+  snap();
+  const bt=getTheme().boxes[selIdx];
+  const pad=40;
+  const positions={
+    tl:{x:pad,y:pad}, tc:{x:(CW-bt.w)/2,y:pad}, tr:{x:CW-bt.w-pad,y:pad},
+    ml:{x:pad,y:(CH-bt.h)/2}, mc:{x:(CW-bt.w)/2,y:(CH-bt.h)/2}, mr:{x:CW-bt.w-pad,y:(CH-bt.h)/2},
+    bl:{x:pad,y:CH-bt.h-pad}, bc:{x:(CW-bt.w)/2,y:CH-bt.h-pad}, br:{x:CW-bt.w-pad,y:CH-bt.h-pad},
+  };
+  Object.assign(bt, positions[pos]||{});
+  drawCanvas(); updatePosInputs();
+}
+
+function updateStatusBar() {
+  const t = getTheme(); const b = getBox();
+  document.getElementById('sbTheme').textContent = 'Theme: ' + (t?.name || '—');
+  document.getElementById('sbBoxes').textContent = 'Boxes: ' + (t?.boxes?.length || 0);
+  document.getElementById('sbCat').textContent   = 'Category: ' + activeCategory;
+  if (b) {
+    document.getElementById('statusPos').textContent  = `x:${Math.round(b.x)} y:${Math.round(b.y)}`;
+    document.getElementById('statusSize').textContent = `${Math.round(b.w)}×${Math.round(b.h)}px`;
+  } else {
+    document.getElementById('statusPos').textContent  = '—';
+    document.getElementById('statusSize').textContent = '—';
+  }
+}
+
+// ─── COLOR PICKER ─────────────────────────────────────────────────────────────
+let pickerTarget = 'box'; // 'box' or 'theme'
+function openPicker(prop, val) {
+  pickerProp = prop; pickerTarget = 'box';
+  const p = document.getElementById('colorPicker');
+  p.value = val; p.click();
+}
+function openPickerTheme(prop, val) {
+  pickerProp = prop; pickerTarget = 'theme';
+  const p = document.getElementById('colorPicker');
+  p.value = val; p.click();
+}
+function pickerChange() {
+  if (!pickerProp) return;
+  const val = document.getElementById('colorPicker').value;
+  if (pickerTarget === 'theme') { updTheme(pickerProp, val); renderBgInspectorEl(); }
+  else { updBox(pickerProp, val); renderInspector(); }
+}
+
+// ─── THEME ACTIONS ────────────────────────────────────────────────────────────
+function newTheme() {
+  const id = 'custom_' + Date.now();
+  const fallbackMap = { song:'song_sanctuary', scripture:'scr_sanctuary', presentation:'pres_classic' };
+  const base = themes.find(t => t.id === fallbackMap[activeCategory]) || getTheme() || defaultThemes()[0];
+  const clone = JSON.parse(JSON.stringify(base));
+  clone.id = id; clone.builtIn = false;
+  clone.category = activeCategory;
+  clone.name = 'New ' + activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1) + ' Theme';
+  clone.textTransform = 'none';
+  if (Array.isArray(clone.boxes)) clone.boxes = clone.boxes.map(b => ({ ...b, textTransform: 'none', fontFamily: activeCategory === 'song' ? 'DM Sans' : (b.fontFamily || 'DM Sans'), fontWeight: b.fontWeight || (b.bold ? 700 : 400), letterSpacing: b.letterSpacing ?? 0, shadow: b.shadow !== false, shadowColor: b.shadowColor || '#000000', shadowBlur: b.shadowBlur ?? 8, shadowOffsetX: b.shadowOffsetX ?? 0, shadowOffsetY: b.shadowOffsetY ?? 2 }));
+  if (!Array.isArray(clone.boxes) || !clone.boxes.length) {
+    clone.boxes = JSON.parse(JSON.stringify((defaultThemes().find(t => t.id === fallbackMap[activeCategory]) || {}).boxes || []));
+  }
+  clone.boxes = (clone.boxes || []).map(b => normalizeBoxStyle(b, clone.category));
+  themes.push(clone);
+  activeId = id; selIdx = clone.boxes.length ? 0 : null;
+  refresh();
+  setTimeout(() => {
+    const inp = document.querySelector('#inspectorBody input[type=text]');
+    if (inp) { inp.select(); inp.focus(); }
+  }, 50);
+  toast('+ New theme created');
+}
+
+function cloneTheme() {
+  const t = getTheme(); if (!t) return;
+  const id = 'custom_' + Date.now();
+  const clone = JSON.parse(JSON.stringify(t));
+  clone.id = id; clone.builtIn = false;
+  clone.name = t.name + ' (Custom)';
+  clone.boxes = (clone.boxes || []).map(b => normalizeBoxStyle(b, clone.category));
+  themes.push(clone);
+  activeId = id;
+  selIdx = clone.boxes.length ? 0 : null;
+  refresh();
+  toast('⊕ Theme duplicated');
+}
+
+function deleteTheme() {
+  const t = getTheme(); if (!t || t.builtIn) { toast('Cannot delete built-in themes'); return; }
+  if (!confirm(`Delete "${t.name}"?`)) return;
+  themes = themes.filter(x => x.id !== t.id);
+  const list = themes.filter(x => x.category === activeCategory);
+  activeId = list.length ? list[0].id : null;
+  selIdx = null; refresh();
+  saveAll(); toast('🗑 Deleted');
+}
+
+async function applyToLive() {
+  const t = getTheme(); if (!t) return;
+  const keyMap = { song:'songTheme', scripture:'theme', presentation:'presTheme' };
+  const key = keyMap[activeCategory] || 'theme';
+  if (window.electronAPI) {
+    const s = await window.electronAPI.getSettings();
+    await window.electronAPI.saveSettings({...s, [key]: t.id});
+  }
+  toast(`⭐ "${t.name}" set as default ${activeCategory} theme`);
+}
+
+async function saveAll() {
+  themes = normalizeThemes(themes);
+  if (window.electronAPI?.saveThemes) {
+    await window.electronAPI.saveThemes(themes);
+  }
+  refresh();
+  toast('✓ Themes saved');
+}
+
+// ─── AUTO-SPLIT ─────────────────────────────────────────────────────────────
+function autoSplitSlide() {
+  const t = getTheme();
+  if (!t) { toast('Select a theme first'); return; }
+  if (t.builtIn) { cloneTheme(); }
+  const theme = getTheme();
+
+  // Find the main text box (role:'main' or largest box)
+  const mainIdx = theme.boxes.findIndex(b => b.role === 'main') ??
+                  theme.boxes.reduce((best, b, i) =>
+                    b.w * b.h > (theme.boxes[best]?.w * theme.boxes[best]?.h || 0) ? i : best, 0);
+  const box = theme.boxes[mainIdx];
+  if (!box) { toast('No main text box found'); return; }
+
+  const text = (box.text || '').trim();
+  if (!text) { toast('Text box is empty'); return; }
+
+  // Measure how many words fit using a hidden canvas
+  const ctx2d = document.createElement('canvas').getContext('2d');
+  const fontSize = (box.fontSize || 52) * sc;
+  ctx2d.font = `${box.bold ? '700' : '400'} ${fontSize}px "${box.fontFamily || 'DM Sans'}"`;
+
+  const boxW = (box.w * sc) - 32; // subtract padding
+  const lineH = fontSize * (box.lineSpacing || 1.4);
+  const boxH  = (box.h * sc) - 32;
+  const maxLines = Math.max(1, Math.floor(boxH / lineH));
+
+  // Split text into lines that fit box width
+  const words = text.split(/\s+/).filter(Boolean);
+  const allLines = [];
+  let currentLine = '';
+  for (const word of words) {
+    const testLine = currentLine ? currentLine + ' ' + word : word;
+    if (ctx2d.measureText(testLine).width > boxW && currentLine) {
+      allLines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+  if (currentLine) allLines.push(currentLine);
+
+  if (allLines.length <= maxLines) {
+    toast('✓ Text fits — no split needed');
+    return;
+  }
+
+  // Calculate how many slides we need
+  const chunks = [];
+  for (let i = 0; i < allLines.length; i += maxLines) {
+    chunks.push(allLines.slice(i, i + maxLines).join('\n'));
+  }
+
+  if (chunks.length < 2) { toast('✓ Text fits — no split needed'); return; }
+
+  snap();
+  // Update current slide with first chunk
+  getTheme().boxes[mainIdx].text = chunks[0];
+
+  // Create new theme slides for the rest
+  const baseTheme = JSON.parse(JSON.stringify(getTheme()));
+  for (let i = 1; i < chunks.length; i++) {
+    const newTheme = JSON.parse(JSON.stringify(baseTheme));
+    newTheme.id = 'custom_' + Date.now() + '_' + i;
+    newTheme.builtIn = false;
+    newTheme.name = baseTheme.name + ' (Part ' + (i + 1) + ')';
+    // Update part 1 name too
+    if (i === 1) getTheme().name = baseTheme.name + ' (Part 1)';
+    newTheme.boxes[mainIdx].text = chunks[i];
+    // Insert after current theme in array
+    const curIdx = themes.findIndex(x => x.id === activeId);
+    themes.splice(curIdx + i, 0, newTheme);
+  }
+
+  refresh();
+  toast(`⊞ Split into ${chunks.length} slides`);
+}
+
+// ─── CONTEXT MENU ─────────────────────────────────────────────────────────────
+function showCtx(e) {
+  e.preventDefault();
+  const menu = document.getElementById('ctxMenu');
+  menu.style.display = 'block';
+  const x = Math.min(e.clientX, window.innerWidth  - 210);
+  const y = Math.min(e.clientY, window.innerHeight - 260);
+  menu.style.left = x + 'px'; menu.style.top = y + 'px';
+  e.stopPropagation();
+}
+function hideCtx() { document.getElementById('ctxMenu').style.display = 'none'; }
+
+function closeManager() {
+  if (window.electronAPI?.isWeb) {
+    if (window.opener) window.close();
+    else window.location.href = '/';
+  } else {
+    window.close();
+  }
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+let _tt;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_tt); _tt = setTimeout(() => el.classList.remove('show'), 2400);
+}
+</script>
+</body>
+</html>

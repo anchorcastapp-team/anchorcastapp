@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08101d">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self'; img-src 'self' data: blob: file: https:; media-src 'self' blob: data: file:;">
+<title>Presentation Editor — AnchorCast</title>
+<script src="js/electron-shim.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d0d1a;--panel:#141424;--deep:#0a0a18;--card:#1c1c30;--border:rgba(255,255,255,.08);--border-lit:rgba(255,255,255,.15);--text:#e8e8f0;--text-dim:rgba(232,232,240,.45);--gold:#c9a84c;--gold-dim:rgba(201,168,76,.4);--live:#e05252;--radius:5px;--font:'Inter',system-ui,sans-serif}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font)}
+button{font-family:var(--font);cursor:pointer}
+#root{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+#titleBar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--deep);border-bottom:1px solid var(--border);flex-shrink:0;-webkit-app-region:drag}
+#titleBar *{-webkit-app-region:no-drag}
+#presName{flex:1;max-width:300px;font-size:13px;font-weight:600;padding:4px 10px;background:var(--card);border:1px solid var(--border-lit);color:var(--text);border-radius:var(--radius);font-family:var(--font)}
+#presName:focus{outline:none;border-color:var(--gold-dim)}
+#toolbar{display:flex;align-items:center;gap:4px;padding:5px 10px;flex-wrap:wrap;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0}
+.tg{display:flex;align-items:center;gap:3px}
+.tsep{width:1px;height:22px;background:var(--border);margin:0 5px;flex-shrink:0}
+.tlabel{font-size:10px;color:var(--text-dim);margin-right:2px;white-space:nowrap}
+.tb{padding:4px 9px;font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text);transition:all .12s;white-space:nowrap}
+.tb:hover:not(:disabled){background:var(--border-lit)}
+.tb:disabled{opacity:.35;cursor:not-allowed}
+.tb.gold{background:rgba(201,168,76,.15);border-color:var(--gold-dim);color:var(--gold);font-weight:600}
+.tb.gold:hover:not(:disabled){background:rgba(201,168,76,.25)}
+.tb.red{color:var(--live);border-color:rgba(224,82,82,.3)}
+.tb.red:hover:not(:disabled){background:rgba(224,82,82,.1)}
+.cpick{width:26px;height:26px;border:1px solid var(--border);cursor:pointer;border-radius:4px;padding:0}
+#main{display:flex;flex:1;min-height:0;overflow:hidden}
+#sidebar{width:132px;flex-shrink:0;background:var(--deep);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#sidebarHdr{padding:6px 8px;font-size:9px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between}
+#slideList{flex:1;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:5px}
+.swrap{position:relative;cursor:pointer}
+.swrap.drag-over .sthumb{border-color:var(--gold);outline:2px dashed var(--gold)}
+.sthumb{width:100%;aspect-ratio:16/9;border-radius:3px;overflow:hidden;position:relative;border:2px solid var(--border);transition:border-color .1s;background:#0a0a1e}
+.sthumb:hover{border-color:var(--border-lit)}
+.sthumb.active{border-color:var(--gold)}
+.snum{position:absolute;top:2px;left:3px;font-size:7px;font-weight:700;background:rgba(0,0,0,.6);color:#fff;padding:1px 3px;border-radius:2px}
+.sdel{text-align:center;font-size:9px;color:var(--text-dim);padding:2px 0;cursor:pointer}
+.sdel:hover{color:var(--live)}
+#canvasArea{flex:1;display:flex;align-items:center;justify-content:center;background:#0e0e1c;position:relative;overflow:hidden}
+#slideCanvas{position:relative;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,.8)}
+.cobj{position:absolute;cursor:move;user-select:none;border:1px solid transparent;box-sizing:border-box}
+.cobj:hover{border-color:rgba(255,255,255,.25)}
+.cobj.sel{border-color:var(--gold)!important}
+.cobj.sel::after{content:'';position:absolute;inset:-3px;border:1px dashed var(--gold);border-radius:2px;pointer-events:none}
+.rhandle{position:absolute;bottom:-5px;right:-5px;width:10px;height:10px;background:var(--gold);border-radius:2px;cursor:se-resize;z-index:10;border:1px solid #000}
+#propPanel{width:214px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.psec{border-bottom:1px solid var(--border);padding:10px 12px}
+.ptitle{font-size:9px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.prow{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.plabel{font-size:10px;color:var(--text-dim);flex:0 0 52px}
+.pinput{flex:1;font-size:11px;padding:3px 6px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;font-family:var(--font)}
+.pinput:focus{outline:none;border-color:var(--gold-dim)}
+.ptextarea{width:100%;font-size:12px;padding:6px 8px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;font-family:'Crimson Pro',Georgia,serif;resize:vertical;min-height:60px;margin-bottom:6px}
+.ptextarea:focus{outline:none;border-color:var(--gold-dim)}
+.pselect{flex:1;font-size:11px;padding:3px 6px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;font-family:var(--font)}
+.pselect:focus{outline:none;border-color:var(--gold-dim)}
+.pbtn{width:100%;padding:5px;font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text);margin-bottom:4px;text-align:left;cursor:pointer}
+.pbtn:hover{background:var(--border-lit)}
+.pbtn.red{color:var(--live);border-color:rgba(224,82,82,.3)}
+#statusBar{padding:3px 12px;background:var(--deep);border-top:1px solid var(--border);font-size:10px;color:var(--text-dim);display:flex;gap:16px;flex-shrink:0}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+</style>
+</head>
+<body style="background:#08101d" style="background:#08101d">
+<div id="root">
+  <div id="titleBar">
+    <button class="tb" onclick="if(window.electronAPI?.isWeb){if(window.opener)window.close();else window.location.href='/';}else window.close();" style="padding:2px 8px;margin-right:4px;font-size:11px" title="Back to app">← Back</button>
+    <span style="font-size:13px;font-weight:700;color:var(--gold)">📑</span>
+    <span style="font-size:12px;font-weight:600;color:var(--text-dim)">Presentation Editor</span>
+    <input id="presName" type="text" value="New Presentation" placeholder="Name…">
+    <div style="flex:1"></div>
+    <button class="tb" onclick="doImportToLibrary()">⤴ Import File</button>
+    <button class="tb" onclick="addSlide()">+ Slide</button>
+    <div class="tsep"></div>
+    <button class="tb" onclick="savePres(true)">+📋 Save &amp; Add</button>
+    <button class="tb gold" onclick="savePres()">💾 Save &amp; Close</button>
+    <button class="tb" onclick="if(window.electronAPI?.isWeb){if(window.opener)window.close();else window.location.href='/';}else window.close();" title="Close editor">✕</button>
+  </div>
+  <div id="toolbar">
+    <span class="tlabel">Add:</span>
+    <div class="tg">
+      <button class="tb" onclick="addText('title')">T Title</button>
+      <button class="tb" onclick="addText('body')">¶ Body</button>
+      <button class="tb" onclick="addText('text')">✎ Text</button>
+      <button class="tb" onclick="doAddImage()">🖼 Image</button>
+      <button class="tb" onclick="openScripturePicker()">✝ Scripture</button>
+    </div>
+    <div class="tsep"></div>
+    <span class="tlabel">Shape:</span>
+    <div class="tg" style="position:relative">
+      <button class="tb" onclick="toggleShapePicker(event)" id="shapesBtn">Shapes ▾</button>
+      <div id="shapePicker" style="display:none;position:absolute;top:100%;left:0;margin-top:3px;
+        background:var(--panel);border:1px solid var(--border-lit);border-radius:6px;
+        box-shadow:0 8px 24px rgba(0,0,0,.6);padding:10px;z-index:500;min-width:260px">
+        <div style="font-size:9px;color:var(--text-dim);margin-bottom:6px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Basic</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:10px">
+          <button class="spick" onclick="pickShape('rect')"    title="Rectangle">▬</button>
+          <button class="spick" onclick="pickShape('ellipse')" title="Circle / Ellipse">●</button>
+          <button class="spick" onclick="pickShape('line')"    title="Line">—</button>
+          <button class="spick" onclick="pickShape('triangle')" title="Triangle">▲</button>
+          <button class="spick" onclick="pickShape('star')"    title="Star">★</button>
+          <button class="spick" onclick="pickShape('diamond')" title="Diamond">◆</button>
+          <button class="spick" onclick="pickShape('cross')"   title="Cross">✝</button>
+          <button class="spick" onclick="pickShape('arrow')"   title="Arrow">➤</button>
+          <button class="spick" onclick="pickShape('hexagon')" title="Hexagon">⬡</button>
+          <button class="spick" onclick="pickShape('heart')"   title="Heart">♥</button>
+        </div>
+        <div style="font-size:9px;color:var(--text-dim);margin-bottom:6px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Banners</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px">
+          <button class="spick" onclick="pickShape('banner')"  title="Banner Ribbon">🎗</button>
+          <button class="spick" onclick="pickShape('cloud')"   title="Cloud">☁</button>
+          <button class="spick" onclick="pickShape('speech')"  title="Speech Bubble">💬</button>
+          <button class="spick" onclick="pickShape('octagon')" title="Octagon">⯃</button>
+          <button class="spick" onclick="pickShape('rhombus')" title="Rhombus">◇</button>
+        </div>
+      </div>
+    </div>
+    <div class="tsep"></div>
+    <span class="tlabel">BG:</span>
+    <div class="tg">
+      <input type="color" id="bgColor" class="cpick" value="#0a0a1e" oninput="setBg()">
+      <button class="tb" onclick="pickBgImg()">🖼 Image</button>
+      <button class="tb red" onclick="clearBgImg()">✕ Clear</button>
+    </div>
+    <div class="tsep"></div>
+    <div class="tg">
+      <button class="tb red" id="btnDel" onclick="deleteSelected()" disabled>🗑 Delete</button>
+      <button class="tb" id="btnDup" onclick="dupSelected()" disabled>⧉ Dup</button>
+      <button class="tb" id="btnFwd" onclick="fwd()" disabled>↑ Fwd</button>
+      <button class="tb" id="btnBwd" onclick="bwd()" disabled>↓ Back</button>
+    </div>
+    <div class="tsep"></div>
+    <div class="tg">
+      <button class="tb" id="btnUndo" onclick="undo()" disabled>↩ Undo</button>
+      <button class="tb" id="btnRedo" onclick="redo()" disabled>↪ Redo</button>
+    </div>
+    <div class="tsep"></div>
+    <div class="tg" id="alignBtns" style="display:none;align-items:center">
+      <button class="tb alnbtn" id="btnAlL" onclick="setAlign('left')"   title="Align Left">
+        <svg width="14" height="12"><line x1="0" y1="2" x2="14" y2="2" stroke="currentColor" stroke-width="2"/><line x1="0" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="2"/><line x1="0" y1="10" x2="12" y2="10" stroke="currentColor" stroke-width="2"/></svg>
+      </button>
+      <button class="tb alnbtn" id="btnAlC" onclick="setAlign('center')" title="Center">
+        <svg width="14" height="12"><line x1="0" y1="2" x2="14" y2="2" stroke="currentColor" stroke-width="2"/><line x1="2" y1="6" x2="12" y2="6" stroke="currentColor" stroke-width="2"/><line x1="1" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="2"/></svg>
+      </button>
+      <button class="tb alnbtn" id="btnAlR" onclick="setAlign('right')"  title="Align Right">
+        <svg width="14" height="12"><line x1="0" y1="2" x2="14" y2="2" stroke="currentColor" stroke-width="2"/><line x1="4" y1="6" x2="14" y2="6" stroke="currentColor" stroke-width="2"/><line x1="2" y1="10" x2="14" y2="10" stroke="currentColor" stroke-width="2"/></svg>
+      </button>
+      <div class="tsep" style="height:18px"></div>
+      <button class="tb" id="btnBold"   onclick="toggleBold()"   title="Bold (Ctrl+B)" style="font-weight:700;font-size:13px;min-width:28px">B</button>
+      <button class="tb" id="btnItalic" onclick="toggleItalic()" title="Italic (Ctrl+I)" style="font-style:italic;font-size:13px;min-width:28px">I</button>
+    </div>
+    <input type="file" id="bgImgIn"  accept="image/*" style="display:none" onchange="loadBgImg(this)">
+    <input type="file" id="objImgIn" accept="image/*" style="display:none" onchange="loadObjImg(this)">
+  </div>
+  <div id="main">
+    <div id="sidebar">
+      <div id="sidebarHdr">Slides <span id="slideCount" style="color:var(--text)">1</span></div>
+      <div id="slideList"></div>
+    </div>
+    <div id="canvasArea"><div id="slideCanvas"></div></div>
+    <div id="propPanel">
+      <div class="psec" id="propEmpty" style="padding:20px 12px;text-align:center">
+        <div style="font-size:22px;margin-bottom:8px">☝</div>
+        <div style="font-size:11px;color:var(--text-dim);line-height:1.5">Click an object to edit its properties, or use the toolbar to add elements.</div>
+      </div>
+      <div class="psec">
+        <div class="ptitle">Slide Background</div>
+        <div class="prow"><span class="plabel">Color</span><input type="color" id="propBg" class="pinput" style="height:26px;padding:1px 3px" value="#0a0a1e" oninput="setBg()"></div>
+        <div id="bgImgInfo" style="font-size:10px;color:var(--text-dim);margin-bottom:6px;display:none"></div>
+        <button class="pbtn" onclick="pickBgImg()">🖼 Set Background Image…</button>
+        <button class="pbtn red" id="btnClearBg" onclick="clearBgImg()" style="display:none">✕ Remove Background Image</button>
+      </div>
+      <div id="objProps" style="display:none">
+        <div class="psec" id="textP" style="display:none">
+          <div class="ptitle">Text</div>
+          <textarea class="ptextarea" id="pText" placeholder="Enter text…" oninput="sp('text')"></textarea>
+          <div class="prow"><span class="plabel">Font</span>
+            <select class="pselect" id="pFont" onchange="sp('font')">
+              <option value="Cinzel">Cinzel (Serif)</option>
+              <option value="Crimson Pro">Crimson Pro</option>
+              <option value="Inter">Inter (Sans)</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Arial">Arial</option>
+              <option value="Impact">Impact</option>
+            </select>
+          </div>
+          <div class="prow"><span class="plabel">Size</span><input class="pinput" type="number" id="pSize" value="48" min="8" max="300" oninput="sp('fontSize')" style="width:54px"><span style="font-size:10px;color:var(--text-dim)">px</span></div>
+          <div class="prow"><span class="plabel">Color</span><input type="color" id="pColor" class="pinput" style="height:26px;padding:1px 3px" value="#ffffff" oninput="sp('textColor')"></div>
+          <div class="prow"><span class="plabel">Align</span>
+            <select class="pselect" id="pAlign" onchange="sp('textAlign')">
+              <option value="center">Center</option><option value="left">Left</option><option value="right">Right</option>
+            </select>
+          </div>
+          <div class="prow"><span class="plabel">Style</span>
+            <label style="font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:3px"><input type="checkbox" id="pBold" onchange="sp('bold')"> Bold</label>
+            <label style="font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:3px"><input type="checkbox" id="pItalic" onchange="sp('italic')"> Italic</label>
+            <label style="font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:3px"><input type="checkbox" id="pShadow" onchange="sp('shadow')"> Shadow</label>
+          </div>
+          <div class="prow"><span class="plabel">BG Fill</span>
+            <input type="color" id="pTBg" class="pinput" style="height:22px;padding:1px 2px;flex:0 0 30px" value="#000000" oninput="sp('textBg')">
+            <input type="range" id="pTBgA" min="0" max="100" value="0" oninput="sp('textBgAlpha')" style="flex:1">
+            <span id="pTBgAv" style="font-size:9px;color:var(--text-dim);width:24px">0%</span>
+          </div>
+        </div>
+        <div class="psec" id="shapeP" style="display:none">
+          <div class="ptitle">Shape</div>
+          <div class="prow"><span class="plabel">Fill</span><input type="color" id="pFill" class="pinput" style="height:26px;padding:1px 3px" value="#3b82f6" oninput="sp('shapeFill')"></div>
+          <div class="prow"><span class="plabel">Opacity</span><input type="range" id="pOpa" min="0" max="100" value="80" oninput="sp('shapeOpacity')" style="flex:1"><span id="pOpaV" style="font-size:9px;color:var(--text-dim);width:28px">80%</span></div>
+          <div class="prow"><span class="plabel">Border</span><input type="color" id="pBord" class="pinput" style="height:22px;padding:1px 2px;flex:0 0 30px" value="#ffffff" oninput="sp('shapeBorder')"><input type="number" id="pBordW" value="0" min="0" max="30" class="pinput" style="width:40px" oninput="sp('shapeBorderW')"></div>
+          <div class="prow"><span class="plabel">Radius</span><input type="range" id="pRad" min="0" max="50" value="0" oninput="sp('shapeRadius')" style="flex:1"></div>
+        </div>
+        <div class="psec" id="imgP" style="display:none">
+          <div class="ptitle">Image</div>
+          <button class="pbtn" onclick="document.getElementById('objImgIn').click()">🖼 Replace Image…</button>
+          <div class="prow"><span class="plabel">Opacity</span><input type="range" id="pImgOpa" min="0" max="100" value="100" oninput="sp('imgOpacity')" style="flex:1"></div>
+          <div class="prow"><span class="plabel">Fit</span>
+            <select class="pselect" id="pImgFit" onchange="sp('imgFit')">
+              <option value="contain">Contain</option><option value="cover">Cover</option><option value="fill">Stretch</option>
+            </select>
+          </div>
+        </div>
+        <div class="psec">
+          <div class="ptitle">Position &amp; Size</div>
+          <div class="prow"><span class="plabel">X</span><input class="pinput" type="number" id="pX" oninput="sg('x')" style="flex:1"><span class="plabel" style="flex:0;text-align:right">Y</span><input class="pinput" type="number" id="pY" oninput="sg('y')" style="flex:1"></div>
+          <div class="prow"><span class="plabel">W</span><input class="pinput" type="number" id="pW" oninput="sg('w')" style="flex:1"><span class="plabel" style="flex:0;text-align:right">H</span><input class="pinput" type="number" id="pH" oninput="sg('h')" style="flex:1"></div>
+          <div class="prow"><span class="plabel">Rotate</span><input type="range" id="pRot" min="-180" max="180" value="0" oninput="sp('rotation')" style="flex:1"><span id="pRotV" style="font-size:9px;color:var(--text-dim);width:32px">0°</span></div>
+        </div>
+        <div class="psec">
+          <button class="pbtn red" onclick="deleteSelected()">🗑 Delete Object</button>
+          <button class="pbtn" onclick="dupSelected()">⧉ Duplicate</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="statusBar">
+    <span id="stSlide">Slide 1 of 1</span>
+    <span id="stObj">No selection</span>
+    <span style="flex:1"></span>
+    <span>Click · Drag to move · Corner to resize · Del to delete</span>
+  </div>
+</div>
+<script>
+const CW=1920,CH=1080;
+let presId=null,slides=[],cur=0,sel=null,sc=1,cvEl,cvRect;
+let dragging=false,resizing=false,dOff={x:0,y:0},dSlide=null;
+const MAXH=50;let undoStack=[],redoStack=[];
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',async()=>{
+  cvEl=document.getElementById('slideCanvas');
+  if(window.electronAPI?.isWeb){
+    const params=new URLSearchParams(location.search);
+    const editId=params.get('id');
+    if(editId){
+      try{
+        const all=await window.electronAPI.getCreatedPresentations()||[];
+        const found=all.find(p=>p.id===editId);
+        if(found){
+          presId=found.id;
+          document.getElementById('presName').value=found.name||'Untitled';
+          slides=(found.slides&&found.slides.length)?found.slides.map(migrate):[blank()];
+          cur=0;sel=null;undoStack=[];redoStack=[];
+          refresh();updateHistBtns();syncBg();
+        }
+      }catch(e){console.error('Load presentation failed',e);}
+    }
+    if(!slides.length){slides=[blank()];cur=0;sel=null;refresh();updateHistBtns();syncBg();}
+  } else if(window.electronAPI){
+    window.electronAPI.on('pres-editor-load',data=>{
+      presId=data.id||null;
+      document.getElementById('presName').value=data.name||'New Presentation';
+      slides=(data.slides&&data.slides.length)?data.slides.map(migrate):[blank()];
+      cur=0;sel=null;undoStack=[];redoStack=[];
+      refresh();updateHistBtns();syncBg();
+    });
+  }
+  if(!slides.length){slides=[blank()];refresh();syncBg();}
+  requestAnimationFrame(()=>requestAnimationFrame(fitCanvas));
+  window.addEventListener('resize',fitCanvas);
+  cvEl.addEventListener('mousedown',onCvDown);
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+  document.addEventListener('keydown',onKey);
+  _registerDblClick();
+});
+
+function fitCanvas(){
+  const area=document.getElementById('canvasArea');
+  if(!area)return;
+  const aw=area.clientWidth-40,ah=area.clientHeight-40;
+  if(aw<=0||ah<=0){requestAnimationFrame(fitCanvas);return;}
+  sc=Math.min(aw/CW,ah/CH);
+  cvEl.style.width=Math.round(CW*sc)+'px';
+  cvEl.style.height=Math.round(CH*sc)+'px';
+  cvRect=cvEl.getBoundingClientRect();
+  drawCanvas();
+}
+
+// ── Data ──────────────────────────────────────────────────────────────────────
+function blank(){return{bg:'#0a0a1e',bgImage:null,objects:[]};}
+function migrate(s){
+  if(s.objects)return{bg:s.bg||'#0a0a1e',bgImage:s.bgImage||null,objects:s.objects};
+  const obs=[];
+  if(s.title)obs.push({type:'text',text:s.title,font:'Cinzel',fontSize:s.titleSize||60,textColor:s.textColor||'#fff',x:120,y:300,w:1680,h:260,textAlign:'center',bold:true,italic:false,shadow:true,shadowColor:'#000000',shadowBlur:8,shadowOffsetX:0,shadowOffsetY:2,lineSpacing:1.25,letterSpacing:0,textTransform:'none',fontWeight:700,textBg:'#000',textBgAlpha:0,rotation:0});
+  if(s.body)obs.push({type:'text',text:s.body,font:'Crimson Pro',fontSize:s.bodySize||34,textColor:s.textColor||'#ddd',x:120,y:580,w:1680,h:380,textAlign:'center',bold:false,italic:false,shadow:true,shadowColor:'#000000',shadowBlur:8,shadowOffsetX:0,shadowOffsetY:2,lineSpacing:1.25,letterSpacing:0,textTransform:'none',fontWeight:400,textBg:'#000',textBgAlpha:0,rotation:0});
+  return{bg:s.bg||'#0a0a1e',bgImage:s.bgImage||null,objects:obs};
+}
+
+// ── Undo/Redo ─────────────────────────────────────────────────────────────────
+function snap(){undoStack.push(JSON.stringify({slides,cur,sel}));if(undoStack.length>MAXH)undoStack.shift();redoStack=[];updateHistBtns();}
+function undo(){if(!undoStack.length)return;redoStack.push(JSON.stringify({slides,cur,sel}));const s=JSON.parse(undoStack.pop());slides=s.slides;cur=s.cur;sel=s.sel;refresh();updateHistBtns();syncBg();}
+function redo(){if(!redoStack.length)return;undoStack.push(JSON.stringify({slides,cur,sel}));const s=JSON.parse(redoStack.pop());slides=s.slides;cur=s.cur;sel=s.sel;refresh();updateHistBtns();syncBg();}
+function updateHistBtns(){dis('btnUndo',!undoStack.length);dis('btnRedo',!redoStack.length);}
+function dis(id,v){const e=document.getElementById(id);if(e)e.disabled=v;}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function refresh(){drawSidebar();drawCanvas();updateProps();}
+function drawSidebar(){
+  const list=document.getElementById('slideList');
+  list.innerHTML='';
+  document.getElementById('slideCount').textContent=slides.length;
+  document.getElementById('stSlide').textContent='Slide '+(cur+1)+' of '+slides.length;
+  slides.forEach((slide,i)=>{
+    const wrap=document.createElement('div');
+    wrap.className='swrap';wrap.draggable=true;
+    wrap.addEventListener('dragstart',e=>{dSlide=i;e.dataTransfer.effectAllowed='move';setTimeout(()=>wrap.style.opacity='.35',0);});
+    wrap.addEventListener('dragend',()=>{wrap.style.opacity='';list.querySelectorAll('.swrap').forEach(el=>el.classList.remove('drag-over'));});
+    wrap.addEventListener('dragover',e=>{e.preventDefault();list.querySelectorAll('.swrap').forEach(el=>el.classList.remove('drag-over'));if(dSlide!==i)wrap.classList.add('drag-over');});
+    wrap.addEventListener('drop',e=>{e.preventDefault();if(dSlide===null||dSlide===i)return;snap();const m=slides.splice(dSlide,1)[0];slides.splice(i,0,m);cur=i;dSlide=null;refresh();});
+    const thumb=document.createElement('div');
+    thumb.className='sthumb'+(i===cur?' active':'');
+    thumb.style.background=slide.bg||'#0a0a1e';
+    if(slide.bgImage){thumb.style.backgroundImage='url(\''+fu(slide.bgImage)+'\')';thumb.style.backgroundSize='cover';}
+    slide.objects.filter(o=>o.type==='text'&&o.text).slice(0,2).forEach(o=>{
+      const d=document.createElement('div');
+      const fs=Math.max(5,Math.round((o.fontSize/CH)*100*.65));
+      d.style.cssText='font-size:'+fs+'px;color:'+(o.textColor||'#fff')+';position:absolute;left:'+((o.x/CW)*100)+'%;top:'+((o.y/CH)*100)+'%;width:'+((o.w/CW)*100)+'%;text-align:'+(o.textAlign||'center')+';font-family:'+(o.font||'Cinzel')+';overflow:hidden;line-height:1.1;pointer-events:none;';
+      d.textContent=o.text.slice(0,22);thumb.appendChild(d);
+    });
+    const nb=document.createElement('span');nb.className='snum';nb.textContent=i+1;thumb.appendChild(nb);
+    thumb.addEventListener('click',()=>{cur=i;sel=null;refresh();syncBg();});
+    wrap.appendChild(thumb);
+    if(slides.length>1){const del=document.createElement('div');del.className='sdel';del.textContent='✕ remove';del.addEventListener('click',e=>{e.stopPropagation();removeSl(i);});wrap.appendChild(del);}
+    list.appendChild(wrap);
+  });
+}
+function addSlide(){if(!slides.length){slides=[blank()];cur=0;} snap();slides.splice(cur+1,0,blank());cur++;sel=null;refresh();syncBg();}
+function removeSl(i){if(slides.length<=1)return;snap();slides.splice(i,1);cur=Math.max(0,Math.min(cur,slides.length-1));sel=null;refresh();syncBg();}
+
+// ── Canvas ────────────────────────────────────────────────────────────────────
+function drawCanvas(){
+  if(!cvEl)return;const slide=slides[cur];if(!slide)return;
+  cvEl.style.background=slide.bg||'#0a0a1e';
+  cvEl.style.backgroundImage=slide.bgImage?'url(\''+fu(slide.bgImage)+'\')':'none';
+  cvEl.style.backgroundSize='cover';cvEl.style.backgroundPosition='center';
+  cvEl.querySelectorAll('.cobj').forEach(e=>e.remove());
+  slide.objects.forEach((obj,i)=>{
+    const el=document.createElement('div');
+    el.className='cobj'+(i===sel?' sel':'');el.dataset.idx=i;
+    el.style.left=(obj.x*sc)+'px';el.style.top=(obj.y*sc)+'px';
+    el.style.width=(obj.w*sc)+'px';el.style.height=(obj.h*sc)+'px';
+    el.style.transform='rotate('+(obj.rotation||0)+'deg)';
+    if(obj.type==='text'){
+      const a=(obj.textBgAlpha||0)/100;
+      if(a>0)el.style.background=rgba(obj.textBg||'#000',a);
+      el.style.display='flex';el.style.alignItems='center';el.style.overflow='hidden';
+      el.style.justifyContent=obj.textAlign==='left'?'flex-start':obj.textAlign==='right'?'flex-end':'center';
+      const t=document.createElement('div');
+      t.style.fontFamily="'"+(obj.font||'Cinzel')+"',serif";
+      t.style.fontSize=((obj.fontSize||48)*sc)+'px';
+      t.style.color=obj.textColor||'#fff';
+      t.style.fontWeight=obj.bold?'700':'400';
+      t.style.fontStyle=obj.italic?'italic':'normal';
+      t.style.textAlign=obj.textAlign||'center';
+      t.style.textShadow=obj.shadow?'0 2px 8px rgba(0,0,0,.85)':'none';
+      t.style.whiteSpace='pre-wrap';t.style.lineHeight='1.25';t.style.width='100%';
+      t.textContent=obj.text||'';el.appendChild(t);
+    }else if(obj.type==='shape'){
+      el.style.background=obj.shapeFill||'#3b82f6';
+      el.style.opacity=(obj.shapeOpacity??80)/100;
+      el.style.borderRadius=obj.shape==='ellipse'?'50%':((obj.shapeRadius||0)+'%');
+      const bw=(obj.shapeBorderW||0)*sc;if(bw>0)el.style.border=bw+'px solid '+(obj.shapeBorder||'#fff');
+    }else if(obj.type==='line'){
+      const bw=Math.max(1,(obj.shapeBorderW||2)*sc);
+      el.style.borderTop=bw+'px solid '+(obj.shapeFill||'#fff');
+      el.style.opacity=(obj.shapeOpacity??80)/100;el.style.height=bw+'px';
+      el.style.top=((obj.y+obj.h/2)*sc)+'px';
+    }else if(obj.type==='svg'){
+      const sw=obj.w*sc,sh=obj.h*sc;
+      const fill=obj.shapeFill||'#c9a84c';
+      const stroke=obj.shapeBorder||'none';
+      const strokeW=(obj.shapeBorderW||0)*sc;
+      el.style.opacity=(obj.shapeOpacity??90)/100;
+      let pathD='';
+      const cx=sw/2,cy=sh/2;
+      if(obj.shape==='triangle'){
+        pathD='M'+cx+',0 L'+sw+','+sh+' L0,'+sh+' Z';
+      }else if(obj.shape==='star'){
+        const pts=5,outerR=Math.min(sw,sh)/2,innerR=outerR*0.42;
+        let d='';for(let p=0;p<pts*2;p++){const r=p%2===0?outerR:innerR;const ang=(p*Math.PI/pts)-Math.PI/2;d+=(p===0?'M':'L')+(cx+r*Math.cos(ang)).toFixed(1)+','+(cy+r*Math.sin(ang)).toFixed(1);}
+        pathD=d+'Z';
+      }else if(obj.shape==='diamond'){
+        pathD='M'+cx+',0 L'+sw+','+cy+' L'+cx+','+sh+' L0,'+cy+' Z';
+      }else if(obj.shape==='cross'){
+        const t=sw*0.3,u=sh*0.3;
+        pathD='M'+(sw-t)/2+',0 L'+(sw+t)/2+',0 L'+(sw+t)/2+','+(sh-u)/2+' L'+sw+','+(sh-u)/2+' L'+sw+','+(sh+u)/2+' L'+(sw+t)/2+','+(sh+u)/2+' L'+(sw+t)/2+','+sh+' L'+(sw-t)/2+','+sh+' L'+(sw-t)/2+','+(sh+u)/2+' L0,'+(sh+u)/2+' L0,'+(sh-u)/2+' L'+(sw-t)/2+','+(sh-u)/2+' Z';
+      }else if(obj.shape==='arrow'){
+        const aw=sw*0.4,ah=sh*0.5;
+        pathD='M0,'+(sh-ah)/2+' L'+(sw-aw)+','+(sh-ah)/2+' L'+(sw-aw)+',0 L'+sw+','+cy+' L'+(sw-aw)+','+sh+' L'+(sw-aw)+','+(sh+ah)/2+' L0,'+(sh+ah)/2+' Z';
+      }else if(obj.shape==='hexagon'){
+        const r=Math.min(sw,sh)/2;
+        let d='';for(let i=0;i<6;i++){const a=i*Math.PI/3-Math.PI/6;d+=(i===0?'M':'L')+(cx+r*Math.cos(a)).toFixed(1)+','+(cy+r*Math.sin(a)).toFixed(1);}
+        pathD=d+'Z';
+      }else if(obj.shape==='heart'){
+        const w=sw,h=sh,k=w*0.5;
+        pathD='M'+k+','+(h*0.3)+' C'+k+','+(h*0.1)+' '+0+','+(h*0.1)+' '+0+','+(h*0.4)+' C'+0+','+(h*0.7)+' '+k+','+(h*0.9)+' '+k+','+h+' C'+k+','+(h*0.9)+' '+w+','+(h*0.7)+' '+w+','+(h*0.4)+' C'+w+','+(h*0.1)+' '+k+','+(h*0.1)+' '+k+','+(h*0.3);
+      }else if(obj.shape==='banner'){
+        pathD='M0,'+sh*0.2+' Q'+sw*0.05+',0 '+sw*0.1+','+sh*0.2+' L'+sw*0.9+','+sh*0.2+' Q'+sw*0.95+',0 '+sw+','+sh*0.2+' L'+sw+','+sh*0.8+' Q'+sw*0.95+','+sh+' '+sw*0.9+','+sh*0.8+' L'+sw*0.1+','+sh*0.8+' Q'+sw*0.05+','+sh+' 0,'+sh*0.8+' Z';
+      }else if(obj.shape==='cloud'){
+        pathD='M'+sw*0.25+','+sh*0.8+' Q'+sw*0.05+','+sh*0.8+' '+sw*0.05+','+sh*0.55+' Q'+sw*0.05+','+sh*0.3+' '+sw*0.25+','+sh*0.3+' Q'+sw*0.3+','+sh*0.05+' '+sw*0.55+','+sh*0.1+' Q'+sw*0.75+','+sh*0.05+' '+sw*0.8+','+sh*0.3+' Q'+sw*1.0+','+sh*0.3+' '+sw*0.95+','+sh*0.55+' Q'+sw*0.95+','+sh*0.8+' '+sw*0.75+','+sh*0.8+' Z';
+      }else if(obj.shape==='speech'){
+        pathD='M0,0 L'+sw+',0 L'+sw+','+sh*0.7+' L'+sw*0.4+','+sh*0.7+' L'+sw*0.25+','+sh+' L'+sw*0.2+','+sh*0.7+' L0,'+sh*0.7+' Z';
+      }else if(obj.shape==='octagon'){
+        const r=Math.min(sw,sh)/2;
+        let d='';for(let i=0;i<8;i++){const a=i*Math.PI/4-Math.PI/8;d+=(i===0?'M':'L')+(cx+r*Math.cos(a)).toFixed(1)+','+(cy+r*Math.sin(a)).toFixed(1);}
+        pathD=d+'Z';
+      }else if(obj.shape==='rhombus'){
+        pathD='M'+cx+',0 L'+sw+','+cy+' L'+cx+','+sh+' L0,'+cy+' Z';
+      }
+      el.innerHTML='<svg width="'+sw+'" height="'+sh+'" style="position:absolute;inset:0;overflow:visible"><path d="'+pathD+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="'+strokeW+'"/></svg>';
+    }else if(obj.type==='image'){
+      const img=document.createElement('img');img.src=fu(obj.src||'');
+      img.style.cssText='width:100%;height:100%;object-fit:'+(obj.imgFit||'contain')+';opacity:'+((obj.imgOpacity??100)/100)+';display:block;pointer-events:none;';
+      el.appendChild(img);
+    }
+    if(i===sel&&obj.type!=='line'){const rh=document.createElement('div');rh.className='rhandle';rh.dataset.resize='1';el.appendChild(rh);}
+    cvEl.appendChild(el);
+  });
+  cvRect=cvEl.getBoundingClientRect();
+}
+
+// ── Add objects ───────────────────────────────────────────────────────────────
+function addText(p){
+  if(!slides.length){slides=[blank()];cur=0;}  
+  snap();
+  const pr={
+    title:{text:'Slide Title',font:'Cinzel',fontSize:80,textColor:'#fff',bold:true,x:120,y:280,w:1680,h:280,textAlign:'center'},
+    body:{text:'Body text…',font:'Crimson Pro',fontSize:44,textColor:'#ddd',bold:false,x:120,y:600,w:1680,h:360,textAlign:'center'},
+    text:{text:'Text here…',font:'Cinzel',fontSize:60,textColor:'#fff',bold:false,x:200,y:400,w:1520,h:280,textAlign:'center'},
+  };
+  const d=pr[p]||pr.text;
+  slides[cur].objects.push({type:'text',italic:false,shadow:true,textBg:'#000',textBgAlpha:0,rotation:0,...d});
+  sel=slides[cur].objects.length-1;refresh();
+}
+function addShape(s){
+  if(!slides.length){slides=[blank()];cur=0;}
+  snap();
+  const centered={x:660,y:340,w:600,h:380};
+  const defs={
+    rect:    {x:660,y:390,w:600,h:300},
+    ellipse: {x:760,y:390,w:400,h:300},
+    line:    {x:120,y:540,w:1680,h:4},
+    triangle:{...centered},
+    star:    {x:710,y:340,w:500,h:400},
+    diamond: {...centered},
+    cross:   {x:760,y:300,w:400,h:480},
+    arrow:   {x:200,y:440,w:800,h:200},
+    hexagon: {...centered},
+    heart:   {...centered,w:500,h:450},
+    banner:  {x:120,y:420,w:1680,h:240},
+    cloud:   {x:400,y:280,w:1120,h:520},
+    speech:  {x:300,y:250,w:900,h:500},
+    octagon: {...centered},
+    rhombus: {...centered,w:500,h:420},
+  };
+  const d=defs[s]||defs.rect;
+  const svgShapes=new Set(['triangle','star','diamond','cross','arrow','hexagon','heart','banner','cloud','speech','octagon','rhombus']);
+  if(svgShapes.has(s)){
+    slides[cur].objects.push({type:'svg',shape:s,shapeFill:'#c9a84c',shapeBorder:'none',shapeBorderW:0,shapeOpacity:90,rotation:0,...d});
+  } else {
+    slides[cur].objects.push({type:'shape',shape:s,shapeFill:'#3b82f6',shapeBorder:'#fff',shapeBorderW:0,shapeOpacity:80,shapeRadius:0,rotation:0,...d});
+  }
+  sel=slides[cur].objects.length-1;refresh();
+}
+function doAddImage(){document.getElementById('objImgIn').click();}
+function loadObjImg(input){
+  const file=input.files?.[0];if(!file)return;snap();
+  const src=file.path||URL.createObjectURL(file);
+  const slide=slides[cur];
+  if(sel!==null&&slide.objects[sel]?.type==='image'){slide.objects[sel].src=src;}
+  else{slide.objects.push({type:'image',src,x:360,y:190,w:1200,h:700,imgFit:'contain',imgOpacity:100,rotation:0});sel=slide.objects.length-1;}
+  refresh();input.value='';
+}
+
+// ── Background ────────────────────────────────────────────────────────────────
+function setBg(){
+  const bg=document.activeElement.id==='bgColor'?document.getElementById('bgColor').value:document.getElementById('propBg').value;
+  slides[cur].bg=bg;document.getElementById('bgColor').value=bg;document.getElementById('propBg').value=bg;
+  drawCanvas();drawSidebar();
+}
+function pickBgImg(){document.getElementById('bgImgIn').click();}
+function loadBgImg(input){const file=input.files?.[0];if(!file)return;snap();slides[cur].bgImage=file.path||URL.createObjectURL(file);syncBg();drawCanvas();drawSidebar();input.value='';}
+function clearBgImg(){snap();slides[cur].bgImage=null;syncBg();drawCanvas();drawSidebar();}
+function syncBg(){
+  const slide=slides[cur];const bg=slide.bg||'#0a0a1e';
+  document.getElementById('bgColor').value=bg;document.getElementById('propBg').value=bg;
+  const info=document.getElementById('bgImgInfo');const btn=document.getElementById('btnClearBg');
+  if(slide.bgImage){info.textContent='📷 '+slide.bgImage.replace(/.*[\\/]/,'');info.style.display='block';btn.style.display='';}
+  else{info.style.display='none';btn.style.display='none';}
+}
+
+// ── Mouse ──────────────────────────────────────────────────────────────────────
+function onCvDown(e){
+  cvRect=cvEl.getBoundingClientRect();
+  if(e.target.closest('[data-resize]')){resizing=true;e.preventDefault();return;}
+  const objEl=e.target.closest('[data-idx]');
+  if(objEl){
+    const idx=parseInt(objEl.dataset.idx);
+    if(sel!==idx){sel=idx;drawCanvas();updateProps();}
+    dragging=true;
+    const obj=slides[cur].objects[idx];
+    dOff.x=(e.clientX-cvRect.left)/sc-obj.x;dOff.y=(e.clientY-cvRect.top)/sc-obj.y;
+    e.preventDefault();
+  }else{sel=null;drawCanvas();updateProps();}
+}
+function onMove(e){
+  if(!cvRect)return;
+  const mx=(e.clientX-cvRect.left)/sc,my=(e.clientY-cvRect.top)/sc;
+  if(dragging&&sel!==null){const obj=slides[cur].objects[sel];obj.x=Math.round(mx-dOff.x);obj.y=Math.round(my-dOff.y);drawCanvas();updateGeom();}
+  else if(resizing&&sel!==null){const obj=slides[cur].objects[sel];obj.w=Math.max(20,Math.round(mx-obj.x));obj.h=Math.max(10,Math.round(my-obj.y));drawCanvas();updateGeom();}
+}
+function onUp(){if(dragging||resizing)drawSidebar();dragging=false;resizing=false;}
+function onKey(e){
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo();return;}
+  if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.shiftKey&&e.key==='Z'))){e.preventDefault();redo();return;}
+  const tag=e.target.tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
+  if((e.ctrlKey||e.metaKey)&&e.key==='d'){e.preventDefault();dupSelected();return;}
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();savePres();return;}
+  if(e.key==='Delete'||e.key==='Backspace'){deleteSelected();return;}
+  if(e.key==='Escape'){sel=null;drawCanvas();updateProps();return;}
+  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)&&sel!==null){
+    e.preventDefault();const obj=slides[cur].objects[sel];const d=e.shiftKey?10:1;
+    if(e.key==='ArrowLeft')obj.x-=d;if(e.key==='ArrowRight')obj.x+=d;
+    if(e.key==='ArrowUp')obj.y-=d;if(e.key==='ArrowDown')obj.y+=d;
+    drawCanvas();updateGeom();
+  }
+}
+
+// ── Edit ops ──────────────────────────────────────────────────────────────────
+function deleteSelected(){if(sel===null)return;snap();slides[cur].objects.splice(sel,1);sel=null;refresh();}
+function dupSelected(){if(sel===null)return;snap();const o=JSON.parse(JSON.stringify(slides[cur].objects[sel]));o.x+=30;o.y+=30;slides[cur].objects.push(o);sel=slides[cur].objects.length-1;refresh();}
+function fwd(){const o=slides[cur].objects;if(sel===null||sel>=o.length-1)return;snap();[o[sel],o[sel+1]]=[o[sel+1],o[sel]];sel++;refresh();}
+function bwd(){const o=slides[cur].objects;if(sel===null||sel<=0)return;snap();[o[sel],o[sel-1]]=[o[sel-1],o[sel]];sel--;refresh();}
+
+// ── Properties ────────────────────────────────────────────────────────────────
+function updateProps(){
+  const has=sel!==null&&slides[cur]?.objects?.[sel];
+  ['btnDel','btnDup','btnFwd','btnBwd'].forEach(id=>dis(id,!has));
+  const oP=document.getElementById('objProps');const eP=document.getElementById('propEmpty');
+  if(!has){oP.style.display='none';eP.style.display='';document.getElementById('stObj').textContent='No selection';return;}
+  const obj=slides[cur].objects[sel];
+  oP.style.display='';eP.style.display='none';
+  document.getElementById('textP').style.display=obj.type==='text'?'':'none';
+  document.getElementById('shapeP').style.display=(obj.type==='shape'||obj.type==='line'||obj.type==='svg')?'':'none';
+  document.getElementById('imgP').style.display=obj.type==='image'?'':'none';
+  if(obj.type==='text'){
+    sv('pText',obj.text||'');sv('pFont',obj.font||'Cinzel');sv('pSize',obj.fontSize||48);
+    sv('pColor',obj.textColor||'#ffffff');sv('pAlign',obj.textAlign||'center');
+    document.getElementById('pBold').checked=!!obj.bold;
+    document.getElementById('pItalic').checked=!!obj.italic;
+    document.getElementById('pShadow').checked=obj.shadow!==false;
+    sv('pTBg',obj.textBg||'#000000');sv('pTBgA',obj.textBgAlpha||0);
+    document.getElementById('pTBgAv').textContent=(obj.textBgAlpha||0)+'%';
+  }
+  if(obj.type==='shape'||obj.type==='line'){
+    sv('pFill',obj.shapeFill||'#3b82f6');sv('pOpa',obj.shapeOpacity??80);
+    document.getElementById('pOpaV').textContent=(obj.shapeOpacity??80)+'%';
+    sv('pBord',obj.shapeBorder||'#ffffff');sv('pBordW',obj.shapeBorderW||0);sv('pRad',obj.shapeRadius||0);
+  }
+  if(obj.type==='image'){sv('pImgOpa',obj.imgOpacity??100);sv('pImgFit',obj.imgFit||'contain');}
+  updateGeom();
+  document.getElementById('stObj').textContent=obj.type+' ('+Math.round(obj.x)+','+Math.round(obj.y)+') '+Math.round(obj.w)+'x'+Math.round(obj.h);
+}
+function updateGeom(){
+  if(sel===null)return;const obj=slides[cur].objects[sel];
+  sv('pX',Math.round(obj.x));sv('pY',Math.round(obj.y));sv('pW',Math.round(obj.w));sv('pH',Math.round(obj.h));
+  sv('pRot',obj.rotation||0);document.getElementById('pRotV').textContent=(obj.rotation||0)+'°';
+}
+function sp(prop){
+  if(sel===null)return;const obj=slides[cur].objects[sel];
+  const map={
+    text:()=>gv('pText'),font:()=>gv('pFont'),fontSize:()=>parseInt(gv('pSize'))||48,
+    textColor:()=>gv('pColor'),textAlign:()=>gv('pAlign'),
+    bold:()=>document.getElementById('pBold').checked,
+    italic:()=>document.getElementById('pItalic').checked,
+    shadow:()=>document.getElementById('pShadow').checked,
+    fontWeight:()=>parseInt(gv('pWeight'))||400,
+    textTransform:()=>gv('pTransform'),
+    lineSpacing:()=>{const n=parseFloat(gv('pLine'))||1.25;document.getElementById('pLineV').textContent=n.toFixed(2);return n;},
+    letterSpacing:()=>{const n=parseFloat(gv('pLetter'))||0;document.getElementById('pLetterV').textContent=n.toFixed(1);return n;},
+    shadowColor:()=>gv('pShadowColor'),
+    shadowBlur:()=>{const n=parseInt(gv('pShadowBlur'))||0;document.getElementById('pShadowBlurV').textContent=n;return n;},
+    shadowOffsetX:()=>{const n=parseInt(gv('pShadowX'))||0;document.getElementById('pShadowXV').textContent=n;return n;},
+    shadowOffsetY:()=>{const n=parseInt(gv('pShadowY'))||0;document.getElementById('pShadowYV').textContent=n;return n;},
+    textBg:()=>gv('pTBg'),
+    textBgAlpha:()=>{const n=parseInt(gv('pTBgA'))||0;document.getElementById('pTBgAv').textContent=n+'%';return n;},
+    shapeFill:()=>gv('pFill'),
+    shapeOpacity:()=>{const n=parseInt(gv('pOpa'))||0;document.getElementById('pOpaV').textContent=n+'%';return n;},
+    shapeBorder:()=>gv('pBord'),shapeBorderW:()=>parseInt(gv('pBordW'))||0,
+    shapeRadius:()=>parseInt(gv('pRad'))||0,
+    imgOpacity:()=>parseInt(gv('pImgOpa'))||100,imgFit:()=>gv('pImgFit'),
+    rotation:()=>{const n=parseInt(gv('pRot'))||0;document.getElementById('pRotV').textContent=n+'°';return n;},
+  };
+  if(!map[prop])return;obj[prop]=map[prop]();if(prop==='bold' && obj.bold && Number(obj.fontWeight||400)<700)obj.fontWeight=700;if(prop==='fontWeight')obj.bold=Number(obj.fontWeight||400)>=700;drawCanvas();drawSidebar();
+}
+function sg(axis){if(sel===null)return;const m={x:'pX',y:'pY',w:'pW',h:'pH'};slides[cur].objects[sel][axis]=parseInt(gv(m[axis]))||0;drawCanvas();}
+
+// ── Save ──────────────────────────────────────────────────────────────────────
+async function savePres(addToSchedule=false){
+  const name=document.getElementById('presName').value.trim()||'Untitled';
+  const pres={id:presId||String(Date.now()),name,type:'created',slideCount:slides.length,slides,importedAt:Date.now()};
+  if(window.electronAPI?.isWeb){
+    try{
+      const existing=await window.electronAPI.getCreatedPresentations()||[];
+      const idx=existing.findIndex(p=>p.id===pres.id);
+      if(idx>=0)existing[idx]=pres; else existing.unshift(pres);
+      const r=await window.electronAPI.saveCreatedPresentations(existing);
+      if(!r?.ok&&!r?.success){showToast('⚠ Save may have failed');return;}
+    }catch(e){console.error('Save failed',e);showToast('⚠ Save failed: '+e.message);return;}
+    showToast('✓ Saved');
+    setTimeout(()=>{if(window.opener)window.close(); else window.location.href='/';},600);
+    return;
+  }
+  if(window.electronAPI){
+    await window.electronAPI.presEditorSaved(pres);
+    if(addToSchedule && window.electronAPI.addPresentationToScheduleFromEditor){
+      window.electronAPI.addPresentationToScheduleFromEditor({id:pres.id,name:pres.name,type:'created'});
+    }
+  }
+  window.close();
+}
+
+async function doImportToLibrary(){
+  if(window.electronAPI?.isWeb){
+    const input=document.createElement('input');
+    input.type='file';input.accept='.json';
+    input.onchange=async()=>{
+      const file=input.files?.[0];if(!file)return;
+      try{
+        const data=JSON.parse(await file.text());
+        if(data.slides){slides=data.slides.map(migrate);presId=data.id||String(Date.now());document.getElementById('presName').value=data.name||'Imported';cur=0;sel=null;refresh();syncBg();showToast('✓ Imported "'+data.name+'"');}
+      }catch(e){showToast('⚠ Import failed: '+e.message);}
+    };input.click();return;
+  }
+  if(!window.electronAPI?.pickPresFile || !window.electronAPI?.presentationEditorImportToLibrary){ return; }
+  const picked = await window.electronAPI.pickPresFile({pptxOnly:false});
+  if(picked?.canceled || !picked?.filePath) return;
+  const result = await window.electronAPI.presentationEditorImportToLibrary({filePath:picked.filePath});
+  if(!result?.success){ showToast('⚠ Import failed: ' + (result?.error || 'Unknown error')); return; }
+  if(window.electronAPI?.addPresentationToScheduleFromEditor){
+    window.electronAPI.addPresentationToScheduleFromEditor({id:result.id,name:result.name,type:'imported'});
+  }
+  window.close();
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function fu(p){
+  if(!p)return'';
+  if(p.startsWith('http')||p.startsWith('file://')||p.startsWith('media://')||p.startsWith('blob:'))return p;
+  return'file:///'+p.split('\\').join('/');
+}
+function rgba(hex,a){const r=parseInt(hex.slice(1,3),16)||0,g=parseInt(hex.slice(3,5),16)||0,b=parseInt(hex.slice(5,7),16)||0;return'rgba('+r+','+g+','+b+','+a+')';}
+function sv(id,val){const e=document.getElementById(id);if(e)e.value=val;}
+function gv(id){return document.getElementById(id)?.value||'';}
+
+
+// ── Scripture Picker ─────────────────────────────────────────────────────────
+let scriptureModal = null;
+
+function openScripturePicker() {
+  // Remove existing
+  if(scriptureModal) scriptureModal.remove();
+  
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+  
+  const box = document.createElement('div');
+  box.style.cssText = 'background:var(--panel);border:1px solid var(--border-lit);border-radius:8px;width:560px;max-height:520px;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.6);overflow:hidden;';
+  
+  // Get installed translations
+  const translations = ['KJV','NKJV','ESV','NIV','AMP','NLT'];
+  
+  box.innerHTML = `
+    <div style="padding:10px 14px;background:var(--deep);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <span style="font-size:13px;font-weight:700;color:var(--gold)">✝ Scripture Lookup</span>
+      <div style="flex:1"></div>
+      <select id="scriptTrans" style="font-size:11px;padding:3px 6px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;">
+        ${translations.map(t=>'<option value="'+t+'">'+t+'</option>').join('')}
+      </select>
+      <button onclick="this.closest('.scModal').remove()" style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;gap:8px">
+      <input id="scriptQuery" type="text" placeholder="Search e.g. John 3:16 or love…"
+        style="flex:1;font-size:12px;padding:6px 10px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;font-family:var(--font)">
+      <button id="scriptSearchBtn" style="padding:6px 14px;font-size:11px;border-radius:4px;border:1px solid var(--gold-dim);background:rgba(201,168,76,.15);color:var(--gold);cursor:pointer;">Search</button>
+    </div>
+    <div id="scriptResults" style="flex:1;overflow-y:auto;padding:6px 12px">
+      <div style="font-size:11px;color:var(--text-dim);padding:12px;text-align:center">Enter a reference (John 3:16) or keyword to search</div>
+    </div>
+    <div style="padding:8px 12px;background:var(--deep);border-top:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:8px">
+      <span style="font-size:10px;color:var(--text-dim)">Click a result to insert as a text object on the slide</span>
+    </div>`;
+  
+  box.className = 'scModal';
+  modal.className = 'scModal';
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+  scriptureModal = modal;
+  
+  const queryInput = box.querySelector('#scriptQuery');
+  const searchBtn  = box.querySelector('#scriptSearchBtn');
+  const resultsDiv = box.querySelector('#scriptResults');
+  const transSelect= box.querySelector('#scriptTrans');
+  
+  const doSearch = async () => {
+    const q = queryInput.value.trim();
+    if(!q) return;
+    resultsDiv.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:12px;text-align:center">Searching…</div>';
+    if(!window.electronAPI?.presBibleSearch) {
+      resultsDiv.innerHTML = '<div style="font-size:11px;color:var(--live);padding:12px">Bible search requires the desktop app.</div>';
+      return;
+    }
+    const res = await window.electronAPI.presBibleSearch({ query:q, translation: transSelect.value });
+    if(!res.results.length) {
+      resultsDiv.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:12px;text-align:center">No results found. Try a different reference or keyword.</div>';
+      return;
+    }
+    resultsDiv.innerHTML = res.results.map((r,i)=>`
+      <div data-idx="${i}" style="padding:8px 10px;border-radius:6px;border:1px solid var(--border);margin-bottom:4px;cursor:pointer;transition:background .1s"
+        onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background=''"
+        onclick="insertScripture(${JSON.stringify(r).replace(/"/g,'&quot;')})">
+        <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:2px">${r.ref} · ${transSelect.value}</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.4;font-family:'Crimson Pro',Georgia,serif">${r.text}</div>
+      </div>`).join('');
+  };
+  
+  searchBtn.addEventListener('click', doSearch);
+  queryInput.addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+  queryInput.focus();
+}
+
+function insertScripture(r) {
+  if(scriptureModal) scriptureModal.remove();
+  snap();
+  slides[cur].objects.push({
+    type:'text',
+    text: `"${r.text}"
+— ${r.ref}`,
+    font:'Crimson Pro', fontSize:44, textColor:'#c9a84c',
+    bold:false, italic:true, shadow:true,
+    textBg:'#000', textBgAlpha:0, rotation:0,
+    x:180, y:360, w:1560, h:360, textAlign:'center'
+  });
+  sel = slides[cur].objects.length - 1;
+  refresh();
+}
+
+// ── Inline double-click editing ───────────────────────────────────────────────
+// Double-click registered after DOMContentLoaded (cvEl set in init)
+function _registerDblClick() {
+  if(!cvEl) return;
+  cvEl.addEventListener('dblclick', e => {
+  const objEl = e.target.closest('[data-idx]');
+  if(!objEl) return;
+  const idx = parseInt(objEl.dataset.idx);
+  const obj = slides[cur].objects[idx];
+  if(!obj || obj.type !== 'text') return;
+  
+  e.preventDefault();
+  sel = idx;
+  
+  // Create an overlay textarea positioned exactly over the text object
+  const rect = objEl.getBoundingClientRect();
+  const ta = document.createElement('textarea');
+  ta.value = obj.text || '';
+  ta.style.cssText = `
+    position:fixed;left:${rect.left}px;top:${rect.top}px;
+    width:${rect.width}px;height:${rect.height}px;
+    font-family:'${obj.font||"Cinzel"}',serif;
+    font-size:${(obj.fontSize||48)*sc}px;
+    color:${obj.textColor||'#fff'};
+    font-weight:${obj.bold?'700':'400'};
+    font-style:${obj.italic?'italic':'normal'};
+    text-align:${obj.textAlign||'center'};
+    background:rgba(0,0,50,.85);
+    border:2px solid var(--gold);
+    border-radius:4px;outline:none;resize:none;
+    z-index:500;padding:8px;line-height:1.25;
+    box-sizing:border-box;cursor:text;`;
+  
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  
+  const commit = () => {
+    if(!document.body.contains(ta)) return;
+    snap();
+    obj.text = ta.value;
+    ta.remove();
+    // Update prop panel if open
+    const pT = document.getElementById('pText');
+    if(pT) pT.value = obj.text;
+    refresh();
+  };
+  
+  ta.addEventListener('blur', commit);
+  ta.addEventListener('keydown', e => {
+    if(e.key==='Escape') { ta.remove(); }
+    if(e.key==='Enter' && e.ctrlKey) commit();
+    e.stopPropagation(); // don't trigger editor shortcuts
+  });
+});
+} // end _registerDblClick
+
+// ── Shape Picker ──────────────────────────────────────────────────────────────
+function toggleShapePicker(e) {
+  e.stopPropagation();
+  const picker = document.getElementById('shapePicker');
+  const isOpen = picker.style.display !== 'none';
+  picker.style.display = isOpen ? 'none' : 'block';
+  if(!isOpen) {
+    const close = ev => { picker.style.display='none'; document.removeEventListener('click',close); };
+    setTimeout(()=>document.addEventListener('click',close), 10);
+  }
+}
+
+function pickShape(shape) {
+  document.getElementById('shapePicker').style.display = 'none';
+  addShape(shape);
+}
+
+// ── Alignment & bold shortcuts ────────────────────────────────────────────────
+function setAlign(align) {
+  if(sel===null) return;
+  const obj=slides[cur].objects[sel];
+  if(obj?.type==='text') {
+    snap(); obj.textAlign=align; sv('pAlign',align); refresh();
+    // Update active button
+    ['btnAlL','btnAlC','btnAlR'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
+    const map={left:'btnAlL',center:'btnAlC',right:'btnAlR'};
+    document.getElementById(map[align])?.classList.add('active');
+  }
+}
+function toggleBold() {
+  if(sel===null) return;
+  const obj=slides[cur].objects[sel];
+  if(obj?.type==='text') { snap(); obj.bold=!obj.bold; document.getElementById('pBold').checked=obj.bold; refresh(); }
+}
+function toggleItalic() {
+  if(sel===null) return;
+  const obj=slides[cur].objects[sel];
+  if(obj?.type==='text') { snap(); obj.italic=!obj.italic; document.getElementById('pItalic').checked=obj.italic; refresh(); }
+}
+
+// Show alignment buttons when text is selected
+const origUpdateProps = updateProps;
+updateProps = function() {
+  origUpdateProps();
+  const obj = sel!==null ? slides[cur]?.objects?.[sel] : null;
+  const ab = document.getElementById('alignBtns');
+  if(ab) ab.style.display = obj?.type==='text' ? 'flex' : 'none';
+  const bb = document.getElementById('btnBold');
+  const ib = document.getElementById('btnItalic');
+  if(bb) bb.classList.toggle('gold', obj?.bold===true);
+  if(ib) ib.classList.toggle('gold', obj?.italic===true);
+  // Update alignment active state
+  const align = obj?.textAlign || 'center';
+  ['btnAlL','btnAlC','btnAlR'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
+  if(obj?.type==='text'){
+    const map={left:'btnAlL',center:'btnAlC',right:'btnAlR'};
+    document.getElementById(map[align])?.classList.add('active');
+  }
+};
+
+// Ctrl+B / Ctrl+I shortcuts
+document.addEventListener('keydown', e => {
+  if((e.ctrlKey||e.metaKey) && e.key==='b' && sel!==null) { e.preventDefault(); toggleBold(); }
+  if((e.ctrlKey||e.metaKey) && e.key==='i' && sel!==null) { e.preventDefault(); toggleItalic(); }
+}, true);
+
+let _toastT;
+function showToast(msg) {
+  let t = document.getElementById('peToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'peToast';
+    t.style.cssText = 'position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border-lit);border-radius:6px;padding:7px 16px;font-size:12px;color:var(--text);z-index:9999;pointer-events:none;transition:opacity .3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(_toastT);
+  _toastT = setTimeout(() => t.style.opacity = '0', 2500);
+}
+</script>
+</body>
+</html>

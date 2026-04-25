@@ -1,0 +1,1906 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#000">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;
+             connect-src 'self';
+             script-src 'self' 'unsafe-inline';
+             style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+             img-src 'self' file: data: blob: media: http: https:;
+             media-src 'self' file: blob: media: http: https:;">
+  <title>AnchorCast — Projection</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400;1,700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400;1,700&display=swap" rel="stylesheet"></noscript>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100vw; height: 100vh;
+      background: #000;
+      overflow: hidden;
+      color: #fff;
+      position: relative;
+      cursor: none;
+    }
+    /* Background layers */
+    .bg {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 35% 45%, #100828 0%, #000418 55%, #000 100%);
+      transition: background 0.8s ease;
+    }
+    .bg::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(circle at 15% 75%, rgba(201,168,76,0.07) 0%, transparent 50%),
+        radial-gradient(circle at 85% 20%, rgba(201,168,76,0.04) 0%, transparent 50%);
+    }
+    /* Subtle grain overlay */
+    .bg.theme-video::before, .bg.theme-video::after { display:none; }
+    .bg::after {
+      content: '';
+      position: absolute; inset: 0;
+      opacity: 0.015;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+    }
+
+    /* Main content area */
+    .stage {
+      position: relative; z-index: 2;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      width: 100%; height: 100%;
+      padding: 80px 140px;
+      text-align: center;
+      opacity: 1;
+      transition: opacity 0.45s ease, transform 0.45s ease;
+    }
+    .stage.out { opacity: 0; transform: translateY(14px); }
+
+    .ref-label {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(16px, 2vw, 28px);
+      font-weight: 500;
+      color: #c9a84c;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      margin-bottom: clamp(20px, 3vh, 50px);
+      opacity: 0.9;
+    }
+
+    .verse-num {
+      font-size: 0.55em;
+      color: inherit;
+      vertical-align: super;
+      -webkit-text-stroke: 0px transparent !important;
+      margin-right: 4px;
+    }
+
+    .verse-text {
+      font-family: 'Crimson Pro', Georgia, serif;
+      font-size: clamp(32px, 4.5vw, 72px);
+      line-height: 1.6;
+      color: #ede6d8;
+      font-weight: 400;
+      text-shadow:
+        0 2px 40px rgba(0,0,0,0.95),
+        0 0 80px rgba(0,0,0,0.6);
+      max-width: 1200px;
+    }
+
+    .verse-text em {
+      font-style: italic;
+      color: #e8c870;
+    }
+
+    .trans-label {
+      margin-top: clamp(18px, 2.5vh, 40px);
+      font-family: 'Cinzel', serif;
+      font-size: clamp(12px, 1.2vw, 18px);
+      color: #6a5220;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+    }
+
+    .part-badge {
+      position: absolute;
+      top: 18px;
+      right: 22px;
+      z-index: 6;
+      display: none;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(201,168,76,.38);
+      background: rgba(0,0,0,.5);
+      color: #f0d993;
+      font-family: 'Cinzel', serif;
+      font-size: clamp(10px, 1vw, 14px);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    /* Empty / cleared state */
+    .empty-state {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 100%;
+      position: relative; z-index: 2;
+    }
+    .cross-mark {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(60px, 10vw, 140px);
+      color: rgba(255,255,255,0.04);
+      user-select: none;
+    }
+
+    /* ── Media layer ── */
+    .media-layer {
+      position: absolute; inset: 0; z-index: 1;
+      display: none; align-items: center; justify-content: center;
+      background: #000;
+    }
+    .media-layer.active { display: flex; }
+    .media-layer img {
+      width: 100%; height: 100%; object-fit: cover;
+      transition: opacity 0.6s ease;
+    }
+    .media-layer video {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    /* Fade transition overlay */
+    .fade-overlay {
+      position: absolute; inset: 0; z-index: 5;
+      background: #000; opacity: 0; pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+    .fade-overlay.fading { opacity: 1; }
+
+    /* Caption overlay */
+    .caption-layer {
+      position: absolute; bottom: 0; left: 0; right: 0; z-index: 6;
+      padding: clamp(20px,4vh,60px) clamp(30px,6vw,100px);
+      background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
+      display: none;
+    }
+    .caption-layer.active { display: block; }
+    .caption-text {
+      font-family: 'Crimson Pro', Georgia, serif;
+      font-size: clamp(20px, 2.5vw, 40px);
+      color: #fff;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.9);
+      line-height: 1.4;
+      text-align: center;
+    }
+
+    /* Timer/countdown overlay */
+    .timer-layer {
+      position: absolute; z-index: 7;
+      display: none; flex-direction: column;
+    }
+    .timer-layer.active { display: flex; }
+    .timer-layer.pos-center {
+      inset: 0; align-items: center; justify-content: center;
+    }
+    .timer-layer.pos-top {
+      top: 30px; left: 0; right: 0; align-items: center;
+    }
+    .timer-layer.pos-edge {
+      top: 30px; right: 40px; align-items: flex-end;
+    }
+    .timer-display {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(48px, 8vw, 120px);
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 0 6px rgba(0,0,0,1), 0 0 12px rgba(0,0,0,0.9), 0 2px 20px rgba(0,0,0,0.8),
+                   2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+      letter-spacing: 0.05em;
+      line-height: 1;
+      -webkit-text-stroke: 1.5px rgba(0,0,0,0.6);
+    }
+    .timer-layer.pos-edge .timer-display {
+      font-size: clamp(28px, 4vw, 64px);
+      -webkit-text-stroke: 1px rgba(0,0,0,0.6);
+    }
+    .timer-label {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(12px, 1.6vw, 22px);
+      font-weight: 700;
+      color: rgba(255,255,255,0.85);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-top: 8px;
+      text-align: center;
+      text-shadow: 0 0 4px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.8),
+                   1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+      -webkit-text-stroke: 0.5px rgba(0,0,0,0.5);
+    }
+    .timer-layer.pos-edge .timer-label {
+      font-size: clamp(9px, 1vw, 14px);
+      margin-top: 4px;
+      text-align: right;
+    }
+    .timer-display.warning { color: #e74c3c; }
+    .timer-display.overtime { color: #e74c3c; animation: blink 1s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .nursery-alert-layer {
+      position: absolute; z-index: 8; display: none;
+      left: 0; right: 0;
+      padding: 12px 24px;
+      overflow: hidden;
+      animation: alertFadeIn 0.4s ease;
+    }
+    .nursery-alert-layer.active { display: flex; align-items: center; }
+    .nursery-alert-layer.pos-bottom-left  { bottom: 0; }
+    .nursery-alert-layer.pos-bottom-right { bottom: 0; }
+    .nursery-alert-layer.pos-top-left     { top: 0; }
+    .nursery-alert-layer.pos-top-right    { top: 0; }
+    .nursery-alert-text {
+      font-weight: 700; line-height: 1.3; white-space: nowrap;
+      width: 100%; text-align: center;
+    }
+
+    .message-alert-layer {
+      position: absolute; left: 0; right: 0; z-index: 9;
+      display: none; overflow: hidden; height: auto;
+      padding: 8px 0;
+    }
+    .message-alert-layer.active { display: block; }
+    .message-alert-layer.pos-top    { top: 0; }
+    .message-alert-layer.pos-bottom { bottom: 0; }
+    .message-alert-text {
+      display: inline-block; white-space: nowrap;
+      font-weight: 700; line-height: 1.3;
+      animation: alertScroll linear infinite;
+      padding-left: 100%;
+    }
+    @keyframes alertFadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    @keyframes alertScroll { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+
+    /* Logo overlay layer */
+    .logo-overlay-layer {
+      position: absolute; z-index: 10;
+      display: none; pointer-events: none;
+    }
+    .logo-overlay-layer.active { display: block; }
+    .logo-overlay-layer img,
+    .logo-overlay-layer video {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+    .logo-overlay-layer .logo-resize-handle {
+      display: none;
+    }
+
+    /* Theme variants */
+    body[data-theme="dawn"] .bg {
+      background: radial-gradient(ellipse at 40% 50%, #1a0c08 0%, #080010 55%, #000 100%);
+    }
+    body[data-theme="deep"] .bg {
+      background: radial-gradient(ellipse at 50% 50%, #001028 0%, #000408 55%, #000 100%);
+    }
+  </style>
+</head>
+<body style="background:#000">
+<div class="bg"></div>
+
+<!-- Media layer (images + video) -->
+<div class="media-layer" id="mediaLayer">
+  <img id="mediaImg" src="" style="display:none">
+  <video id="mediaVideo" playsinline style="display:none"></video>
+</div>
+
+<!-- Caption overlay -->
+<div class="caption-layer" id="captionLayer">
+  <div class="caption-text" id="captionText"></div>
+</div>
+
+<!-- Timer/countdown overlay -->
+<div class="timer-layer pos-top" id="timerLayer">
+  <div class="timer-display" id="timerDisplay">00:00</div>
+  <div class="timer-label" id="timerLabel">COUNTDOWN</div>
+</div>
+
+<!-- Nursery alert overlay -->
+<div class="nursery-alert-layer pos-bottom-left" id="nurseryAlertLayer">
+  <div class="nursery-alert-text" id="nurseryAlertText"></div>
+</div>
+
+<!-- Message alert overlay -->
+<div class="message-alert-layer pos-top" id="messageAlertLayer">
+  <div class="message-alert-text" id="messageAlertText"></div>
+</div>
+
+<!-- Logo overlay layer (draggable/resizable) -->
+<div class="logo-overlay-layer" id="logoOverlayLayer">
+  <div class="logo-resize-handle" id="logoResizeHandle"></div>
+</div>
+
+<!-- Fade transition overlay -->
+<div class="fade-overlay" id="fadeOverlay"></div>
+
+<div class="part-badge" id="partBadge"></div>
+
+<!-- Empty default state -->
+<div class="empty-state" id="emptyState">
+  <div class="cross-mark">✝</div>
+</div>
+
+<!-- Verse display -->
+<div class="stage" id="stage" style="display:none">
+  <div class="ref-label" id="refLabel"></div>
+  <div class="verse-text" id="verseText"></div>
+  <div class="trans-label" id="transLabel"></div>
+</div>
+
+<script src="js/electron-shim.js"></script>
+<script>
+  // ── All DOM refs — declared first so all functions can access them ─────────
+  const stage       = document.getElementById('stage');
+  const empty       = document.getElementById('emptyState');
+  const refLabel    = document.getElementById('refLabel');
+  const verseEl     = document.getElementById('verseText');
+  const transEl     = document.getElementById('transLabel');
+  const mediaLayer  = document.getElementById('mediaLayer');
+  const mediaImg    = document.getElementById('mediaImg');
+  const mediaVideo  = document.getElementById('mediaVideo');
+  const captionLayer= document.getElementById('captionLayer');
+  const captionText = document.getElementById('captionText');
+  const timerLayer  = document.getElementById('timerLayer');
+  const timerDisp   = document.getElementById('timerDisplay');
+  const timerLabel  = document.getElementById('timerLabel');
+  const fadeOverlay = document.getElementById('fadeOverlay');
+  const partBadge   = document.getElementById('partBadge');
+  const nurseryAlertLayer = document.getElementById('nurseryAlertLayer');
+  const nurseryAlertText  = document.getElementById('nurseryAlertText');
+  const messageAlertLayer = document.getElementById('messageAlertLayer');
+  const messageAlertText  = document.getElementById('messageAlertText');
+  const logoOverlayLayer  = document.getElementById('logoOverlayLayer');
+  const logoResizeHandle  = document.getElementById('logoResizeHandle');
+
+
+  function clearProjectionMediaState() {
+    currentOverlayPreserveMedia = false;
+    if (partBadge) { partBadge.style.display = 'none'; partBadge.textContent = ''; }
+    mediaVideo.pause?.();
+    mediaVideo.src = '';
+    mediaVideo.style.display = 'none';
+    mediaImg.src = '';
+    mediaImg.style.display = 'none';
+    const oldAudio = mediaLayer.querySelector('audio');
+    if (oldAudio) { oldAudio.pause?.(); oldAudio.src = ''; oldAudio.remove(); }
+    const oldOverlay = mediaLayer.querySelector('.audio-overlay');
+    if (oldOverlay) oldOverlay.remove();
+    mediaLayer.querySelectorAll('.created-slide-content').forEach(e => e.remove());
+    document.querySelectorAll('.theme-box-el').forEach(e => e.remove());
+    const bgVid = document.getElementById('themeBgVideo');
+    if (bgVid) { bgVid.pause?.(); bgVid.src = ''; bgVid.dataset.mediaUrl = ''; bgVid.style.display = 'none'; }
+    const bgOv = document.getElementById('themeBgOverlay');
+    if (bgOv) bgOv.style.background = 'transparent';
+    mediaLayer.style.background = '#000';
+    mediaLayer.style.backgroundImage = 'none';
+    mediaLayer.classList.remove('active');
+    stage.style.display = 'none';
+    stage.classList.remove('out');
+  }
+
+
+
+  function clearProjectionTextState() {
+    currentOverlayPreserveMedia = false;
+    if (partBadge) { partBadge.style.display = 'none'; partBadge.textContent = ''; }
+    mediaVideo.pause?.();
+    mediaVideo.src = '';
+    mediaVideo.style.display = 'none';
+    mediaImg.src = '';
+    mediaImg.style.display = 'none';
+    const oldAudio = mediaLayer.querySelector('audio');
+    if (oldAudio) { oldAudio.pause?.(); oldAudio.src = ''; oldAudio.remove(); }
+    const oldOverlay = mediaLayer.querySelector('.audio-overlay');
+    if (oldOverlay) oldOverlay.remove();
+    mediaLayer.querySelectorAll('.created-slide-content').forEach(e => e.remove());
+    document.querySelectorAll('.theme-box-el').forEach(e => e.remove());
+    mediaLayer.style.background = '#000';
+    mediaLayer.style.backgroundImage = 'none';
+    mediaLayer.classList.remove('active');
+    stage.style.display = 'none';
+    stage.classList.remove('out');
+  }
+
+  function updatePartBadge() {
+    if (!partBadge) return;
+    partBadge.style.display = 'none';
+    partBadge.textContent = '';
+  }
+
+  function getBoxContent(box, data) {
+    const role   = (box.role || '').toLowerCase();
+    const isSong = Array.isArray(data.lines);
+
+    if (role === 'main') {
+      if (isSong) return (data.lines || []).join('\n');
+      if (data.scriptureShowRefOnly) return '';
+      const showNums = (data.showVerseNumbers !== false) && (data.themeData?.showVerseNum !== false);
+      const breakOnNew = !!data.scriptureBreakOnNewVerse;
+      if (data.rangeVerses && data.rangeVerses.length > 0) {
+        const sep = breakOnNew ? '\n' : '  ';
+        return data.rangeVerses.map(v => {
+          const num = showNums ? v.verse + ' ' : '';
+          return num + v.text;
+        }).join(sep);
+      }
+      let text = data.text || box.text || '';
+      if (showNums && data.verse) text = data.verse + ' ' + text;
+      return text;
+    }
+    if (role === 'ref') {
+      if (isSong) {
+        if (!data.showSongMetadata) return '';
+        return data.title ? `${data.title}${data.sectionLabel ? ' · ' + data.sectionLabel : ''}` : (box.text || '');
+      }
+      if (data.scriptureShowReference === false) return '';
+      const dRef = data.scriptureAbbreviateBooks ? _abbreviateRef(data.ref) : data.ref;
+      return dRef ? `${dRef}${data.translation ? ' · ' + data.translation : ''}` : (box.text || '');
+    }
+    if (role === 'title') {
+      if (isSong && !data.showSongMetadata) return '';
+      return data.title || data.name || box.text || '';
+    }
+    if (role === 'subtitle') {
+      if (isSong && !data.showSongMetadata) return '';
+      return data.sectionLabel || data.subtitle || box.text || '';
+    }
+    return box.text || '';
+  }
+
+  function _projRefOutlineCss(data) {
+    const st = data.scriptureRefOutlineStyle || 'none';
+    if (st === 'none') return '';
+    const w = data.scriptureRefOutlineWidth ?? 0;
+    if (w <= 0) return '';
+    const c = data.scriptureRefOutlineColor || '#000';
+    const o = (data.scriptureRefOutlineOpacity ?? 100) / 100;
+    const r = parseInt(c.slice(1,3),16)||0, g = parseInt(c.slice(3,5),16)||0, b = parseInt(c.slice(5,7),16)||0;
+    return `-webkit-text-stroke:${w}px rgba(${r},${g},${b},${o});paint-order:stroke fill;`;
+  }
+
+  function getBoxContentHTML(box, data) {
+    const role = (box.role || '').toLowerCase();
+    const isSong = Array.isArray(data.lines);
+    if (role !== 'main' || isSong) return null;
+    if (data.scriptureShowRefOnly) return '';
+    const showNums = (data.showVerseNumbers !== false) && (data.themeData?.showVerseNum !== false);
+    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const safeNum = n => String(parseInt(n, 10) || 0);
+    const breakOnNew = !!data.scriptureBreakOnNewVerse;
+    const refBox = (data.themeData?.boxes || []).find(b => (b.role||'').toLowerCase() === 'ref');
+    const numColor = box.refColor || refBox?.color || data.themeData?.refColor || data.themeData?.accentColor || '#c9a84c';
+    const _roc = _projRefOutlineCss(data);
+    const refPos = data.scriptureRefPosition || 'top';
+
+    let inlineRefHTML = '';
+    if (!refBox && data.scriptureShowReference !== false) {
+      let dRef = data.scriptureAbbreviateBooks ? _abbreviateRef(data.ref) : data.ref;
+      if (dRef) {
+        const refLabel = dRef + (data.translation ? ' (' + data.translation + ')' : '');
+        // Read ref font from Preferences (data.scriptureRefFont) — not from box theme properties
+        const _rf = data.scriptureRefFont || {};
+        const rFF = _rf.fontFamily || 'Cinzel';
+        const rFS = _rf.fontSize || 38;
+        const rFC = _rf.fontColor || numColor;
+        const _rfBold = _rf.fontStyle === 'bold' || _rf.fontStyle === 'bold-italic';
+        const rFW = _rfBold ? 700 : 500;
+        const rfOpacity = (_rf.fontOpacity ?? 90) / 100;
+        const rfAlign   = _rf.textAlign || box.align || 'center';
+        const rfLSem    = _rf.letterSpacing ?? 0.25;
+        const rfUpper   = _rf.uppercase !== false ? 'uppercase' : 'none';
+        const refMargin = refPos === 'bottom' ? 'margin-top:0.6vw;margin-bottom:0' : 'margin-bottom:0.6vw';
+        const _rfOutCss = _projRefOutlineCss(data);
+        inlineRefHTML = `<div style="font-family:'${rFF}',serif;font-size:${(rFS/19.2).toFixed(4)}vw;color:${rFC};font-weight:${rFW};opacity:${rfOpacity};letter-spacing:${rfLSem}em;text-transform:${rfUpper};${refMargin};text-align:${rfAlign};flex-shrink:0;${_rfOutCss}">${esc(refLabel)}</div>`;
+      }
+    }
+
+    let verseHTML = null;
+    if (data.rangeVerses && data.rangeVerses.length > 0) {
+      const sep = breakOnNew ? '<br>' : '  ';
+      if (showNums) {
+        verseHTML = data.rangeVerses.map(v =>
+          `<span class="verse-num" style="color:${numColor};${_roc}">${safeNum(v.verse)}</span>${esc(v.text)}`
+        ).join(sep);
+      } else if (inlineRefHTML) {
+        verseHTML = data.rangeVerses.map(v => esc(v.text)).join(sep);
+      }
+    } else if (data.verse && showNums) {
+      const text = data.text || box.text || '';
+      verseHTML = `<span class="verse-num" style="color:${numColor};${_roc}">${safeNum(data.verse)}</span>${esc(text)}`;
+    } else if (inlineRefHTML) {
+      const text = data.text || box.text || '';
+      verseHTML = esc(text);
+    }
+
+    if (verseHTML === null && !inlineRefHTML) return null;
+    if (!inlineRefHTML) return verseHTML;
+    const wrappedVerse = verseHTML ? `<div style="min-height:0">${verseHTML}</div>` : '';
+    if (refPos === 'bottom') return wrappedVerse + inlineRefHTML;
+    return inlineRefHTML + wrappedVerse;
+  }
+
+  function getBoxTextTransform(box, data, theme) {
+    return data.songTextTransform
+      || data.scriptureTextTransform
+      || box.textTransform
+      || theme?.textTransform
+      || 'none';
+  }
+
+  function fitProjectionBoxFontSize(box, content) {
+    const raw = String(content || '').trim();
+    const base = Number(box?.fontSize || 52);
+    if (!raw) return base;
+    const width = Math.max(120, Number(box?.w || 1680) - 40);
+    const height = Math.max(80, Number(box?.h || 680) - 40);
+    const lineSpacing = Number(box?.lineSpacing || 1.4);
+    const isBold = box.bold || (box.fontWeight && Number(box.fontWeight) >= 700);
+    const charRatio = isBold ? 0.62 : 0.58;
+    let size = base;
+    while (size > 16) {
+      const approxCharWidth = Math.max(5, size * charRatio);
+      const charsPerLine = Math.max(6, Math.floor(width / approxCharWidth));
+      const wrappedLines = raw.split(/\n+/).reduce((sum, line) => sum + Math.max(1, Math.ceil((line.length || 1) / charsPerLine)), 0);
+      const maxLines = Math.max(1, Math.floor(height / (size * lineSpacing)));
+      if (wrappedLines <= maxLines) return size;
+      size -= 2;
+    }
+    return Math.max(16, size);
+  }
+
+  function playProjectionVideo(videoEl) {
+    if (!videoEl) return;
+    const forceAudioState = () => {
+      const wantMuted = !!videoEl.dataset.wantMuted && videoEl.dataset.wantMuted !== 'false';
+      videoEl.muted = wantMuted;
+      videoEl.defaultMuted = wantMuted;
+      if (wantMuted) videoEl.setAttribute('muted', '');
+      else videoEl.removeAttribute('muted');
+      const vol = Math.max(0, Math.min(1, Number(videoEl.dataset.wantVolume || '1')));
+      videoEl.volume = vol;
+    };
+    forceAudioState();
+    videoEl.onloadedmetadata = () => {
+      forceAudioState();
+      videoEl.play().catch(() => {});
+    };
+    setTimeout(() => { forceAudioState(); videoEl.play().catch(() => {}); }, 40);
+    setTimeout(() => { forceAudioState(); videoEl.play().catch(() => {}); }, 250);
+  }
+
+  function applyTheme(data) {
+    const t = data.themeData;
+    const bg = document.querySelector('.bg');
+    const preserveMedia = !!currentOverlayPreserveMedia;
+    if (!t) {
+      document.body.setAttribute('data-theme', data.theme || 'sanctuary');
+      bg.style.background = '';
+      verseEl.style.cssText = '';
+      refLabel.style.color  = '';
+      transEl.style.color   = '';
+      stage.style.textAlign = 'center';
+      stage.style.padding   = '80px 120px';
+      return;
+    }
+
+    // ── Background ──
+    if (preserveMedia) {
+      bg.classList.remove('theme-video');
+      bg.style.background = 'transparent';
+      bg.style.boxShadow = 'none';
+      const bgVid = document.getElementById('themeBgVideo');
+      if (bgVid) { bgVid.pause(); bgVid.src = ''; bgVid.dataset.mediaUrl = ''; bgVid.style.display = 'none'; }
+      const bgOv = document.getElementById('themeBgOverlay');
+      if (bgOv) bgOv.style.pointerEvents = 'none';
+    } else if (t.bgType === 'image' && t.bgImage) {
+      bg.classList.remove('theme-video');
+      bg.style.background = `url('${toProjectionMediaUrl(getMediaPath(t.bgImage))}') center/cover no-repeat`; 
+      bg.style.boxShadow  = `inset 0 0 0 9999px rgba(0,0,0,${(t.bgOverlay||0)/100})`;
+      // Stop any video
+      mediaVideo.pause?.(); mediaVideo.src = '';
+    } else if (t.bgType === 'video' && t.bgVideo) {
+      // Video plays in .bg layer behind stage text (z-index:2)
+      bg.classList.add('theme-video');
+      bg.style.background = 'transparent';
+      bg.style.overflow   = 'hidden';
+      bg.style.boxShadow  = 'none';
+      // Overlay darkness on top of video
+      const ovAlpha = (t.bgOverlay || 0) / 100;
+      // Create or reuse dedicated bg video element
+      let bgVid = document.getElementById('themeBgVideo');
+      if (!bgVid) {
+        bgVid = document.createElement('video');
+        bgVid.id       = 'themeBgVideo';
+        bgVid.loop     = true;
+        bgVid.muted    = true;
+        bgVid.defaultMuted = true;
+        bgVid.playsInline = true;
+        bgVid.autoplay = true;
+        bgVid.preload = 'auto';
+        bgVid.setAttribute('muted','');
+        bgVid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;' +
+          'object-fit:cover;z-index:0;pointer-events:none;display:block';
+        bg.appendChild(bgVid);
+      }
+      const themeVideoUrl = toProjectionMediaUrl(getMediaPath(t.bgVideo));
+      if (bgVid.dataset.mediaUrl !== themeVideoUrl) {
+        bgVid.src = themeVideoUrl;
+        bgVid.dataset.mediaUrl = themeVideoUrl;
+        bgVid.load();
+      }
+      bgVid.style.display = 'block';
+      playProjectionVideo(bgVid);
+      // Overlay div for darkness
+      let bgOv = document.getElementById('themeBgOverlay');
+      if (!bgOv) {
+        bgOv = document.createElement('div');
+        bgOv.id = 'themeBgOverlay';
+        bgOv.style.cssText = 'position:absolute;inset:0;z-index:1;pointer-events:none';
+        bg.appendChild(bgOv);
+      }
+      bgOv.style.background = ovAlpha > 0 ? `rgba(0,0,0,${ovAlpha})` : 'transparent';
+    } else {
+      bg.classList.remove('theme-video');
+      bg.style.boxShadow = 'none';
+      mediaVideo.pause?.(); mediaVideo.src = '';
+      // Stop any theme bg video
+      const bgVid = document.getElementById('themeBgVideo');
+      if (bgVid) { bgVid.pause(); bgVid.src = ''; bgVid.dataset.mediaUrl = ''; bgVid.style.display = 'none'; }
+      if (t.bgType === 'solid')  bg.style.background = t.bgColor1 || '#000';
+      else if (t.bgType === 'linear') bg.style.background = `linear-gradient(135deg, ${t.bgColor1}, ${t.bgColor2||'#000'})`;
+      else bg.style.background = `radial-gradient(ellipse at 35% 45%, ${t.bgColor1||'#10082a'} 0%, ${t.bgColor2||'#000'} 65%, #000 100%)`;
+    }
+
+    // ── New box-based theme format ──
+    if (t.boxes && t.boxes.length > 0) {
+      const W = 1920, H = 1080;
+      const toP = (v, total) => (v / total * 100).toFixed(3) + '%';
+
+      // Hide default stage elements — we render all boxes manually
+      refLabel.style.cssText  = 'display:none';
+      transEl.style.cssText   = 'display:none';
+
+      // Remove any previously rendered theme boxes
+      document.querySelectorAll('.theme-box-el').forEach(e => e.remove());
+
+      const isSong = Array.isArray(data.lines);
+      const userFont = isSong ? (data.songFont || {}) : (data.scriptureFont || {});
+      const userMargins = {
+        top: userFont.marginTop, bottom: userFont.marginBottom,
+        left: userFont.marginLeft, right: userFont.marginRight
+      };
+
+      t.boxes.forEach(box => {
+        const el = document.createElement('div');
+        el.className = 'theme-box-el';
+        const role = (box.role || '').toLowerCase();
+        const isMain = (role === 'main');
+        const mT = isMain && userMargins.top != null ? userMargins.top : 0;
+        const mB = isMain && userMargins.bottom != null ? userMargins.bottom : 0;
+        const mL = isMain && userMargins.left != null ? userMargins.left : 0;
+        const mR = isMain && userMargins.right != null ? userMargins.right : 0;
+
+        const vAlign = isMain && userFont.verticalAlign
+          ? (userFont.verticalAlign === 'top' ? 'flex-start' : userFont.verticalAlign === 'bottom' ? 'flex-end' : 'center')
+          : (box.valign==='top'?'flex-start':box.valign==='bottom'?'flex-end':'center');
+
+        el.style.cssText = `
+          position:absolute; overflow:hidden; box-sizing:border-box;
+          left:${toP(box.x, W)}; top:${toP(box.y, H)};
+          width:${toP(box.w, W)}; height:${toP(box.h, H)};
+          display:flex; flex-direction:column;
+          align-items:${box.align==='left'?'flex-start':box.align==='right'?'flex-end':'center'};
+          justify-content:${vAlign};
+          text-align:${box.align||'center'};
+          padding:${isMain ? `${mT}px ${mR}px ${mB}px ${mL}px` : '20px'};
+          ${box.bgOpacity>0 ? `background:${_hexToRgba(box.bgFill||'#000',box.bgOpacity/100)};` : ''}
+          ${box.borderW>0 ? `border:${box.borderW}px solid ${box.borderColor||'#fff'};` : ''}
+          ${box.borderRadius>0 ? `border-radius:${box.borderRadius}px;` : ''}
+          z-index:3;
+        `;
+        const inner = document.createElement('div');
+        const plainContent = getBoxContent(box, data);
+        const _hasInlineRef = isMain && !isSong
+          && !(data.themeData?.boxes || []).some(b => (b.role||'').toLowerCase() === 'ref')
+          && data.scriptureShowReference !== false && data.ref;
+        const _inlineRefH = _hasInlineRef ? ((data.scriptureRefFont?.fontSize || 38) * 2.0 + 30) : 0;
+        const fitBox = isMain ? Object.assign({}, box, {
+          w: box.w - (mL + mR), h: box.h - (mT + mB) - _inlineRefH
+        }) : box;
+        if (isMain && userFont.fontSize) fitBox.fontSize = userFont.fontSize;
+        if (isMain && userFont.lineSpacing) fitBox.lineSpacing = userFont.lineSpacing;
+        if (isMain && userFont.fontStyle) {
+          const ufBold = userFont.fontStyle === 'bold' || userFont.fontStyle === 'bold-italic';
+          fitBox.bold = ufBold;
+          fitBox.fontWeight = ufBold ? 700 : 400;
+        }
+        const _autoSize = data.scriptureAutoSize || 'resize';
+        const _normalize = data.scriptureNormalizeSize !== false;
+        let fittedSize;
+        if (_autoSize === 'none') {
+          fittedSize = fitBox.fontSize || box.fontSize || 52;
+        } else {
+          fittedSize = fitProjectionBoxFontSize(fitBox, plainContent);
+          if (_normalize) {
+            const maxNorm = Math.round((fitBox.fontSize || box.fontSize || 52) * 0.85);
+            fittedSize = Math.min(fittedSize, maxNorm);
+          }
+        }
+        const boxLS = box.lineSpacing || 1.6;
+        const effBoxLS = (isMain && data.scriptureAdditionalLineSpacing) ? Math.min(boxLS + 0.4, 2.4) : boxLS;
+        const baseCss = `
+          font-family:'${box.fontFamily === 'Cinzel' ? 'Crimson Pro' : (box.fontFamily||'Crimson Pro')}',Georgia,serif;
+          font-size:${(fittedSize / 19.2).toFixed(4)}vw;
+          line-height:${effBoxLS};
+          color:${box.color||'#fff'};
+          font-weight:${box.bold ? '700' : (box.fontWeight || '400')};
+          font-style:${box.italic?'italic':'normal'};
+          text-shadow:0 2px 12px rgba(0,0,0,0.9);
+          width:100%;
+          text-align:${box.align||'center'};
+          white-space:pre-wrap;
+          text-transform:${getBoxTextTransform(box, data, t)};
+        `;
+        const fontOv = isMain ? _buildBoxFontOverrides(userFont) : '';
+        let boxFinalCss = fontOv ? baseCss + ';' + fontOv : baseCss;
+        if (role === 'ref') {
+          const _rOS = data.scriptureRefOutlineStyle || 'none';
+          if (_rOS !== 'none') {
+            const _rW = data.scriptureRefOutlineWidth ?? 0;
+            const _rC = data.scriptureRefOutlineColor || '#000';
+            const _rO = (data.scriptureRefOutlineOpacity ?? 100) / 100;
+            const _rR = parseInt(_rC.slice(1,3),16)||0, _rG = parseInt(_rC.slice(3,5),16)||0, _rB = parseInt(_rC.slice(5,7),16)||0;
+            boxFinalCss += `;-webkit-text-stroke:${(_rW/19.2).toFixed(4)}vw rgba(${_rR},${_rG},${_rB},${_rO});paint-order:stroke fill`;
+          }
+        }
+        inner.dataset.role = role;
+        const htmlContent = getBoxContentHTML(box, data);
+        if (htmlContent && _hasInlineRef) {
+          inner.style.cssText = boxFinalCss + ';display:flex;flex-direction:column';
+          inner.innerHTML = htmlContent;
+        } else if (htmlContent) {
+          inner.style.cssText = boxFinalCss;
+          inner.innerHTML = htmlContent;
+        } else {
+          inner.style.cssText = boxFinalCss;
+          inner.textContent = plainContent;
+        }
+        el.appendChild(inner);
+        document.body.appendChild(el);
+      });
+
+      const _isSongBox = Array.isArray(data.lines);
+      if (_isSongBox && data.showSongMetadata) {
+        const _hasMetaBox = t.boxes.some(b => {
+          const _r = (b.role || '').toLowerCase();
+          return _r === 'ref' || _r === 'title' || _r === 'subtitle';
+        });
+        if (!_hasMetaBox && (data.title || data.sectionLabel)) {
+          const _mainBox = t.boxes.find(b => (b.role||'').toLowerCase() === 'main') || t.boxes[0];
+          const _metaLabel = (data.title || '') + (data.sectionLabel ? ' \u00B7 ' + data.sectionLabel : '');
+          const _metaEl = document.createElement('div');
+          _metaEl.className = 'theme-box-el';
+          const _mTop = Math.max(0, (_mainBox?.y ?? 100) - 50);
+          _metaEl.style.cssText = `position:absolute;left:${toP(_mainBox?.x ?? 120, W)};top:${toP(_mTop, H)};
+            width:${toP(_mainBox?.w ?? 1680, W)};text-align:center;
+            font-size:clamp(11px,1.1vw,18px);color:${t.accentColor||'#c9a84c'};
+            letter-spacing:0.18em;text-transform:uppercase;font-family:sans-serif;opacity:0.8;z-index:4`;
+          _metaEl.textContent = _metaLabel;
+          document.body.appendChild(_metaEl);
+        }
+      }
+
+      // Hide the default stage (we use custom boxes)
+      stage.style.display = 'none';
+      return;
+    }
+
+    // ── Legacy property-based format (backward compat) ──
+    // FIX: Cinzel is all-caps only — swap to Crimson Pro for song/scripture body text
+    const _safeFont = (t.fontFamily === 'Cinzel' && (isSong || !t.category)) ? 'Crimson Pro' : (t.fontFamily || 'Crimson Pro');
+    const fontSize = `${((t.fontSize||52) / 19.2).toFixed(4)}vw`;
+    verseEl.style.cssText = `
+      font-family: '${_safeFont}', Georgia, serif;
+      font-size: ${fontSize}; line-height: 1.6; color: ${t.textColor || '#ede6d8'};
+      font-style: ${t.fontStyle || 'normal'}; text-transform: ${t.textTransform || 'none'};
+      text-shadow: 0 2px 40px rgba(0,0,0,0.95); max-width: 1200px;
+    `;
+    refLabel.style.color = t.refColor || t.accentColor || '#c9a84c';
+    transEl.style.color  = t.transColor || '#6a5220';
+    stage.style.textAlign = t.textAlign || 'center';
+    stage.style.padding   = `${t.padding || 80}px ${Math.round((t.padding||80)*1.5)}px`;
+  }
+
+  function _hexToRgba(hex, alpha) {
+    const r=parseInt(hex.slice(1,3)||'0',16),g=parseInt(hex.slice(3,5)||'0',16),b=parseInt(hex.slice(5,7)||'0',16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  const _BOOK_ABBREVS = {
+    'Genesis':'Gen','Exodus':'Ex','Leviticus':'Lev','Numbers':'Num','Deuteronomy':'Deut',
+    'Joshua':'Josh','Judges':'Judg','Ruth':'Ruth','1 Samuel':'1 Sam','2 Samuel':'2 Sam',
+    '1 Kings':'1 Kgs','2 Kings':'2 Kgs','1 Chronicles':'1 Chr','2 Chronicles':'2 Chr',
+    'Ezra':'Ezra','Nehemiah':'Neh','Esther':'Esth','Job':'Job','Psalms':'Ps','Psalm':'Ps',
+    'Proverbs':'Prov','Ecclesiastes':'Eccl','Song of Solomon':'Song',
+    'Isaiah':'Isa','Jeremiah':'Jer','Lamentations':'Lam','Ezekiel':'Ezek','Daniel':'Dan',
+    'Hosea':'Hos','Joel':'Joel','Amos':'Amos','Obadiah':'Obad','Jonah':'Jonah',
+    'Micah':'Mic','Nahum':'Nah','Habakkuk':'Hab','Zephaniah':'Zeph','Haggai':'Hag',
+    'Zechariah':'Zech','Malachi':'Mal',
+    'Matthew':'Matt','Mark':'Mark','Luke':'Luke','John':'John','Acts':'Acts',
+    'Romans':'Rom','1 Corinthians':'1 Cor','2 Corinthians':'2 Cor',
+    'Galatians':'Gal','Ephesians':'Eph','Philippians':'Phil','Colossians':'Col',
+    '1 Thessalonians':'1 Thess','2 Thessalonians':'2 Thess',
+    '1 Timothy':'1 Tim','2 Timothy':'2 Tim','Titus':'Titus','Philemon':'Phlm',
+    'Hebrews':'Heb','James':'Jas','1 Peter':'1 Pet','2 Peter':'2 Pet',
+    '1 John':'1 John','2 John':'2 John','3 John':'3 John','Jude':'Jude','Revelation':'Rev'
+  };
+  function _abbreviateRef(ref) {
+    if (!ref) return ref;
+    for (const [full, abbr] of Object.entries(_BOOK_ABBREVS)) {
+      if (ref.startsWith(full)) return abbr + ref.slice(full.length);
+    }
+    return ref;
+  }
+
+  function _buildBoxFontOverrides(sf) {
+    if (!sf || typeof sf !== 'object') return '';
+    const parts = [];
+    if (sf.fontFamily) {
+      const fam = sf.fontFamily === 'Cinzel' ? 'Crimson Pro' : sf.fontFamily;
+      parts.push(`font-family:'${fam}',serif`);
+    }
+    if (sf.fontColor) parts.push(`color:${sf.fontColor}`);
+    const fst = sf.fontStyle || '';
+    if (fst) {
+      parts.push(`font-weight:${(fst==='bold'||fst==='bold-italic')?'700':'400'}`);
+      parts.push(`font-style:${(fst==='italic'||fst==='bold-italic')?'italic':'normal'}`);
+    }
+    if (sf.textAlign) parts.push(`text-align:${sf.textAlign}`);
+    if (sf.underline) parts.push('text-decoration:underline');
+    if (sf.fontOpacity != null) parts.push(`opacity:${sf.fontOpacity / 100}`);
+    const outStyle = sf.outlineStyle || '';
+    if (outStyle && outStyle !== 'none') {
+      const oo = (sf.outlineOpacity ?? 100) / 100;
+      const oc = sf.outlineColor || '#000';
+      const r2=parseInt(oc.slice(1,3),16)||0, g2=parseInt(oc.slice(3,5),16)||0, b2=parseInt(oc.slice(5,7),16)||0;
+      parts.push(`-webkit-text-stroke:${sf.outlineWidth||11}px rgba(${r2},${g2},${b2},${oo})`);
+      parts.push('paint-order:stroke fill');
+    }
+    if (sf.shadowEnabled === true) {
+      const sx=sf.shadowX??2, sy=sf.shadowY??2, sb=sf.shadowBlur??8;
+      const so=(sf.shadowOpacity??80)/100;
+      const sc=sf.shadowColor||'#000000';
+      const r3=parseInt(sc.slice(1,3),16)||0, g3=parseInt(sc.slice(3,5),16)||0, b3=parseInt(sc.slice(5,7),16)||0;
+      parts.push(`text-shadow:${sx}px ${sy}px ${sb}px rgba(${r3},${g3},${b3},${so})`);
+    } else if (sf.shadowEnabled === false) {
+      parts.push('text-shadow:none');
+    }
+    return parts.join(';');
+  }
+
+  function toProjectionMediaUrl(input) {
+    const raw = String(input || '').trim();
+    if (!raw) return '';
+    if (/^(media|file|https?|blob|data):/i.test(raw)) return raw;
+    const normalized = raw.replace(/\\/g, '/');
+    return `media:///${normalized.startsWith('/') ? normalized.slice(1) : normalized}`;
+  }
+
+  function getMediaPath(data) {
+    if (!data) return '';
+    if (typeof data === 'string') return data;
+    return data.path || data.filePath || data.src || data.url || data.bgVideo || data.bgImage || '';
+  }
+
+  let lastProjectedBackgroundMedia = null;
+  let currentOverlayPreserveMedia = false;
+
+function sameProjectionMedia(a, b) {
+  if (!a || !b) return false;
+  return String(getMediaPath(a) || '') === String(getMediaPath(b) || '') && inferMediaType(a, getMediaPath(a)) === inferMediaType(b, getMediaPath(b));
+}
+
+function inferMediaType(data, mediaPath = '') {
+  const rawType = String(data?.type || '').trim().toLowerCase();
+  if (rawType === 'video' || rawType === 'image' || rawType === 'audio') return rawType;
+  const probe = String(mediaPath || '').split('?')[0].toLowerCase();
+  if (/\.(mp4|m4v|mov|webm|mkv|avi|wmv|mpg|mpeg|3gp|flv)$/i.test(probe)) return 'video';
+  if (/\.(mp3|wav|wma|m4a|aac|ogg|flac)$/i.test(probe)) return 'audio';
+  return 'image';
+}
+
+function resolveObjectFit(data) {
+  const fit = data?.objectFit || data?.aspectRatio || 'contain';
+  if (fit === 'fill' || fit === 'cover' || fit === 'contain') return fit;
+  return 'contain';
+}
+
+function showMediaBackground(data) {
+  const candidate = (data && getMediaPath(data)) ? data : lastProjectedBackgroundMedia;
+  const mediaPath = getMediaPath(candidate);
+  if (!candidate || !mediaPath) return false;
+  const mediaType = inferMediaType(candidate, mediaPath);
+  const normalized = { ...candidate, type: mediaType, path: mediaPath };
+  const fileUrl = toProjectionMediaUrl(mediaPath);
+  const sameBg = sameProjectionMedia(lastProjectedBackgroundMedia, normalized);
+  lastProjectedBackgroundMedia = normalized;
+  mediaLayer.querySelectorAll('.audio-overlay').forEach(e => e.remove());
+  if (!sameBg || mediaType !== 'image') {
+    mediaImg.style.display = 'none';
+    if (!sameBg) mediaImg.src = '';
+  }
+  if (!sameBg || mediaType !== 'video') {
+    mediaVideo.style.display = 'none';
+    if (!sameBg) {
+      mediaVideo.pause?.();
+      mediaVideo.src = '';
+    }
+  }
+  if (mediaType === 'video') {
+    mediaVideo.loop = normalized.loop !== false;
+    mediaVideo.dataset.wantMuted = String(!!normalized.mute);
+    mediaVideo.dataset.wantVolume = String(Math.max(0, Math.min(1, Number.isFinite(Number(normalized.volume)) ? Number(normalized.volume) : 1)));
+    mediaVideo.style.objectFit = resolveObjectFit(normalized);
+    mediaVideo.style.display = 'block';
+    if (!sameBg || mediaVideo.dataset.mediaUrl !== fileUrl) {
+      mediaVideo.src = fileUrl;
+      mediaVideo.dataset.mediaUrl = fileUrl;
+      mediaVideo.load();
+    }
+    playProjectionVideo(mediaVideo);
+  } else if (mediaType === 'image') {
+    mediaImg.style.objectFit = resolveObjectFit(normalized);
+    mediaImg.style.display = 'block';
+    if (!sameBg || mediaImg.dataset.mediaUrl !== fileUrl) {
+      mediaImg.src = fileUrl;
+      mediaImg.dataset.mediaUrl = fileUrl;
+    }
+  } else {
+    const overlay = document.createElement('div');
+    overlay.className = 'audio-overlay';
+    overlay.style.cssText = `
+      position:absolute;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;gap:20px;
+      background:radial-gradient(ellipse at 50% 50%,#1a0a2e 0%,#000 100%);
+    `;
+    overlay.innerHTML = `
+      <div style="font-size:80px;opacity:.8">🎵</div>
+      <div style="font-family:'Cinzel',serif;font-size:clamp(18px,3vw,42px);
+        color:#ede6d8;text-align:center;padding:0 60px;line-height:1.4">
+        ${escapeHtml(normalized.name || '')}
+      </div>`;
+    const aud = document.createElement('audio');
+    aud.loop = normalized.loop !== false;
+    aud.muted = false;
+    const volume = Number(normalized.volume);
+    aud.volume = Math.max(0, Math.min(1, Number.isFinite(volume) ? (volume > 2 ? volume / 100 : volume) : 1));
+    aud.src = fileUrl;
+    aud.load();
+    aud.play().catch(()=>{});
+    overlay.appendChild(aud);
+    mediaLayer.appendChild(overlay);
+  }
+  mediaLayer.classList.add('active');
+  empty.style.display = 'none';
+  return true;
+}
+
+  function applyOverlayPresentation(options = {}) {
+  const bgOv = document.getElementById('themeBgOverlay');
+  const enabled = !!(options.preserveMedia && options.backgroundMedia);
+  const dim = Math.max(0, Math.min(90, Number(options.overlayOptions?.dim ?? 35))) / 100;
+  if (bgOv) bgOv.style.background = enabled ? `rgba(0,0,0,${dim})` : 'rgba(0,0,0,0)';
+  if (options.overlayOptions?.lowerThird) {
+    stage.style.justifyContent = 'flex-end';
+    stage.style.paddingTop = '40px';
+    stage.style.paddingBottom = '6vh';
+  } else {
+    stage.style.justifyContent = 'center';
+    stage.style.paddingTop = '';
+    stage.style.paddingBottom = '';
+  }
+}
+
+function showVerse(data, options = {}) {
+    currentOverlayPreserveMedia = !!(options.preserveMedia && options.backgroundMedia);
+    if (options.preserveMedia && options.backgroundMedia) { document.querySelectorAll('.theme-box-el').forEach(e => e.remove()); showMediaBackground(options.backgroundMedia); }
+    else { clearProjectionTextState(); }
+    applyOverlayPresentation(options);
+    // Remove any leftover custom box elements first
+    document.querySelectorAll('.theme-box-el').forEach(e => e.remove());
+    updatePartBadge(data);
+
+    try {
+      applyTheme(data);
+    } catch (err) {
+      console.warn('Projection scripture theme render failed, using fallback', err);
+      document.querySelectorAll('.theme-box-el').forEach(e => e.remove());
+      refLabel.style.cssText = '';
+      transEl.style.cssText = '';
+      verseEl.style.cssText = '';
+      stage.style.textAlign = 'center';
+      stage.style.padding = '80px 120px';
+      document.body.setAttribute('data-theme', data.theme || 'sanctuary');
+    }
+
+    if (data.themeData?.boxes?.length && document.querySelectorAll('.theme-box-el').length) {
+      empty.style.display = 'none';
+      stage.style.display = 'none';
+      const sf = data.scriptureFont || {};
+      const fontOv = _buildBoxFontOverrides(sf);
+      const scrTransform = data.scriptureTextTransform || 'none';
+      document.querySelectorAll('.theme-box-el').forEach(boxEl => {
+        const inner = boxEl.querySelector('div');
+        if (!inner) return;
+        const role = (inner.dataset.role || '').toLowerCase();
+        if (role === 'main') {
+          if (fontOv) inner.style.cssText = inner.style.cssText + ';' + fontOv;
+          inner.style.textTransform = scrTransform;
+          if (sf.marginTop != null || sf.marginBottom != null || sf.marginLeft != null || sf.marginRight != null) {
+            boxEl.style.padding = `${sf.marginTop??0}px ${sf.marginRight??0}px ${sf.marginBottom??0}px ${sf.marginLeft??0}px`;
+          }
+          if (sf.verticalAlign) {
+            boxEl.style.justifyContent = sf.verticalAlign==='top'?'flex-start':sf.verticalAlign==='bottom'?'flex-end':'center';
+          }
+        }
+        if (role === 'ref' && data.scriptureShowReference === false) {
+          inner.textContent = '';
+          boxEl.style.display = 'none';
+        }
+      });
+      return;
+    }
+
+    const sf = data.scriptureFont || {};
+    const refPos = (data.scriptureShowReference === false) ? 'hidden' : (data.scriptureRefPosition || 'top');
+    const scriptureTransform = (data.themeData?.textTransform && data.themeData.textTransform !== 'none')
+      ? (data.scriptureTextTransform || data.themeData.textTransform)
+      : (data.scriptureTextTransform || 'none');
+    const dispRef = data.scriptureAbbreviateBooks ? _abbreviateRef(data.ref) : data.ref;
+    const refText = `${dispRef}${data.translation ? '  ·  ' + data.translation : ''}`;
+    const showNums = (data.showVerseNumbers !== false) && (data.themeData?.showVerseNum !== false);
+    const refOnly = !!data.scriptureShowRefOnly;
+    const breakOnNew = !!data.scriptureBreakOnNewVerse;
+    const _refColor = data.themeData?.refColor || data.themeData?.accentColor || '#c9a84c';
+    const _stdRoc = _projRefOutlineCss(data);
+    let verseHtml;
+    if (refOnly) {
+      verseHtml = '';
+    } else if (data.rangeVerses && data.rangeVerses.length > 0) {
+      const sep = breakOnNew ? '<br>' : '  ';
+      verseHtml = data.rangeVerses.map(v => {
+        const num = showNums ? `<span class="verse-num" style="color:${_refColor};${_stdRoc}">${v.verse}</span>` : '';
+        return num + v.text;
+      }).join(sep);
+    } else {
+      const verseNum = showNums ? `<span class="verse-num" style="color:${_refColor};${_stdRoc}">${data.verse}</span>` : '';
+      verseHtml = verseNum + (data.text || '');
+    }
+
+    const sfFamily = sf.fontFamily || 'Calibri';
+    const sfSize   = sf.fontSize || 80;
+    const sfColor  = sf.fontColor || '#ffffff';
+    const sfStyle  = sf.fontStyle || 'bold';
+    const sfAlign  = sf.textAlign || 'center';
+    const sfVAlign = sf.verticalAlign || 'bottom';
+    const sfWeight = (sfStyle === 'bold' || sfStyle === 'bold-italic') ? 'bold' : 'normal';
+    const sfItalic = (sfStyle === 'italic' || sfStyle === 'bold-italic') ? 'italic' : 'normal';
+
+    let outlineCss = '';
+    const outStyle = sf.outlineStyle || 'none';
+    if (outStyle !== 'none') {
+      const oo = (sf.outlineOpacity ?? 100) / 100;
+      const oc = sf.outlineColor || '#000';
+      const r = parseInt(oc.slice(1,3),16)||0, g = parseInt(oc.slice(3,5),16)||0, b = parseInt(oc.slice(5,7),16)||0;
+      outlineCss = `-webkit-text-stroke:${sf.outlineWidth||12}px rgba(${r},${g},${b},${oo});paint-order:stroke fill;`;
+    }
+
+    let shadowCss = 'text-shadow:none;';
+    if (sf.shadowEnabled === true) {
+      const so = (sf.shadowOpacity ?? 80) / 100;
+      const sc = sf.shadowColor || '#000000';
+      const sr = parseInt(sc.slice(1,3),16)||0, sg = parseInt(sc.slice(3,5),16)||0, sb = parseInt(sc.slice(5,7),16)||0;
+      shadowCss = `text-shadow:${sf.shadowX||0}px ${sf.shadowY||0}px ${sf.shadowBlur||0}px rgba(${sr},${sg},${sb},${so});`;
+    }
+
+    const baseLS = sf.lineSpacing || 1.4;
+    const effLS = data.scriptureAdditionalLineSpacing ? Math.min(baseLS + 0.4, 2.4) : baseLS;
+    verseEl.style.cssText = `
+      font-family:'${sfFamily}',serif;
+      font-size:${(sfSize / 19.2).toFixed(4)}vw;
+      color:${sfColor};
+      text-align:${sfAlign};
+      font-weight:${sfWeight};
+      font-style:${sfItalic};
+      line-height:${effLS};
+      text-decoration:${sf.underline ? 'underline' : 'none'};
+      opacity:${(sf.fontOpacity ?? 100) / 100};
+      text-transform:${scriptureTransform};
+      ${outlineCss}
+      ${shadowCss}
+    `;
+
+    let refOutCss = '';
+    const refOutSt = data.scriptureRefOutlineStyle || 'none';
+    if (refOutSt !== 'none') {
+      const rw = data.scriptureRefOutlineWidth ?? 0;
+      const roc = data.scriptureRefOutlineColor || '#000';
+      const roo = (data.scriptureRefOutlineOpacity ?? 100) / 100;
+      const rr = parseInt(roc.slice(1,3),16)||0, rg = parseInt(roc.slice(3,5),16)||0, rb = parseInt(roc.slice(5,7),16)||0;
+      refOutCss = `-webkit-text-stroke:${rw}px rgba(${rr},${rg},${rb},${roo});paint-order:stroke fill;`;
+    }
+
+    const mT = sf.marginTop ?? 22, mB = sf.marginBottom ?? 22;
+    const mL = sf.marginLeft ?? 200, mR = sf.marginRight ?? 200;
+    const vAlignMap = { top: 'flex-start', center: 'center', bottom: 'flex-end' };
+    stage.style.padding = `${mT}px ${mR}px ${mB}px ${mL}px`;
+    stage.style.justifyContent = vAlignMap[sfVAlign] || 'flex-end';
+
+    const rf = data.scriptureRefFont || {};
+    const rfFamily = rf.fontFamily || 'Cinzel';
+    const rfSize   = rf.fontSize || 38;
+    const rfColor  = rf.fontColor || '#c9a84c';
+    const rfStyleV = rf.fontStyle || 'bold';
+    const rfWeight = (rfStyleV === 'bold' || rfStyleV === 'bold-italic') ? 'bold' : '500';
+    const rfItalic = (rfStyleV === 'italic' || rfStyleV === 'bold-italic') ? 'italic' : 'normal';
+    const rfOpacity = (rf.fontOpacity ?? 90) / 100;
+    const rfAlign  = rf.textAlign || 'center';
+    const rfLS     = rf.letterSpacing ?? 0.25;
+    const rfUpper  = rf.uppercase !== false;
+    const rfUline  = rf.underline ? 'underline' : 'none';
+
+    let rfShadowCss = '';
+    if (rf.shadowEnabled) {
+      const rso = (rf.shadowOpacity ?? 60) / 100;
+      const rsc = rf.shadowColor || '#000';
+      const rsr = parseInt(rsc.slice(1,3),16)||0, rsg = parseInt(rsc.slice(3,5),16)||0, rsb = parseInt(rsc.slice(5,7),16)||0;
+      rfShadowCss = `text-shadow:${rf.shadowX||0}px ${rf.shadowY||0}px ${rf.shadowBlur||0}px rgba(${rsr},${rsg},${rsb},${rso});`;
+    }
+
+    if (refPos === 'hidden') {
+      refLabel.style.display = 'none';
+      transEl.style.display  = 'none';
+    } else if (refPos === 'bottom') {
+      refLabel.style.display = '';
+      transEl.style.display  = 'none';
+      refLabel.style.order = '2';
+      verseEl.style.order  = '1';
+      transEl.style.order  = '3';
+      refLabel.textContent = refText;
+      refLabel.style.cssText = `
+        font-family:'${rfFamily}',serif;font-size:${(rfSize/19.2).toFixed(4)}vw;
+        color:${rfColor};font-weight:${rfWeight};font-style:${rfItalic};
+        opacity:${rfOpacity};text-align:${rfAlign};letter-spacing:${rfLS}em;
+        text-transform:${rfUpper?'uppercase':'none'};text-decoration:${rfUline};
+        margin-bottom:0;margin-top:clamp(20px,3vh,50px);order:2;
+        ${refOutCss}${rfShadowCss}
+      `;
+    } else {
+      refLabel.style.display = '';
+      transEl.style.display  = 'none';
+      refLabel.style.order = '';
+      verseEl.style.order  = '';
+      transEl.style.order  = '';
+      refLabel.textContent = refText;
+      refLabel.style.cssText = `
+        font-family:'${rfFamily}',serif;font-size:${(rfSize/19.2).toFixed(4)}vw;
+        color:${rfColor};font-weight:${rfWeight};font-style:${rfItalic};
+        opacity:${rfOpacity};text-align:${rfAlign};letter-spacing:${rfLS}em;
+        text-transform:${rfUpper?'uppercase':'none'};text-decoration:${rfUline};
+        margin-bottom:clamp(20px,3vh,50px);
+        ${refOutCss}${rfShadowCss}
+      `;
+    }
+
+    verseEl.innerHTML = verseHtml;
+    transEl.textContent = '';
+    transEl.style.display = 'none';
+    empty.style.display = 'none';
+    stage.style.display = 'flex';
+    stage.classList.remove('out');
+  }
+
+
+  function sanitizeProjectionSongHtml(html) {
+    return String(html || '')
+      .replace(/<(?!\/?(?:b|strong|i|em|u|span|div|p|br)\b)[^>]*>/gi, '')
+      .replace(/ on\w+="[^"]*"/gi, '')
+      .replace(/ on\w+='[^']*'/gi, '');
+  }
+
+  function showSong(data, options = {}) {
+    currentOverlayPreserveMedia = !!(options.preserveMedia && options.backgroundMedia);
+    if (options.preserveMedia && options.backgroundMedia) showMediaBackground(options.backgroundMedia);
+    else clearProjectionTextState();
+    applyOverlayPresentation(options);
+    updatePartBadge({ partTotal: 1, partIdx: 0 });
+    try {
+      applyTheme(data);
+    } catch (err) {
+      console.warn('Projection song theme render failed, using fallback', err);
+      document.querySelectorAll('.theme-box-el').forEach(e => e.remove());
+      refLabel.style.cssText = '';
+      transEl.style.cssText = '';
+      verseEl.style.cssText = '';
+      stage.style.textAlign = 'center';
+      stage.style.padding = '80px 120px';
+      document.body.setAttribute('data-theme', data.theme || 'sanctuary');
+    }
+    refLabel.textContent = '';
+    refLabel.style.display = 'none';
+    transEl.textContent = '';
+    transEl.style.display = 'none';
+
+    const t = data.themeData;
+    const sf = data.songFont || {};
+    if (t?.boxes?.length && document.querySelectorAll('.theme-box-el').length) {
+      empty.style.display = 'none';
+      const fontOv = _buildBoxFontOverrides(sf);
+      if (fontOv) {
+        document.querySelectorAll('.theme-box-el').forEach(boxEl => {
+          const inner = boxEl.querySelector('div');
+          if (!inner) return;
+          const role = (inner.dataset.role || '').toLowerCase();
+          if (role === 'main') {
+            inner.style.cssText = inner.style.cssText + ';' + fontOv;
+            if (sf.marginTop != null || sf.marginBottom != null || sf.marginLeft != null || sf.marginRight != null) {
+              boxEl.style.padding = `${sf.marginTop??22}px ${sf.marginRight??38}px ${sf.marginBottom??22}px ${sf.marginLeft??38}px`;
+            }
+            if (sf.verticalAlign) {
+              boxEl.style.justifyContent = sf.verticalAlign==='top'?'flex-start':sf.verticalAlign==='bottom'?'flex-end':'center';
+            }
+          }
+        });
+      }
+      const songTransform = data.songTextTransform || (data.sectionTextTransform && data.sectionTextTransform !== 'inherit' ? data.sectionTextTransform : (t?.textTransform || 'none'));
+      document.querySelectorAll('.theme-box-el div, .theme-box-el').forEach(el => { try { el.style.textTransform = songTransform; } catch(_) {} });
+      return;
+    }
+    const ls = sf.lineSpacing || t?.lineSpacing || 1.4;
+
+    let sh = 'none';
+    if (sf.shadowEnabled === true) {
+      const sx = sf.shadowX ?? 2, sy = sf.shadowY ?? 2;
+      const sb = sf.shadowBlur ?? 8;
+      const so = (sf.shadowOpacity ?? 80) / 100;
+      const sc = sf.shadowColor || '#000000';
+      const r = parseInt(sc.slice(1,3),16)||0, g = parseInt(sc.slice(3,5),16)||0, b = parseInt(sc.slice(5,7),16)||0;
+      sh = `${sx}px ${sy}px ${sb}px rgba(${r},${g},${b},${so})`;
+    } else if (sf.shadowEnabled !== false && t?.shadowOn) {
+      sh = '0 2px 16px rgba(0,0,0,.95)';
+    }
+
+    const rawSfFamily = sf.fontFamily || t?.fontFamily || 'Crimson Pro';
+    const sfFamily = (rawSfFamily === 'Cinzel') ? 'Crimson Pro' : rawSfFamily;
+    const sfSize = sf.fontSize || t?.fontSize || 52;
+    const sfColor = sf.fontColor || t?.textColor || '#fff';
+    const sfStyle = sf.fontStyle || 'bold';
+    const sfWeight = (sfStyle === 'bold' || sfStyle === 'bold-italic') ? '700' : '400';
+    const sfItalic = (sfStyle === 'italic' || sfStyle === 'bold-italic') ? 'italic' : 'normal';
+    const sfAlign = sf.textAlign || 'center';
+
+    let songOutlineCss = '';
+    const songOutStyle = sf.outlineStyle || 'none';
+    if (songOutStyle !== 'none') {
+      const oo = (sf.outlineOpacity ?? 100) / 100;
+      const oc = sf.outlineColor || '#000';
+      const r = parseInt(oc.slice(1,3),16)||0, g = parseInt(oc.slice(3,5),16)||0, b = parseInt(oc.slice(5,7),16)||0;
+      songOutlineCss = `-webkit-text-stroke:${sf.outlineWidth||11}px rgba(${r},${g},${b},${oo});paint-order:stroke fill;`;
+    }
+
+    const songLetterSp = ((Number(data.songLetterSpacing || 0)) || 0);
+
+    verseEl.style.cssText = `
+      font-family:'${sfFamily}',serif;
+      font-size:clamp(24px,${sfSize / 1920 * 100}vw,${sfSize}px);
+      color:${sfColor};
+      text-align:${sfAlign};
+      font-weight:${sfWeight};
+      font-style:${sfItalic};
+      line-height:${ls};
+      letter-spacing:${songLetterSp}px;
+      text-shadow:${sh};
+      text-decoration:${sf.underline ? 'underline' : 'none'};
+      opacity:${(sf.fontOpacity ?? 100) / 100};
+      ${songOutlineCss}
+    `;
+
+    const mT = sf.marginTop ?? 22, mB = sf.marginBottom ?? 22;
+    const mL = sf.marginLeft ?? 38, mR = sf.marginRight ?? 38;
+    stage.style.padding = `${mT}px ${mR}px ${mB}px ${mL}px`;
+
+    const richHtml = data.html ? sanitizeProjectionSongHtml(data.html) : '';
+    verseEl.innerHTML = richHtml
+      ? `<div class="song-lyric-proj">${richHtml}</div>`
+      : `<div class="song-lyric-proj">${(data.lines || []).map(l =>
+      l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    ).join('<br>')}</div>`;
+
+    if (data.showSongMetadata && data.sectionLabel) {
+      refLabel.style.cssText = `display:block;font-size:clamp(11px,1.2vw,18px);
+        letter-spacing:.18em;text-transform:uppercase;opacity:.7;margin-bottom:1.2em;
+        color:${t?.accentColor||'#c9a84c'}`;
+      refLabel.textContent = `${data.title || ''} · ${data.sectionLabel}`;
+    }
+
+    const align = data.songVerticalAlign || 'center';
+    const justifyMap = { top:'flex-start', center:'center', bottom:'flex-end' };
+    stage.style.justifyContent = justifyMap[align] || 'center';
+    if (align === 'top')    stage.style.paddingTop    = `${Math.max(mT, 40)}px`;
+    if (align === 'bottom') stage.style.paddingBottom  = `${Math.max(mB, 40)}px`;
+    const songTransform = data.songTextTransform || (data.sectionTextTransform && data.sectionTextTransform !== 'inherit' ? data.sectionTextTransform : (t?.textTransform || 'none'));
+    stage.style.textTransform = 'none';
+    verseEl.style.textTransform = songTransform;
+    document.querySelectorAll('.theme-box-el div, .theme-box-el').forEach(el => { try { el.style.textTransform = songTransform; } catch(_) {} });
+    verseEl.querySelectorAll('.song-lyric-proj, .song-lyric-proj *, div[style], span[style], p[style], br').forEach(el => { try { el.style.textTransform = songTransform; } catch(_) {} });
+
+    empty.style.display = 'none';
+    stage.style.display = 'flex';
+    stage.classList.remove('out');
+  }
+
+    // ── Fade helper ─────────────────────────────────────────────────────────────
+  function fadeTransition(fn) {
+    fadeOverlay.classList.add('fading');
+    setTimeout(() => {
+      fn();
+      fadeOverlay.classList.remove('fading');
+    }, 300);
+  }
+
+  // ── showCreatedSlide (editor-built slides) ────────────────────────────────────
+  function showCreatedSlide(data) {
+    const s = data.slide || {};
+    fadeTransition(() => {
+      stage.classList.add('out');
+      stage.style.display = 'none';
+      mediaVideo.pause(); mediaVideo.src = '';
+      mediaVideo.style.display = 'none';
+      mediaImg.style.display   = 'none';
+      const oldAudio = mediaLayer.querySelector('audio');
+      if (oldAudio) { oldAudio.pause(); oldAudio.src = ''; oldAudio.remove(); }
+
+      // Slide background
+      mediaLayer.style.background = s.bg || '#0a0a1e';
+      mediaLayer.style.backgroundImage = s.bgImage
+        ? `url('${toFileUrl(s.bgImage)}')` : 'none';
+      mediaLayer.style.backgroundSize     = 'cover';
+      mediaLayer.style.backgroundPosition = 'center';
+      mediaLayer.style.display     = 'block';
+      mediaLayer.style.position    = 'relative';
+      mediaLayer.classList.add('active');
+
+      // Remove old rendered content
+      mediaLayer.querySelectorAll('.created-slide-content').forEach(e => e.remove());
+
+      const PW = 1920, PH = 1080;
+      const W  = mediaLayer.offsetWidth  || window.innerWidth;
+      const H  = mediaLayer.offsetHeight || window.innerHeight;
+      const sc = Math.min(W / PW, H / PH);
+
+      // Container centred on screen
+      const container = document.createElement('div');
+      container.className = 'created-slide-content';
+      container.style.cssText = `
+        position:absolute;
+        left:${(W - PW*sc)/2}px; top:${(H - PH*sc)/2}px;
+        width:${PW*sc}px; height:${PH*sc}px;
+        overflow:hidden; pointer-events:none;`;
+
+      // Render each object
+      (s.objects || []).forEach(obj => {
+        const el = document.createElement('div');
+        el.style.cssText = `
+          position:absolute;
+          left:${obj.x*sc}px; top:${obj.y*sc}px;
+          width:${obj.w*sc}px; height:${obj.h*sc}px;
+          transform:rotate(${obj.rotation||0}deg);
+          overflow:hidden;`;
+
+        if (obj.type === 'text') {
+          const alpha = (obj.textBgAlpha||0) / 100;
+          if (alpha > 0) el.style.background = hexToRgba(obj.textBg||'#000000', alpha);
+          el.style.display        = 'flex';
+          el.style.alignItems     = 'center';
+          el.style.justifyContent = obj.textAlign === 'left' ? 'flex-start'
+            : obj.textAlign === 'right' ? 'flex-end' : 'center';
+
+          const t = document.createElement('div');
+          t.style.cssText = `
+            font-family:'${obj.font||'Cinzel'}',serif;
+            font-size:${(obj.fontSize||48)*sc}px;
+            color:${obj.textColor||'#ffffff'};
+            font-weight:${Number(obj.fontWeight || (obj.bold?700:400))};
+            font-style:${obj.italic?'italic':'normal'};
+            text-align:${obj.textAlign||'center'};
+            text-shadow:${obj.shadow===false ? 'none' : `${Number(obj.shadowOffsetX||0)*sc}px ${Number(obj.shadowOffsetY||2)*sc}px ${Math.max(0, Number(obj.shadowBlur ?? 8))*sc}px ${obj.shadowColor || '#000000'}`};
+            letter-spacing:${Number(obj.letterSpacing||0)*sc}px;
+            text-transform:${obj.textTransform||'none'};
+            white-space:pre-wrap; line-height:${obj.lineSpacing||1.25}; width:100%;`;
+          t.textContent = obj.text || '';
+          el.appendChild(t);
+
+        } else if (obj.type === 'shape') {
+          const opacity  = (obj.shapeOpacity ?? 80) / 100;
+          const radius   = obj.shape === 'ellipse' ? '50%' : ((obj.shapeRadius||0) + '%');
+          const bw       = (obj.shapeBorderW||0) * sc;
+          el.style.background   = obj.shapeFill || '#3b82f6';
+          el.style.opacity      = opacity;
+          el.style.borderRadius = radius;
+          if (bw > 0) el.style.border = `${bw}px solid ${obj.shapeBorder||'#fff'}`;
+
+        } else if (obj.type === 'line') {
+          const bw = Math.max(1, (obj.shapeBorderW||2) * sc);
+          el.style.borderTop = `${bw}px solid ${obj.shapeFill||'#fff'}`;
+          el.style.opacity   = (obj.shapeOpacity??80)/100;
+          el.style.height    = `${bw}px`;
+          el.style.top       = `${(obj.y + obj.h/2) * sc}px`;
+
+        } else if (obj.type === 'svg') {
+          // SVG path shapes — star, triangle, diamond, cross, arrow, hexagon, heart, etc.
+          el.style.overflow = 'visible';
+          el.style.opacity  = String((obj.shapeOpacity ?? 90) / 100);
+          const fill    = obj.shapeFill  || '#c9a84c';
+          const stroke  = (obj.shapeBorderW||0) > 0 ? (obj.shapeBorder||'#fff') : 'none';
+          const strokeW = (obj.shapeBorderW||0) * sc;
+          const sw = obj.w * sc, sh = obj.h * sc;
+          const cx = sw/2, cy = sh/2;
+          let pathD = '';
+          if (obj.shape === 'star') {
+            const or=Math.min(sw,sh)/2, ir=or*0.42; let d='';
+            for(let p=0;p<10;p++){const r=p%2===0?or:ir;const a=(p*Math.PI/5)-Math.PI/2;d+=(p===0?'M':'L')+(cx+r*Math.cos(a)).toFixed(2)+','+(cy+r*Math.sin(a)).toFixed(2);} pathD=d+'Z';
+          } else if (obj.shape==='triangle') { pathD=`M${cx},0 L${sw},${sh} L0,${sh} Z`; }
+          else if (obj.shape==='diamond')    { pathD=`M${cx},0 L${sw},${cy} L${cx},${sh} L0,${cy} Z`; }
+          else if (obj.shape==='cross')      { const t=sw*.3,u=sh*.3; pathD=`M${(sw-t)/2},0 L${(sw+t)/2},0 L${(sw+t)/2},${(sh-u)/2} L${sw},${(sh-u)/2} L${sw},${(sh+u)/2} L${(sw+t)/2},${(sh+u)/2} L${(sw+t)/2},${sh} L${(sw-t)/2},${sh} L${(sw-t)/2},${(sh+u)/2} L0,${(sh+u)/2} L0,${(sh-u)/2} L${(sw-t)/2},${(sh-u)/2} Z`; }
+          else if (obj.shape==='arrow')      { const aw=sw*.4,ah=sh*.5; pathD=`M0,${(sh-ah)/2} L${sw-aw},${(sh-ah)/2} L${sw-aw},0 L${sw},${cy} L${sw-aw},${sh} L${sw-aw},${(sh+ah)/2} L0,${(sh+ah)/2} Z`; }
+          else if (obj.shape==='hexagon')    { const r=Math.min(sw,sh)/2; let d=''; for(let i=0;i<6;i++){const a=i*Math.PI/3-Math.PI/6;d+=(i===0?'M':'L')+(cx+r*Math.cos(a)).toFixed(2)+','+(cy+r*Math.sin(a)).toFixed(2);} pathD=d+'Z'; }
+          else if (obj.shape==='heart')      { pathD=`M${cx},${sh*.3} C${cx},${sh*.1} 0,${sh*.1} 0,${sh*.4} C0,${sh*.7} ${cx},${sh*.9} ${cx},${sh} C${cx},${sh*.9} ${sw},${sh*.7} ${sw},${sh*.4} C${sw},${sh*.1} ${cx},${sh*.1} ${cx},${sh*.3}`; }
+          else if (obj.shape==='octagon')    { const r=Math.min(sw,sh)/2; let d=''; for(let i=0;i<8;i++){const a=i*Math.PI/4-Math.PI/8;d+=(i===0?'M':'L')+(cx+r*Math.cos(a)).toFixed(2)+','+(cy+r*Math.sin(a)).toFixed(2);} pathD=d+'Z'; }
+          else if (obj.shape==='rhombus')    { pathD=`M${cx},0 L${sw},${cy} L${cx},${sh} L0,${cy} Z`; }
+          else if (obj.shape==='speech')     { pathD=`M0,0 L${sw},0 L${sw},${sh*.7} L${sw*.4},${sh*.7} L${sw*.25},${sh} L${sw*.2},${sh*.7} L0,${sh*.7} Z`; }
+          else if (obj.shape==='cloud')      { pathD=`M${sw*.25},${sh*.8} Q${sw*.05},${sh*.8} ${sw*.05},${sh*.55} Q${sw*.05},${sh*.3} ${sw*.25},${sh*.3} Q${sw*.3},${sh*.05} ${sw*.55},${sh*.1} Q${sw*.75},${sh*.05} ${sw*.8},${sh*.3} Q${sw},${sh*.3} ${sw*.95},${sh*.55} Q${sw*.95},${sh*.8} ${sw*.75},${sh*.8} Z`; }
+          else if (obj.shape==='banner')     { pathD=`M0,${sh*.2} Q${sw*.05},0 ${sw*.1},${sh*.2} L${sw*.9},${sh*.2} Q${sw*.95},0 ${sw},${sh*.2} L${sw},${sh*.8} Q${sw*.95},${sh} ${sw*.9},${sh*.8} L${sw*.1},${sh*.8} Q${sw*.05},${sh} 0,${sh*.8} Z`; }
+          else { pathD=`M0,0 L${sw},0 L${sw},${sh} L0,${sh} Z`; }
+
+          el.innerHTML = `<svg width="${sw}" height="${sh}" viewBox="0 0 ${sw} ${sh}" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;overflow:visible"><path d="${pathD}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"/></svg>`;
+
+        } else if (obj.type === 'image') {
+          const img = document.createElement('img');
+          img.src = toFileUrl(obj.src || '');
+          img.style.cssText = `width:100%;height:100%;
+            object-fit:${obj.imgFit||'contain'};
+            opacity:${(obj.imgOpacity??100)/100};display:block;`;
+          el.appendChild(img);
+        }
+        container.appendChild(el);
+      });
+
+      mediaLayer.appendChild(container);
+      empty.style.display = 'none';
+    });
+  }
+
+  function toFileUrl(p) {
+    if (!p) return '';
+    if (p.startsWith('http') || p.startsWith('file://') || p.startsWith('media://')) return p;
+    return 'file:///' + p.replace(/\\/g, '/');
+  }
+
+  function hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1,3),16)||0;
+    const g = parseInt(hex.slice(3,5),16)||0;
+    const b = parseInt(hex.slice(5,7),16)||0;
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  // ── showPresentationSlide ─────────────────────────────────────────────────────
+  function showPresentationSlide(data) {
+    fadeTransition(() => {
+      // Hide verse/song stage
+      stage.classList.add('out');
+      stage.style.display = 'none';
+
+      clearProjectionMediaState();
+
+      const fileUrl = toProjectionMediaUrl(data.imagePath || '');
+
+      // Show the slide image using the media layer
+      mediaImg.src           = fileUrl;
+      mediaImg.style.display = 'block';
+      mediaImg.style.objectFit = 'contain'; // keep slide aspect ratio
+      mediaLayer.style.background = '#000'; // black bars instead of cut
+      mediaLayer.classList.add('active');
+
+      empty.style.display = 'none';
+
+      // Keep caption visible if present
+      // (timer stays as-is)
+    });
+  }
+
+  // ── showMedia ────────────────────────────────────────────────────────────────
+  function showMedia(data) {
+  currentOverlayPreserveMedia = false;
+    fadeTransition(() => {
+      // Hide verse stage
+      stage.classList.add('out');
+      stage.style.display = 'none';
+
+      clearProjectionMediaState();
+
+      const mediaPath = getMediaPath(data);
+      if (!mediaPath) {
+        console.warn('Projection media render skipped: missing media path', data);
+        empty.style.display = 'flex';
+        return;
+      }
+      const fileUrl = toProjectionMediaUrl(mediaPath);
+
+      if (data.type === 'audio') {
+        // Audio-only: show full-screen music note + song name, play audio
+        const overlay = document.createElement('div');
+        overlay.className = 'audio-overlay';
+        overlay.style.cssText = `
+          position:absolute;inset:0;display:flex;flex-direction:column;
+          align-items:center;justify-content:center;gap:20px;
+          background:radial-gradient(ellipse at 50% 50%,#1a0a2e 0%,#000 100%);
+        `;
+        overlay.innerHTML = `
+          <div style="font-size:80px;opacity:.8">🎵</div>
+          <div style="font-family:'Cinzel',serif;font-size:clamp(18px,3vw,42px);
+            color:#ede6d8;text-align:center;padding:0 60px;line-height:1.4">
+            ${escapeHtml(data.name || '')}
+          </div>`;
+        const aud = document.createElement('audio');
+        aud.loop  = data.loop !== false;
+        aud.muted = false; // audio is the point — never mute
+        aud.volume = Math.max(0, Math.min(1, (data.volume ?? 100) / 100));
+        aud.src   = fileUrl;
+        aud.load();
+        aud.play().catch(()=>{});
+        overlay.appendChild(aud);
+        mediaLayer.appendChild(overlay);
+
+      } else if (data.type === 'video') {
+        mediaVideo.src   = fileUrl;
+        mediaVideo.loop  = data.loop !== false;
+        mediaVideo.dataset.wantMuted = String(!!data.mute);
+        mediaVideo.dataset.wantVolume = String(Math.max(0, Math.min(1, Number.isFinite(Number(data.volume)) ? Number(data.volume) : 1)));
+        mediaVideo.style.objectFit = resolveObjectFit(data);
+        mediaVideo.style.display = 'block';
+        mediaVideo.load();
+        playProjectionVideo(mediaVideo);
+
+      } else {
+        mediaImg.src           = fileUrl;
+        mediaImg.style.objectFit = resolveObjectFit(data);
+        mediaImg.style.display = 'block';
+      }
+
+      mediaLayer.classList.add('active');
+      empty.style.display = 'none';
+
+      // Caption
+      if (data.caption) {
+        captionText.textContent = data.caption;
+        captionLayer.classList.add('active');
+      } else {
+        captionLayer.classList.remove('active');
+      }
+    });
+  }
+
+  // Simple HTML-escape for projection use
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── clearVerse (also clears media + audio) ───────────────────────────────────
+  function clearVerse() {
+    // FLICKER FIX B: if the projection screen is already blank (stage not
+    // visible and empty placeholder is shown), skip the fade transition entirely.
+    // The old code always ran fadeTransition() which flashed a black overlay
+    // even when there was nothing on screen — causing the visible flicker when
+    // the operator clicked Clear with nothing projected.
+    const alreadyBlank = (stage.style.display === 'none' || !stage.style.display)
+                      && empty.style.display !== 'none';
+    if (alreadyBlank) {
+      // Still clean up any stale media/audio state silently
+      clearProjectionTextState();
+      clearProjectionMediaState();
+      captionLayer.classList.remove('active');
+      return;
+    }
+
+    fadeTransition(() => {
+      stage.classList.add('out');
+      setTimeout(() => { stage.style.display = 'none'; stage.classList.remove('out'); }, 200);
+      document.querySelectorAll('.theme-box-el').forEach(e => e.remove());
+      clearProjectionTextState();
+      clearProjectionMediaState();
+      captionLayer.classList.remove('active');
+      empty.style.display = 'flex';
+    });
+  }
+
+  // ── Timer engine ─────────────────────────────────────────────────────────────
+  let timerInterval = null;
+  let timerEndTime  = null;
+  let timerMode     = 'countdown'; // 'countdown' | 'countup'
+  let timerOriginalSecs = 0;
+  let timerWarnSecs = 60;
+
+  function applyTimerPosition(pos) {
+    timerLayer.classList.remove('pos-center', 'pos-top', 'pos-edge');
+    const p = (pos === 'center' || pos === 'edge') ? pos : 'top';
+    timerLayer.classList.add('pos-' + p);
+  }
+
+  function applyTimerScale(scale, position) {
+    const raw = Number(scale);
+    const s = Number.isFinite(raw) ? Math.max(0.4, Math.min(2.0, raw)) : 1;
+    const isEdge = timerLayer.classList.contains('pos-edge');
+    if (!isEdge) {
+      timerDisp.style.fontSize = `clamp(${Math.round(48*s)}px, ${(8*s).toFixed(1)}vw, ${Math.round(120*s)}px)`;
+      timerLabel.style.fontSize = `clamp(${Math.round(12*s)}px, ${(1.6*s).toFixed(1)}vw, ${Math.round(22*s)}px)`;
+    } else {
+      timerDisp.style.fontSize = `clamp(${Math.round(28*s)}px, ${(4*s).toFixed(1)}vw, ${Math.round(64*s)}px)`;
+      timerLabel.style.fontSize = `clamp(${Math.round(9*s)}px, ${(1*s).toFixed(1)}vw, ${Math.round(14*s)}px)`;
+    }
+    if (position) applyTimerPosition(position);
+  }
+
+  function startTimer(data) {
+    stopTimer();
+    timerMode    = data.mode || 'countdown';
+    timerOriginalSecs = data.seconds || 0;
+    timerWarnSecs = timerOriginalSecs <= 300 ? 60 : Math.ceil(timerOriginalSecs * 0.1);
+    timerEndTime = data.mode === 'countdown'
+      ? Date.now() + timerOriginalSecs * 1000
+      : Date.now();
+    timerLabel.textContent = data.label || (timerMode === 'countdown' ? 'COUNTDOWN' : 'ELAPSED');
+    if (data.position) applyTimerPosition(data.position);
+    if (data.scale != null) applyTimerScale(data.scale);
+    timerLayer.classList.add('active');
+    updateTimer();
+    timerInterval = setInterval(updateTimer, 500);
+  }
+
+  function stopTimer() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    timerLayer.classList.remove('active');
+    timerDisp.classList.remove('warning', 'overtime');
+  }
+
+  function updateTimer() {
+    const now     = Date.now();
+    let   elapsed = 0;
+
+    if (timerMode === 'countdown') {
+      elapsed = Math.max(0, timerEndTime - now);
+      const secs = Math.ceil(elapsed / 1000);
+      timerDisp.textContent = formatTime(secs);
+      timerDisp.classList.toggle('warning',  secs <= timerWarnSecs && secs > 0);
+      timerDisp.classList.toggle('overtime', secs === 0);
+    } else {
+      elapsed = now - timerEndTime;
+      timerDisp.textContent = formatTime(Math.floor(elapsed / 1000));
+    }
+  }
+
+  function formatTime(totalSecs) {
+    const h = Math.floor(totalSecs / 3600);
+    const m = Math.floor((totalSecs % 3600) / 60);
+    const s = totalSecs % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+
+  // ── Central projection render engine ────────────────────────────────────────
+  let lastRenderState = { module: 'clear', payload: null, backgroundMedia: null, overlayOptions: {} };
+  function normalizeRenderState(state) {
+    if (!state || typeof state !== 'object') return { module: 'clear', payload: null, backgroundMedia: null, overlayOptions: {} };
+    const overlayOptions = state.overlayOptions || {};
+    const explicitBg = state.backgroundMedia || null;
+    const explicitBgValid = !!getMediaPath(explicitBg);
+    const effectiveBg = explicitBgValid ? explicitBg : ((overlayOptions.enabled || overlayOptions.preserveMedia) ? lastProjectedBackgroundMedia : null);
+    return {
+      module: state.module || 'clear',
+      payload: state.payload ?? null,
+      updatedAt: state.updatedAt || Date.now(),
+      backgroundMedia: effectiveBg,
+      overlayOptions,
+    };
+  }
+  function handleAlert(data) {
+    if (!data) return;
+    const type = data.type;
+    if (type === 'nursery') {
+      if (!data.text) {
+        nurseryAlertLayer.classList.remove('active');
+        return;
+      }
+      nurseryAlertLayer.className = 'nursery-alert-layer pos-' + (data.position || 'bottom-left');
+      const hex = data.bgColor || '#cc0000';
+      const op = (data.bgOpacity ?? 100) / 100;
+      const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+      nurseryAlertLayer.style.background = `rgba(${r},${g},${b},${op})`;
+      nurseryAlertText.style.fontFamily = `'${data.fontFamily || 'Tahoma'}', sans-serif`;
+      nurseryAlertText.style.fontSize = `clamp(18px, ${(data.fontSize || 48) / 19.2}vw, ${(data.fontSize || 48) * 1.2}px)`;
+      nurseryAlertText.style.color = data.fontColor || '#ffffff';
+      nurseryAlertText.textContent = data.text;
+      nurseryAlertLayer.classList.add('active');
+    } else if (type === 'message') {
+      if (!data.text) {
+        messageAlertLayer.classList.remove('active');
+        messageAlertText.style.animation = 'none';
+        return;
+      }
+      messageAlertLayer.className = 'message-alert-layer pos-' + (data.position || 'top');
+      const hex = data.bgColor || '#000000';
+      const op = (data.bgOpacity ?? 100) / 100;
+      const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+      messageAlertLayer.style.background = `rgba(${r},${g},${b},${op})`;
+      messageAlertText.style.fontFamily = `'${data.fontFamily || 'Calibri'}', sans-serif`;
+      messageAlertText.style.fontSize = `clamp(18px, ${(data.fontSize || 48) / 19.2}vw, ${(data.fontSize || 48) * 1.2}px)`;
+      messageAlertText.style.color = data.fontColor || '#f5deb3';
+      messageAlertText.textContent = data.text;
+      const speed = Math.max(1, 11 - (data.scrollSpeed || 5));
+      const repeats = data.repeatCount || 2;
+      const dur = speed * 3;
+      messageAlertText.style.animation = 'none';
+      void messageAlertText.offsetWidth;
+      messageAlertText.style.animation = `alertScroll ${dur}s linear ${repeats}`;
+      messageAlertLayer.classList.add('active');
+      messageAlertText.addEventListener('animationend', () => {
+        messageAlertLayer.classList.remove('active');
+      }, { once: true });
+    }
+  }
+
+  // ── Logo Overlay (draggable/resizable watermark) ─────────────────────────
+  let _logoOverlayState = { visible: false, src: null, type: 'image', xPct: 95, yPct: 95, sizePct: 20, opacity: 1, position: 'bottom-right', draggable: false };
+
+  function handleLogoOverlay(data) {
+    if (!data) { logoOverlayLayer.classList.remove('active'); return; }
+    Object.assign(_logoOverlayState, data);
+    if (!_logoOverlayState.visible || !_logoOverlayState.src) {
+      logoOverlayLayer.classList.remove('active', 'draggable');
+      return;
+    }
+    const existing = logoOverlayLayer.querySelector('img, video');
+    const srcMatch = existing && existing.getAttribute('data-logo-src') === _logoOverlayState.src;
+    if (!srcMatch) {
+      const old = logoOverlayLayer.querySelector('img, video');
+      if (old) { if (old.pause) old.pause(); old.remove(); }
+      let el;
+      if (_logoOverlayState.type === 'video') {
+        el = document.createElement('video');
+        el.autoplay = true; el.loop = true; el.muted = true;
+        el.setAttribute('playsinline', '');
+        el.src = _logoOverlayState.src;
+        el.load();
+        el.play().catch(() => {});
+      } else {
+        el = document.createElement('img');
+        el.src = _logoOverlayState.src;
+      }
+      el.setAttribute('data-logo-src', _logoOverlayState.src);
+      logoOverlayLayer.insertBefore(el, logoResizeHandle);
+    }
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const size = Math.round(vw * _logoOverlayState.sizePct / 100);
+    logoOverlayLayer.style.width = size + 'px';
+    logoOverlayLayer.style.height = size + 'px';
+    logoOverlayLayer.style.opacity = _logoOverlayState.opacity;
+    const anchorX = vw * _logoOverlayState.xPct / 100;
+    const anchorY = vh * _logoOverlayState.yPct / 100;
+    let left, top;
+    const pos = _logoOverlayState.position;
+    if (pos === 'top-left') { left = anchorX; top = anchorY; }
+    else if (pos === 'top-right') { left = anchorX - size; top = anchorY; }
+    else if (pos === 'bottom-left') { left = anchorX; top = anchorY - size; }
+    else if (pos === 'bottom-right') { left = anchorX - size; top = anchorY - size; }
+    else if (pos === 'center') { left = anchorX - size / 2; top = anchorY - size / 2; }
+    else { left = anchorX - size / 2; top = anchorY - size / 2; }
+    logoOverlayLayer.style.left = Math.max(0, Math.min(vw - size, left)) + 'px';
+    logoOverlayLayer.style.top = Math.max(0, Math.min(vh - size, top)) + 'px';
+    logoOverlayLayer.classList.add('active');
+  }
+
+  window.addEventListener('resize', () => {
+    if (_logoOverlayState.visible) handleLogoOverlay(_logoOverlayState);
+  });
+
+  function dispatchRenderState(rawState) {
+    const state = normalizeRenderState(rawState);
+    if (state.module === 'logo-overlay') {
+      handleLogoOverlay(state.payload || {});
+      return;
+    }
+    lastRenderState = state;
+    switch (state.module) {
+      case 'scripture':
+      case 'verse':
+        showVerse(state.payload || {}, { preserveMedia: !!state.backgroundMedia, backgroundMedia: state.backgroundMedia || null, overlayOptions: state.overlayOptions || {} });
+        break;
+      case 'song':
+        showSong(state.payload || {}, { preserveMedia: !!state.backgroundMedia, backgroundMedia: state.backgroundMedia || null, overlayOptions: state.overlayOptions || {} });
+        break;
+      case 'media':
+        lastProjectedBackgroundMedia = state.payload || null;
+        showMedia(state.payload || {});
+        break;
+      case 'presentation-slide':
+        showPresentationSlide(state.payload || {});
+        break;
+      case 'created-slide':
+        showCreatedSlide(state.payload || {});
+        break;
+      case 'timer':
+        startTimer(state.payload || {});
+        return;
+      case 'timer-scale': {
+        const tp = state.payload || {};
+        if (tp.position) applyTimerPosition(tp.position);
+        applyTimerScale(tp.scale);
+        return;
+      }
+      case 'alert':
+        handleAlert(state.payload || {});
+        return;
+      case 'clear':
+      default:
+        clearVerse();
+        break;
+    }
+  }
+
+  // ── Receive from main process ────────────────────────────────────────────────
+  if (window.electronAPI) {
+    window.electronAPI.on('show-verse',  showVerse);
+    window.electronAPI.on('show-song',   showSong);
+    window.electronAPI.on('show-media',  showMedia);
+    window.electronAPI.on('show-presentation-slide', showPresentationSlide);
+    window.electronAPI.on('show-created-slide',      showCreatedSlide);
+    window.electronAPI.on('render-state', dispatchRenderState);
+    window.electronAPI.on('clear-verse', clearVerse);
+    window.electronAPI.on('show-timer',  startTimer);
+    window.electronAPI.on('stop-timer',  stopTimer);
+    window.electronAPI.on('timer-scale', (d) => { if (d?.position) applyTimerPosition(d.position); applyTimerScale(d?.scale); });
+    window.electronAPI.on('show-caption', (data) => {
+      captionText.textContent = data.text || '';
+      captionLayer.classList.toggle('active', !!data.text);
+    });
+    window.electronAPI.on('show-alert', handleAlert);
+    window.electronAPI.on('logo-overlay', handleLogoOverlay);
+    window.electronAPI.getCurrentRenderState?.().then(dispatchRenderState).catch(() => {});
+  } else {
+    fetch('/api/render-state').then(r => r.json()).then(state => {
+      if (state && state.module) dispatchRenderState(state);
+    }).catch(() => {});
+    const evtSource = new EventSource('/api/events');
+    evtSource.addEventListener('render-state', (e) => {
+      try {
+        const state = JSON.parse(e.data);
+        dispatchRenderState(state);
+      } catch (_) {}
+    });
+  }
+</script>
+</body>
+</html>

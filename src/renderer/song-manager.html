@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08101d">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self'; img-src 'self' data: blob:;">
+<title>AnchorCast — Song Manager</title>
+<script src="js/electron-shim.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/anchorcast-theme.css">
+<style>
+html,body{height:100%;overflow:hidden;display:flex;flex-direction:column;margin:0}
+body{background:var(--void);font-family:'DM Sans',sans-serif;color:var(--text)}
+.shell{display:flex;flex:1;min-height:0}
+.sidebar{width:240px;background:var(--deep);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.hdr{height:46px;background:var(--deep);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:8px;flex-shrink:0}
+.hdr-title{font-family:'Cinzel',serif;font-size:13px;font-weight:600;color:var(--gold-bright);letter-spacing:1.5px;flex:1}
+.sb-search{padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.sb-input{width:100%;background:var(--card);border:1px solid var(--border-lit);border-radius:5px;color:var(--text);font-family:inherit;font-size:12px;padding:6px 10px;outline:none;box-sizing:border-box}
+.sb-input:focus{border-color:var(--gold-dim)}
+.sb-list{flex:1;overflow-y:auto}
+.sb-item{padding:9px 12px;border-bottom:1px solid rgba(37,37,64,.5);cursor:pointer;transition:background .12s;display:flex;align-items:center;gap:6px}
+.sb-item:hover{background:var(--card)}
+.sb-item.active{background:rgba(201,168,76,.07);border-left:2px solid var(--gold)}
+.sb-title{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.sb-meta{font-size:10px;color:var(--text-dim);white-space:nowrap}
+.sb-footer{padding:10px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:6px}
+/* Editor layout: meta bar + two columns */
+.no-song{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-dim);gap:10px}
+.no-song-icon{font-size:48px;opacity:.25}
+.song-editor{flex:1;display:flex;flex-direction:column;min-height:0}
+.meta-bar{padding:9px 14px;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.meta-field{display:flex;flex-direction:column;gap:2px}
+.meta-label{font-size:9px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px}
+.mi{background:var(--card);border:1px solid var(--border-lit);border-radius:4px;color:var(--text);font-family:inherit;font-size:12px;padding:5px 8px;outline:none}
+.mi:focus{border-color:var(--gold-dim)}
+.editor-body{display:flex;flex:1;min-height:0;overflow:hidden}
+/* Left: big text editor */
+.lyrics-pane{flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border)}
+.lyrics-toolbar{padding:6px 10px;border-bottom:1px solid var(--border);background:var(--panel);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+.lt-label{font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.lt-info{font-size:11px;color:var(--text-sub);flex:1}
+#lyricsEditor{flex:1;background:var(--void);border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.9;padding:14px 16px;resize:none;outline:none;overflow-y:auto}
+#lyricsEditor::placeholder{color:var(--text-dim)}
+.rich-pane{border-top:1px solid var(--border);background:var(--panel);display:flex;flex-direction:column;min-height:220px;max-height:320px}
+.rich-toolbar{padding:6px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rtb{padding:4px 8px;border-radius:4px;border:1px solid var(--border-lit);background:var(--card);color:var(--text);font-size:11px;cursor:pointer}
+.rtb:hover{border-color:var(--gold-dim)}
+.rich-editor{flex:1;min-height:120px;padding:12px 14px;outline:none;overflow-y:auto;font-size:13px;line-height:1.8;color:var(--text)}
+.rich-editor .placeholder{color:var(--text-dim)}
+.slide-transform{background:transparent;border:1px solid var(--border);color:var(--text-dim);font-size:9px;border-radius:4px;padding:2px 4px;max-width:96px}
+/* Right: slide preview */
+.slides-pane{width:280px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden}
+.slides-hdr{padding:8px 12px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.7px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.slides-list{flex:1;overflow-y:auto;padding:6px}
+.slide-card{background:var(--card);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;overflow:hidden;cursor:pointer;transition:all .12s}
+.slide-card:hover{border-color:var(--border-lit)}
+.slide-card.active{border-color:var(--gold-dim);background:rgba(201,168,76,.05)}
+.slide-card-hdr{display:flex;align-items:center;padding:5px 8px;border-bottom:1px solid var(--border);background:var(--deep);gap:6px}
+.slide-num{font-size:9px;font-weight:700;color:var(--text-dim);min-width:16px}
+.slide-label-input{background:transparent;border:none;color:var(--gold);font-family:inherit;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;outline:none;flex:1;cursor:text}
+.slide-label-input:focus{color:var(--gold-bright)}
+.slide-actions{display:flex;gap:3px;margin-left:auto}
+.sab{padding:2px 5px;border-radius:3px;font-size:9px;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:transparent;color:var(--text-dim);transition:all .1s}
+.sab:hover{background:var(--card);color:var(--text)}
+.sab.present{border-color:rgba(39,174,96,.4);color:#2ecc71}
+.sab.present:hover{background:rgba(39,174,96,.12)}
+.sab.del{border-color:rgba(192,57,43,.3);color:var(--live)}
+.sab.del:hover{background:rgba(231,76,60,.1)}
+.slide-lines{font-size:12px;color:var(--text-sub);line-height:1.6;padding:7px 8px;white-space:pre-wrap}
+/* Import overlay */
+.imp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:none;align-items:center;justify-content:center}
+.imp-overlay.open{display:flex}
+.imp-box{background:var(--panel);border:1px solid var(--border-lit);border-radius:10px;width:580px;max-height:85vh;display:flex;flex-direction:column}
+.imp-hdr{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.imp-body{padding:14px 16px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.imp-ta{width:100%;height:260px;background:var(--card);border:1px solid var(--border-lit);border-radius:6px;color:var(--text);font-family:'Courier New',monospace;font-size:12px;line-height:1.7;padding:10px;resize:vertical;outline:none;box-sizing:border-box}
+.imp-ta:focus{border-color:var(--gold-dim)}
+.imp-row{display:flex;gap:8px}
+.imp-row > div{flex:1}
+.imp-mi{background:var(--card);border:1px solid var(--border-lit);border-radius:4px;color:var(--text);font-family:inherit;font-size:12px;padding:6px 9px;outline:none;width:100%;box-sizing:border-box}
+.imp-mi:focus{border-color:var(--gold-dim)}
+.imp-preview{font-size:11px;color:var(--text-dim);min-height:18px}
+.imp-footer{padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+/* ── Genius search overlay ── */
+.genius-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;align-items:center;justify-content:center}
+.genius-overlay.open{display:flex}
+.genius-box{background:var(--panel);border:1px solid var(--border-lit);border-radius:12px;width:780px;height:82vh;max-height:720px;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.genius-hdr{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.genius-title{font-family:'Cinzel',serif;font-size:13px;color:var(--gold-bright);display:flex;align-items:center;gap:8px}
+.genius-body{display:flex;flex:1;min-height:0}
+/* Left: search + results */
+.genius-left{width:280px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column}
+.genius-search-row{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-shrink:0}
+.genius-input{flex:1;background:var(--card);border:1px solid var(--border-lit);border-radius:5px;color:var(--text);font-family:inherit;font-size:12px;padding:7px 10px;outline:none}
+.genius-input:focus{border-color:var(--gold-dim)}
+.genius-search-btn{padding:7px 12px;border-radius:5px;border:1px solid rgba(201,168,76,.4);background:var(--gold-glow);color:var(--gold);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+.genius-search-btn:hover{background:var(--gold-dim)}
+.genius-search-btn:disabled{opacity:.4;cursor:not-allowed}
+.genius-results{flex:1;overflow-y:auto;padding:4px}
+.genius-result{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:6px;cursor:pointer;transition:background .12s;border:1px solid transparent}
+.genius-result:hover{background:var(--card)}
+.genius-result.active{background:rgba(201,168,76,.07);border-color:var(--gold-dim)}
+.genius-thumb{width:38px;height:38px;border-radius:5px;object-fit:cover;background:var(--card2);flex-shrink:0}
+.genius-thumb-placeholder{width:38px;height:38px;border-radius:5px;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.genius-result-title{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.genius-result-artist{font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.genius-status{padding:16px;text-align:center;font-size:12px;color:var(--text-dim)}
+/* Right: lyrics preview */
+.genius-right{flex:1;display:flex;flex-direction:column;min-width:0}
+.genius-preview-hdr{padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;min-height:44px}
+.genius-preview-info{flex:1;min-width:0}
+.genius-preview-title{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.genius-preview-artist{font-size:10px;color:var(--text-dim)}
+.genius-lyrics-wrap{flex:1;overflow-y:auto;padding:14px 16px}
+.genius-lyrics{font-size:12px;color:var(--text-sub);line-height:1.9;white-space:pre-wrap;font-family:'DM Sans',sans-serif}
+.genius-lyrics-loading{display:flex;align-items:center;justify-content:center;height:120px;font-size:12px;color:var(--text-dim)}
+.genius-footer{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-shrink:0}
+.genius-credit{font-size:9px;color:var(--text-dim);flex:1}
+.genius-credit a{color:var(--gold-dim);text-decoration:none}
+</style>
+</head>
+<body style="background:#08101d" style="background:#08101d">
+
+<div class="hdr">
+  <button class="btn-sm" onclick="if(window.electronAPI?.isWeb){if(window.opener)window.close();else window.location.href='/';}else window.close();" style="padding:5px 10px;margin-right:4px" title="Back to app">← Back</button>
+  <div class="hdr-title">🎵 Song Manager</div>
+  <button class="btn-sm" onclick="openGeniusSearch()" style="border-color:rgba(201,168,76,.4);color:var(--gold)">🔍 Search Lyrics</button>
+  <button class="btn-sm" onclick="openImport()">↑ Paste / Import</button>
+  <button class="btn-sm" onclick="importSongsFile()">⇪ Import Files</button>
+  <button class="btn-sm" onclick="exportSongsJson()">⇩ Export JSON</button>
+  <button class="btn-save" onclick="saveSongs()" style="padding:5px 14px">✓ Save All</button>
+</div>
+
+<div class="shell">
+  <!-- Sidebar: song list -->
+  <div class="sidebar">
+    <div class="sb-search" style="display:flex;gap:6px;align-items:center">
+      <input class="sb-input" id="searchInput" placeholder="Search songs…" oninput="filterSongs(this.value)" autocomplete="off">
+      <button class="btn-sm" type="button" onclick="clearSongSearch()" style="flex-shrink:0">Clear</button>
+    </div>
+    <div class="sb-list" id="songList"></div>
+    <div class="sb-footer">
+      <button class="btn-save" style="flex:1;padding:7px" onclick="newSong()">+ New Song</button>
+    </div>
+  </div>
+
+  <!-- Main editor -->
+  <div class="main">
+
+    <!-- No song selected -->
+    <div class="no-song" id="noSong">
+      <div class="no-song-icon">🎵</div>
+      <div style="font-size:13px;color:var(--text-dim)">Select a song or create a new one</div>
+      <button class="btn-save" onclick="newSong()" style="padding:7px 18px;margin-top:4px">+ New Song</button>
+    </div>
+
+    <!-- Song editor -->
+    <div class="song-editor" id="songEditor" style="display:none">
+
+      <!-- Meta bar -->
+      <div class="meta-bar">
+        <div class="meta-field">
+          <div class="meta-label">Title</div>
+          <input class="mi" id="songTitle" placeholder="Song title…" oninput="updateMeta()" style="min-width:160px">
+        </div>
+        <div class="meta-field">
+          <div class="meta-label">Artist / Author</div>
+          <input class="mi" id="songAuthor" placeholder="Artist…" oninput="updateMeta()" style="min-width:130px">
+        </div>
+        <div class="meta-field">
+          <div class="meta-label">Key</div>
+          <input class="mi" id="songKey" placeholder="C, G…" oninput="updateMeta()" style="width:55px">
+        </div>
+        <div class="meta-field">
+          <div class="meta-label">CCLI #</div>
+          <input class="mi" id="songCcli" placeholder="1234567" oninput="updateMeta()" style="width:90px"
+            title="CCLI Song Number — shown on slides if copyright display is enabled in Settings">
+        </div>
+        <div class="meta-field">
+          <div class="meta-label">Copyright</div>
+          <input class="mi" id="songCopyright" placeholder="© Year Author" oninput="updateMeta()" style="min-width:160px"
+            title="Copyright line shown on slides">
+        </div>
+        <button class="btn-sm" onclick="deleteSong()"
+          style="margin-left:auto;color:var(--live);border-color:rgba(192,57,43,.4);padding:5px 10px">
+          🗑 Delete
+        </button>
+      </div>
+
+      <!-- Editor body: lyrics text + slide preview -->
+      <div class="editor-body">
+
+        <!-- Left: lyrics editor -->
+        <div class="lyrics-pane">
+          <div class="lyrics-toolbar">
+            <span class="lt-label">Lyrics</span>
+            <span class="lt-info" id="lyricsInfo">Blank line between paragraphs = new slide</span>
+            <button class="btn-sm" onclick="addBlankSlide()" style="font-size:10px;padding:3px 8px">+ Slide</button>
+          </div>
+          <textarea id="lyricsEditor"
+            placeholder="Type or paste lyrics here.
+
+Each 2 lines becomes one slide automatically.
+Blank line between paragraphs = new slide.
+
+Example:
+
+Amazing grace how sweet
+the sound that saved a wretch
+
+I once was lost
+but now am found
+
+Was blind but now I see
+
+You can paste directly from Notepad — spacing between paragraphs is detected automatically."
+            oninput="onLyricsChange()" spellcheck="false"></textarea>
+          <div class="rich-pane">
+            <div class="rich-toolbar">
+              <span class="lt-label">Rich Lyrics Editor</span>
+              <button class="rtb" type="button" onclick="formatRich('bold')"><b>B</b></button>
+              <button class="rtb" type="button" onclick="formatRich('italic')"><i>I</i></button>
+              <button class="rtb" type="button" onclick="formatRich('underline')"><u>U</u></button>
+              <button class="rtb" type="button" onclick="formatRich('insertUnorderedList')">• List</button>
+              <button class="rtb" type="button" onclick="clearRichFormatting()">Clear</button>
+              <span class="lt-info" id="richInfo">Select a slide to edit rich text formatting.</span>
+            </div>
+            <div id="richEditor" class="rich-editor" contenteditable="true" spellcheck="true"></div>
+          </div>
+        </div>
+
+        <!-- Right: slide preview & label editor -->
+        <div class="slides-pane">
+          <div class="slides-hdr">
+            <span id="slideCount">0 slides</span>
+            <button class="btn-sm" style="font-size:9px;padding:2px 6px" onclick="resetLabels()">↺ Reset labels</button>
+          </div>
+          <div class="slides-list" id="slidesList"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Import overlay -->
+<div class="imp-overlay" id="importOverlay">
+  <div class="imp-box">
+    <div class="imp-hdr">
+      <span style="font-family:'Cinzel',serif;font-size:13px;color:var(--gold-bright)">📋 Paste Song Lyrics</span>
+      <button onclick="closeImport()" style="background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer">✕</button>
+    </div>
+    <div class="imp-body">
+      <div style="font-size:11px;color:var(--text-dim);line-height:1.7">
+        Paste from Notepad, Word, or any source. Title/artist auto-detected from first line.<br>
+        <strong style="color:var(--text)">Blank lines</strong> = new slide. <strong style="color:var(--text)">[Verse 1]</strong>, <strong style="color:var(--text)">[Chorus]</strong> etc. set labels automatically.
+      </div>
+      <textarea class="imp-ta" id="importText"
+        placeholder="Bless the Lord - Tye Tribbett
+
+[Verse 1]
+Son of man (Son of man)
+Son of righteousness
+
+King of the earth
+For sinners slain
+
+[Chorus]
+Bless the Lord
+Oh my soul
+
+Bless the Lord
+Oh my soul"></textarea>
+      <div class="imp-row">
+        <div>
+          <div class="meta-label" style="margin-bottom:3px">Title override <span style="color:var(--text-dim)">(leave blank = auto)</span></div>
+          <input class="imp-mi" id="importTitle" placeholder="Auto-detected from first line…">
+        </div>
+        <div>
+          <div class="meta-label" style="margin-bottom:3px">Artist override</div>
+          <input class="imp-mi" id="importAuthor" placeholder="Auto-detected from first line…">
+        </div>
+      </div>
+      <div class="imp-preview" id="importPreview"></div>
+    </div>
+    <div class="imp-footer">
+      <button class="btn-cancel" onclick="closeImport()">Cancel</button>
+      <button class="btn-save" onclick="doImport()">↑ Import Song</button>
+    </div>
+  </div>
+</div>
+
+<!-- Genius Lyrics Search overlay -->
+<div class="genius-overlay" id="geniusOverlay">
+  <div class="genius-box">
+    <div class="genius-hdr">
+      <div class="genius-title">🔍 Search Song Lyrics <span style="font-size:9px;color:var(--text-dim);font-family:'DM Sans',sans-serif;font-weight:400;letter-spacing:0">Genius &amp; LRCLIB</span></div>
+      <button onclick="closeGeniusSearch()" style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div class="genius-body">
+      <!-- Left: search box + results list -->
+      <div class="genius-left">
+        <div class="genius-search-row">
+          <input class="genius-input" id="geniusInput" placeholder="Song title or lyrics…" autocomplete="off" spellcheck="false">
+          <button class="genius-search-btn" id="geniusSearchBtn" onclick="geniusSearch()">Search</button>
+        </div>
+        <div class="genius-results" id="geniusResults">
+          <div class="genius-status">Type a song title or lyric phrase and press Search.</div>
+        </div>
+      </div>
+      <!-- Right: lyrics preview -->
+      <div class="genius-right">
+        <div class="genius-preview-hdr">
+          <div class="genius-preview-info">
+            <div class="genius-preview-title" id="geniusPreviewTitle" style="color:var(--text-dim)">Select a song from the results</div>
+            <div class="genius-preview-artist" id="geniusPreviewArtist"></div>
+          </div>
+        </div>
+        <div class="genius-lyrics-wrap">
+          <div class="genius-lyrics-loading" id="geniusLyricsLoading" style="display:none">⏳ Fetching lyrics…</div>
+          <pre class="genius-lyrics" id="geniusLyricsText"></pre>
+        </div>
+        <div class="genius-footer">
+          <div class="genius-credit">Lyrics sourced from <a href="https://genius.com" target="_blank">Genius.com</a></div>
+          <button class="btn-cancel" onclick="closeGeniusSearch()">Cancel</button>
+          <button class="btn-save" id="geniusAddBtn" onclick="geniusAddToLibrary()" disabled
+            style="padding:6px 18px;opacity:.4">✚ Add to Library</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let songs = [];
+let currentSongId = null;
+let activeSlideIdx = 0;
+let requestedSongId = null;
+
+function getSong() { return songs.find(s => String(s.id) === String(currentSongId)) || null; }
+function getActiveSection() { const song = getSong(); return song?.sections?.[activeSlideIdx] || null; }
+function normalizeSection(sec = {}, idx = 0) {
+  const lines = (sec.lines || []).map(l => String(l || '').trim()).filter(Boolean);
+  return {
+    label: sec.label || autoLabel(idx, []),
+    lines,
+    richHtml: sec.richHtml || lines.map(l => `<div>${escHtml(l)}</div>`).join(''),
+    textTransform: sec.textTransform || 'inherit',
+  };
+}
+function stripHtmlToLines(html = '') {
+  const plain = String(html).replace(/<\s*br\s*\/?\s*>/gi, '\n').replace(/<\/div>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<[^>]+>/g, '');
+  return plain.split(/\n+/).map(s => s.replace(/&nbsp;/g,' ').trim()).filter(Boolean);
+}
+function ensureSongSchema(song) {
+  if (!song) return song;
+  song.sections = (song.sections || []).map((sec, idx) => normalizeSection(sec, idx));
+  return song;
+}
+
+// ── Init ────────────────────────────────────────────────────────────────────────
+async function init() {
+  if (window.electronAPI?.getSongs) {
+    const loaded = await window.electronAPI.getSongs();
+    songs = (loaded || []).map(s => ensureSongSchema(s));
+  } else {
+    songs = getSampleSongs().map(s => ensureSongSchema(s));
+  }
+  renderSongList();
+  const richEditor = document.getElementById('richEditor');
+  richEditor?.addEventListener('input', onRichEditorInput);
+  const wanted = requestedSongId != null ? songs.find(s => String(s.id) === String(requestedSongId)) : null;
+  if (wanted) selectSong(wanted.id);
+  else if (songs.length) selectSong(songs[0].id);
+}
+
+function getSampleSongs() {
+  return [{
+    id: Date.now(), title: 'Amazing Grace', author: 'John Newton', key: 'G',
+    sections: [
+      normalizeSection({ label: 'Verse 1', lines: ['Amazing grace, how sweet the sound', 'That saved a wretch like me'] },0),
+      normalizeSection({ label: 'Verse 2', lines: ['I once was lost but now am found', 'Was blind but now I see'] },1),
+      normalizeSection({ label: 'Chorus', lines: ['Praise God, praise God', 'For grace so free'], textTransform: 'uppercase' },2),
+    ]
+  }];
+}
+
+// ── Song list ──────────────────────────────────────────────────────────────────
+function filterSongs(q) { renderSongList(q); }
+
+function renderSongList(q = '') {
+  const list = document.getElementById('songList');
+  const filtered = q
+    ? songs.filter(s =>
+        (s.title||'').toLowerCase().includes(q.toLowerCase()) ||
+        (s.author||'').toLowerCase().includes(q.toLowerCase()))
+    : songs;
+  if (!filtered.length) {
+    list.innerHTML = `<div style="padding:20px 12px;text-align:center;color:var(--dim);font-size:12px">
+      ${q ? `No songs match "${escHtml(q)}"` : 'No songs yet'}</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(s => `
+    <div class="sb-item${String(s.id) === String(currentSongId) ? ' active' : ''}"
+      onclick='selectSong(${JSON.stringify(String(s.id))})'
+      oncontextmenu='songContextMenu(event, ${JSON.stringify(String(s.id))})'>
+      <div style="flex:1;min-width:0">
+        <div class="sb-title">${escHtml(s.title || 'Untitled')}</div>
+        <div class="sb-meta">${escHtml(s.author || '—')} · ${s.sections?.length || 0} slides</div>
+      </div>
+    </div>`).join('');
+}
+
+function selectSong(id) {
+  currentSongId = id;
+  activeSlideIdx = 0;
+  renderSongList(document.getElementById('searchInput').value);
+  renderEditor();
+}
+
+// ── Editor ─────────────────────────────────────────────────────────────────────
+function renderEditor() {
+  const song = getSong();
+  document.getElementById('noSong').style.display = song ? 'none' : 'flex';
+  document.getElementById('songEditor').style.display = song ? 'flex' : 'none';
+  if (!song) return;
+  ensureSongSchema(song);
+
+  document.getElementById('songTitle').value     = song.title     || '';
+  document.getElementById('songAuthor').value    = song.author    || '';
+  document.getElementById('songKey').value       = song.key       || '';
+  document.getElementById('songCcli').value      = song.ccli      || '';
+  document.getElementById('songCopyright').value = song.copyright || '';
+
+  // Build lyrics text from sections with labels preserved
+  const lyrics = (song.sections || []).map(s => {
+    const label = (s.label || '').trim();
+    const body = (s.lines || []).join('\n');
+    return `${label ? '[' + label + ']\n' : ''}${body}`.trim();
+  }).join('\n\n');
+  document.getElementById('lyricsEditor').value = lyrics;
+
+  updateLyricsInfo();
+  renderSlides();
+  loadRichEditor();
+}
+
+var _metaDebounceTimer = null;
+function updateMeta() {
+  const song = getSong();
+  if (!song) return;
+  song.title     = document.getElementById('songTitle').value;
+  song.author    = document.getElementById('songAuthor').value;
+  song.key       = document.getElementById('songKey').value;
+  song.ccli      = document.getElementById('songCcli').value.replace(/\D/g, '');
+  song.copyright = document.getElementById('songCopyright').value;
+  clearTimeout(_metaDebounceTimer);
+  _metaDebounceTimer = setTimeout(() => {
+    renderSongList(document.getElementById('searchInput').value);
+  }, 300);
+}
+
+var _lyricsDebounceTimer = null;
+
+function onLyricsChange() {
+  const song = getSong();
+  if (!song) return;
+  const previous = song.sections || [];
+  // Parse immediately so song state stays current
+  song.sections = lyricsToSections(
+    document.getElementById('lyricsEditor').value,
+    previous
+  ).map((sec, idx) => {
+    const prev = previous[idx] || {};
+    return normalizeSection({
+      ...sec,
+      label: sec.label || prev.label || autoLabel(idx, []),
+      textTransform: sec.textTransform || prev.textTransform || 'inherit',
+      richHtml: (sec.lines || []).map(l => `<div>${escHtml(l)}</div>`).join(''),
+    }, idx);
+  });
+  activeSlideIdx = Math.min(activeSlideIdx, Math.max(0, song.sections.length - 1));
+  updateLyricsInfo();
+  // Debounce the expensive DOM operations so every keystroke feels instant
+  clearTimeout(_lyricsDebounceTimer);
+  _lyricsDebounceTimer = setTimeout(() => {
+    renderSlides();
+    loadRichEditor();
+  }, 280);
+}
+
+function lyricsToSections(text, existingSections = []) {
+  const blocks = String(text || '').replace(/\r\n/g,'\n').replace(/\r/g,'\n').split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+  const result = [];
+  const labelOf = (line) => {
+    const t = String(line || '').trim();
+    if (!t) return '';
+    if (/^\[.+\]$/.test(t)) return t.slice(1,-1).trim();
+    if (/^\{.+\}$/.test(t)) return t.slice(1,-1).trim();
+    if (/^(verse|chorus|bridge|pre[\s-]?chorus|outro|tag|interlude|hook|refrain|vamp)\s*\d*[:\s]?$/i.test(t)) return t.replace(/:\s*$/,'').trim();
+    return '';
+  };
+
+  blocks.forEach((para, idx) => {
+    const lines = para.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return;
+    const prev = existingSections[idx] || {};
+    const detected = labelOf(lines[0]);
+    const body = detected ? lines.slice(1) : lines;
+    result.push({
+      label: detected || prev.label || autoLabel(idx, result),
+      lines: body,
+      richHtml: body.map(l => `<div>${escHtml(l)}</div>`).join(''),
+      textTransform: prev.textTransform || 'inherit'
+    });
+  });
+
+  return result;
+}
+
+function autoLabel(idx, existingSections) {
+  // Common label progression: Verse 1, Chorus, Verse 2, Chorus, Bridge, Chorus…
+  const defaults = ['Verse 1','Chorus','Verse 2','Chorus','Bridge','Verse 3','Chorus','Outro','Tag'];
+  return defaults[idx] || `Slide ${idx + 1}`;
+}
+
+function updateLyricsInfo() {
+  const song = getSong();
+  if (!song) return;
+  const count = song.sections?.length || 0;
+  document.getElementById('lyricsInfo').textContent =
+    `${count} slide${count !== 1 ? 's' : ''} · Blank line = new slide`;
+  document.getElementById('slideCount').textContent = `${count} slide${count !== 1 ? 's' : ''}`;
+}
+
+function addBlankSlide() {
+  const ta = document.getElementById('lyricsEditor');
+  const pos = ta.selectionStart;
+  const val = ta.value;
+  // Insert two newlines at cursor
+  const before = val.slice(0, pos);
+  const after  = val.slice(pos);
+  const insert = before.endsWith('\n') ? '\n' : '\n\n';
+  ta.value = before + insert + after;
+  ta.selectionStart = ta.selectionEnd = pos + insert.length;
+  ta.focus();
+  onLyricsChange();
+}
+
+// ── Slides panel ────────────────────────────────────────────────────────────────
+function renderSlides() {
+  const song = getSong();
+  const list = document.getElementById('slidesList');
+  if (!song || !song.sections?.length) {
+    list.innerHTML = '<div style="padding:16px;text-align:center;font-size:11px;color:var(--text-dim)">Type lyrics on the left to see slides here.</div>';
+    return;
+  }
+
+  list.innerHTML = song.sections.map((sec, i) => {
+    const preview = (sec.lines || []).join('\n') || '(empty)';
+    return `<div class="slide-card${i===activeSlideIdx?' active':''}" id="slide-${i}" onclick="selectSlide(${i})">
+      <div class="slide-card-hdr">
+        <span class="slide-num">${i+1}</span>
+        <input class="slide-label-input" value="${escHtml(sec.label||'')}"
+          oninput="updateSlideLabel(${i},this.value)" onclick="event.stopPropagation()"
+          placeholder="Label…" title="Edit slide label">
+        <select class="slide-transform" title="Per-slide capitalization" onclick="event.stopPropagation()" onchange="updateSlideTransform(${i}, this.value)">
+          <option value="inherit" ${sec.textTransform==='inherit'?'selected':''}>Theme</option>
+          <option value="none" ${sec.textTransform==='none'?'selected':''}>Normal</option>
+          <option value="uppercase" ${sec.textTransform==='uppercase'?'selected':''}>UPPER</option>
+          <option value="lowercase" ${sec.textTransform==='lowercase'?'selected':''}>lower</option>
+          <option value="capitalize" ${sec.textTransform==='capitalize'?'selected':''}>Title</option>
+        </select>
+        <div class="slide-actions">
+          <button class="sab present" onclick="event.stopPropagation();presentSlide(${i})" title="Present">▶</button>
+          <button class="sab" onclick="event.stopPropagation();moveSlide(${i},-1)" title="Move up" ${i===0?'disabled':''}>↑</button>
+          <button class="sab" onclick="event.stopPropagation();moveSlide(${i},1)" title="Move down" ${i===song.sections.length-1?'disabled':''}>↓</button>
+          <button class="sab del" onclick="event.stopPropagation();deleteSlide(${i})" title="Delete slide">✕</button>
+        </div>
+      </div>
+      <div class="slide-lines" style="text-transform:${sec.textTransform && sec.textTransform !== 'inherit' ? sec.textTransform : 'none'}">${escHtml(preview)}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectSlide(i) {
+  activeSlideIdx = i;
+  document.querySelectorAll('.slide-card').forEach((c,ci) => c.classList.toggle('active', ci===i));
+  loadRichEditor();
+}
+
+function updateSlideLabel(i, val) {
+  const song = getSong();
+  if (!song?.sections[i]) return;
+  song.sections[i].label = val;
+}
+
+function updateSlideTransform(i, val) {
+  const song = getSong();
+  if (!song?.sections[i]) return;
+  song.sections[i].textTransform = val || 'inherit';
+  activeSlideIdx = i;
+  renderSlides();
+  loadRichEditor();
+}
+
+function deleteSlide(i) {
+  const song = getSong();
+  if (!song) return;
+  song.sections.splice(i, 1);
+  // Rebuild lyrics textarea from remaining sections
+  const lyrics = song.sections.map(s => {
+    const label = (s.label || '').trim();
+    const body = (s.lines || []).join('\n');
+    return `${label ? '[' + label + ']\n' : ''}${body}`.trim();
+  }).join('\n\n');
+  document.getElementById('lyricsEditor').value = lyrics;
+  updateLyricsInfo();
+  renderSlides();
+  loadRichEditor();
+}
+
+function moveSlide(i, dir) {
+  const song = getSong();
+  if (!song) return;
+  const j = i + dir;
+  if (j < 0 || j >= song.sections.length) return;
+  [song.sections[i], song.sections[j]] = [song.sections[j], song.sections[i]];
+  // Rebuild lyrics
+  const lyrics = song.sections.map(s => {
+    const label = (s.label || '').trim();
+    const body = (s.lines || []).join('\n');
+    return `${label ? '[' + label + ']\n' : ''}${body}`.trim();
+  }).join('\n\n');
+  document.getElementById('lyricsEditor').value = lyrics;
+  activeSlideIdx = j;
+  renderSlides();
+  loadRichEditor();
+}
+
+function resetLabels() {
+  const song = getSong();
+  if (!song) return;
+  song.sections = song.sections.map((sec, i) => ({
+    ...sec, label: autoLabel(i, [])
+  }));
+  renderSlides();
+  loadRichEditor();
+}
+
+function loadRichEditor() {
+  const editor = document.getElementById('richEditor');
+  const info = document.getElementById('richInfo');
+  const sec = getActiveSection();
+  if (!editor) return;
+  if (!sec) { editor.innerHTML = '<div class="placeholder">Select a slide to edit rich text formatting.</div>'; if (info) info.textContent = 'Select a slide to edit rich text formatting.'; return; }
+  editor.innerHTML = sec.richHtml || (sec.lines || []).map(l => `<div>${escHtml(l)}</div>`).join('') || '<div><br></div>';
+  if (info) info.textContent = `Editing ${sec.label || `Slide ${activeSlideIdx + 1}`} · ${sec.textTransform === 'inherit' ? 'Theme capitalization' : sec.textTransform}`;
+}
+
+function onRichEditorInput() {
+  const sec = getActiveSection();
+  const editor = document.getElementById('richEditor');
+  if (!sec || !editor) return;
+  sec.richHtml = editor.innerHTML;
+  sec.lines = stripHtmlToLines(editor.innerHTML);
+  const song = getSong();
+  document.getElementById('lyricsEditor').value = (song.sections || []).map(s => {
+    const label = (s.label || '').trim();
+    const body = (s.lines || []).join('\n');
+    return `${label ? '[' + label + ']\n' : ''}${body}`.trim();
+  }).join('\n\n');
+  renderSlides();
+}
+
+function formatRich(cmd) {
+  const editor = document.getElementById('richEditor');
+  editor?.focus();
+  document.execCommand(cmd, false, null);
+  onRichEditorInput();
+}
+
+function clearRichFormatting() {
+  const sec = getActiveSection();
+  if (!sec) return;
+  sec.richHtml = (sec.lines || []).map(l => `<div>${escHtml(l)}</div>`).join('');
+  loadRichEditor();
+  onRichEditorInput();
+}
+
+// ── Present ─────────────────────────────────────────────────────────────────────
+async function presentSlide(i) {
+  const song = getSong();
+  if (!song?.sections[i]) return;
+  const sec = song.sections[i];
+  // Highlight slide
+  document.querySelectorAll('.slide-card').forEach((c,ci) => c.classList.toggle('active', ci===i));
+  if (window.electronAPI?.projectSong) {
+    await window.electronAPI.projectSong({
+      title:        song.title,
+      author:       song.author,
+      ccli:         song.ccli      || '',
+      copyright:    song.copyright || '',
+      sectionLabel: sec.label,
+      lines:        sec.lines || [],
+      html:         sec.richHtml || '',
+      songTextTransform: sec.textTransform && sec.textTransform !== 'inherit' ? sec.textTransform : 'none',
+      sectionTextTransform: sec.textTransform || 'inherit',
+    });
+  }
+  showToast(`▶ ${sec.label}`);
+}
+
+// ── CRUD ────────────────────────────────────────────────────────────────────────
+function newSong() {
+  const song = {
+    id: Date.now(),
+    title: 'New Song', author: '', key: '',
+    sections: [normalizeSection({ label: 'Verse 1', lines: [] }, 0)]
+  };
+  ensureSongSchema(song);
+  songs.unshift(song);
+  currentSongId = song.id;
+  renderSongList();
+  renderEditor();
+  setTimeout(() => document.getElementById('songTitle')?.select(), 50);
+}
+
+function deleteSong() { if (currentSongId) deleteSongById(currentSongId); }
+
+function deleteSongById(id) {
+  const song = songs.find(s => s.id === id);
+  if (!song) return;
+  _showDeleteConfirm(song.title, () => {
+    songs = songs.filter(s => s.id !== id);
+    currentSongId = songs[0]?.id || null;
+    renderSongList();
+    renderEditor();
+    saveSongs();
+    showToast(`🗑 Deleted`);
+  });
+}
+
+function _showDeleteConfirm(title, onConfirm) {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;animation:fadeIn .12s ease';
+  ov.innerHTML = `
+    <div style="background:var(--panel);border:1px solid var(--border-lit);border-radius:10px;padding:24px 28px;width:360px;box-shadow:0 12px 40px rgba(0,0,0,.6)">
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px">Delete Song?</div>
+      <div style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:20px">
+        Are you sure you want to delete "<strong style="color:var(--text)">${escHtml(title)}</strong>"?<br>This cannot be undone.
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button id="_delCancel" style="padding:7px 16px;border-radius:6px;border:1px solid var(--border-lit);background:var(--card);color:var(--text);font-size:12px;cursor:pointer;font-family:inherit">Cancel</button>
+        <button id="_delConfirm" style="padding:7px 16px;border-radius:6px;border:none;background:#cc3333;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Delete</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#_delCancel').addEventListener('click', () => ov.remove());
+  ov.querySelector('#_delConfirm').addEventListener('click', () => { ov.remove(); onConfirm(); });
+  ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+  ov.querySelector('#_delCancel').focus();
+}
+
+function songContextMenu(e, id) {
+  e.preventDefault();
+  document.getElementById('songCtxMenu')?.remove();
+  const song = songs.find(s => s.id === id);
+  if (!song) return;
+  selectSong(id);
+  const menu = document.createElement('div');
+  menu.id = 'songCtxMenu';
+  menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;
+    background:var(--panel);border:1px solid var(--border-lit);border-radius:6px;
+    padding:4px 0;z-index:999;min-width:170px;box-shadow:0 4px 16px rgba(0,0,0,.5)`;
+  menu.innerHTML = `
+    <div onclick="deleteSongById(${id});document.getElementById('songCtxMenu')?.remove()"
+      style="padding:8px 14px;font-size:12px;color:var(--live);cursor:pointer"
+      onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background=''">
+      🗑 Delete "${escHtml(song.title.slice(0,22))}"
+    </div>`;
+  document.body.appendChild(menu);
+  const close = () => { menu.remove(); document.removeEventListener('click', close); };
+  setTimeout(() => document.addEventListener('click', close), 50);
+}
+
+function saveSongs() {
+  if (window.electronAPI?.saveSongs) {
+    window.electronAPI.saveSongs(songs.map(s => ensureSongSchema(s))).then(r => {
+      if (r?.ok || r?.success) {
+        const count = songs.length;
+        showToast(`✓ Saved ${count} song${count === 1 ? '' : 's'}`, 'success');
+      } else {
+        showToast('⚠ Save failed', 'error');
+      }
+    }).catch(e => {
+      showToast('⚠ Save failed: ' + (e.message || 'unknown error'), 'error');
+    });
+  }
+}
+
+// ── Import ──────────────────────────────────────────────────────────────────────
+function openImport() {
+  document.getElementById('importOverlay').classList.add('open');
+  const ta = document.getElementById('importText');
+  ta.focus();
+  ta.oninput = () => {
+    const raw = ta.value.trim();
+    if (!raw) { document.getElementById('importPreview').textContent = ''; return; }
+    const p = parseLyrics(raw, '', '');
+    document.getElementById('importPreview').innerHTML =
+      `<span style="color:var(--gold)">Detected:</span> <strong style="color:var(--text)">"${escHtml(p.title)}"</strong>` +
+      (p.author ? ` by <strong style="color:var(--text)">${escHtml(p.author)}</strong>` : '') +
+      ` &nbsp;·&nbsp; <span style="color:#2ecc71">${p.sections.length} slides</span>`;
+  };
+}
+
+function closeImport() {
+  document.getElementById('importOverlay').classList.remove('open');
+  document.getElementById('importText').value = '';
+  document.getElementById('importTitle').value = '';
+  document.getElementById('importAuthor').value = '';
+  document.getElementById('importPreview').textContent = '';
+}
+
+
+async function importSongsFile() {
+  if (window.electronAPI?.isWeb) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,.txt';
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+      const text = await file.text();
+      try {
+        if (file.name.endsWith('.json')) {
+          const imported = JSON.parse(text);
+          const list = Array.isArray(imported) ? imported : [imported];
+          list.forEach(s => { s.id = s.id || Date.now() + Math.random(); ensureSongSchema(s); songs.unshift(s); });
+          showToast(`✓ Imported ${list.length} song(s) from JSON`);
+        } else {
+          const song = ensureSongSchema(parseLyrics(text, '', ''));
+          songs.unshift(song);
+          showToast(`✓ Imported "${song.title}"`);
+        }
+        currentSongId = songs[0]?.id || null;
+        renderSongList();
+        renderEditor();
+      } catch (e) {
+        showToast('⚠ Failed to parse file');
+      }
+    };
+    input.click();
+    return;
+  }
+  if (!window.electronAPI?.importSongsFile) { showToast('⚠ File import not available'); return; }
+  const res = await window.electronAPI.importSongsFile();
+  if (res?.success) {
+    const loaded = await window.electronAPI.getSongs();
+    songs = (loaded || []).map(s => ensureSongSchema(s));
+    currentSongId = songs[0]?.id || null;
+    renderSongList();
+    renderEditor();
+    showToast(`✓ Imported ${res.imported || 0} song(s)`);
+  } else if (!res?.canceled) {
+    showToast(`⚠ ${res?.error || 'Import failed'}`);
+  }
+}
+
+
+async function exportSongsJson() {
+  if (window.electronAPI?.isWeb) {
+    const blob = new Blob([JSON.stringify(songs, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'anchorcast-songs.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast(`✓ Exported ${songs.length} song(s)`);
+    return;
+  }
+  if (!window.electronAPI?.exportSongs) { showToast('⚠ Export not available'); return; }
+  const res = await window.electronAPI.exportSongs({ mode: 'json' });
+  if (res?.success) showToast(`✓ Exported ${res.count || 0} song(s)`);
+  else if (!res?.canceled) showToast(`⚠ ${res?.error || 'Export failed'}`);
+}
+
+function doImport() {
+  const raw    = document.getElementById('importText').value.trim();
+  const title  = document.getElementById('importTitle').value.trim();
+  const author = document.getElementById('importAuthor').value.trim();
+  if (!raw) { showToast('⚠ Nothing to import'); return; }
+  const song = ensureSongSchema(parseLyrics(raw, title, author));
+  songs.unshift(song);
+  currentSongId = song.id;
+  closeImport();
+  renderSongList();
+  renderEditor();
+  showToast(`✓ Imported "${song.title}" · ${song.sections.length} slides`);
+}
+
+// ── Parse lyrics from text ──────────────────────────────────────────────────────
+function _cleanSongLine(line) {
+  return String(line || '').replace(/\{[^{}]*\}/g, '').trim();
+}
+
+function parseLyrics(text, titleOverride, authorOverride) {
+  const allLines = text.split('\n');
+  let detectedTitle = '', detectedAuthor = authorOverride || '';
+
+  // Detect "Title - Artist" or "Title by Artist" on first non-empty line
+  const firstLine = allLines.find(l => l.trim());
+  if (firstLine) {
+    const byMatch   = firstLine.match(/^(.+?)\s+by\s+(.+)$/i);
+    const dashMatch = firstLine.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+    if (byMatch && !/^\[/.test(firstLine)) {
+      detectedTitle = byMatch[1].trim();
+      detectedAuthor = byMatch[2].trim();
+    } else if (dashMatch && !/^\[/.test(firstLine)) {
+      detectedTitle = dashMatch[1].trim();
+      detectedAuthor = dashMatch[2].trim();
+    }
+  }
+
+  const isLabel = (line) => {
+    const t = line.trim();
+    if (!t) return false;
+    if (/^\[.+\]$/.test(t)) return t.replace(/[\[\]]/g,'').trim();
+    if (/^\{.+\}$/.test(t)) return t.replace(/[\{\}]/g,'').trim();
+    if (/^(verse|chorus|bridge|pre[\s-]?chorus|outro|tag|interlude|hook|refrain|vamp)\s*\d*[:\s]?$/i.test(t))
+      return t.replace(/:\s*$/,'').trim();
+    return false;
+  };
+
+  const sections = [];
+  let current = null;
+  let skipFirst = !!(detectedTitle || detectedAuthor);
+
+  for (const line of allLines) {
+    if (skipFirst && line.trim() === firstLine?.trim()) { skipFirst = false; continue; }
+    const label = isLabel(line);
+    if (label) {
+      if (current) sections.push(current);
+      current = { label, lines: [] };
+    } else if (line.trim() === '') {
+      // Blank line = end of current slide
+      if (current && current.lines.length) {
+        sections.push(current);
+        current = null;
+      }
+    } else {
+      const cleaned = _cleanSongLine(line);
+      if (!cleaned) continue;
+      if (!current) {
+        if (!detectedTitle && !titleOverride) {
+          detectedTitle = cleaned;
+        }
+        current = { label: autoLabel(sections.length, sections), lines: [] };
+      }
+      current.lines.push(cleaned);
+    }
+  }
+  if (current && current.lines.length) sections.push(current);
+  if (!sections.length && allLines.some(l=>l.trim())) {
+    sections.push({ label: 'Verse 1', lines: allLines.map(_cleanSongLine).filter(l=>l.trim()) });
+  }
+
+  // Default 2 lines per slide — split sections with more than 2 lines
+  const final = [];
+  for (const sec of sections) {
+    const lines = sec.lines.filter(l => l.trim());
+    if (lines.length <= 2) { final.push({ label: sec.label, lines }); continue; }
+    // Split into 2-line chunks
+    for (let i = 0, n = 1; i < lines.length; i += 2, n++) {
+      const chunk = lines.slice(i, i + 2);
+      final.push({ label: n === 1 ? sec.label : `${sec.label} (${n})`, lines: chunk });
+    }
+  }
+
+  return {
+    id: Date.now(),
+    title:   titleOverride  || detectedTitle  || 'New Song',
+    author:  authorOverride || detectedAuthor || '',
+    key: '', sections: final
+  };
+}
+
+// ── Utils ────────────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+let _toastT;
+function showToast(msg, type) {
+  let t = document.getElementById('smToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'smToast';
+    t.style.cssText = [
+      'position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px)',
+      'border-radius:8px;padding:9px 20px;font-size:12px;font-weight:600',
+      'z-index:9999;pointer-events:none',
+      'transition:opacity .25s ease, transform .25s ease',
+      'display:flex;align-items:center;gap:8px;white-space:nowrap',
+      'box-shadow:0 4px 20px rgba(0,0,0,.4)'
+    ].join(';');
+    document.body.appendChild(t);
+  }
+  // Style by type
+  if (type === 'success') {
+    t.style.background = 'rgba(15,211,164,.15)';
+    t.style.border     = '1px solid rgba(15,211,164,.35)';
+    t.style.color      = '#0fd3a4';
+  } else if (type === 'error') {
+    t.style.background = 'rgba(231,76,60,.15)';
+    t.style.border     = '1px solid rgba(231,76,60,.35)';
+    t.style.color      = '#ff8f86';
+  } else {
+    t.style.background = 'var(--card,#16162a)';
+    t.style.border     = '1px solid var(--border-lit,#2e3360)';
+    t.style.color      = 'var(--text,#edf1ff)';
+  }
+  t.textContent = msg;
+  t.style.opacity   = '1';
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(_toastT);
+  _toastT = setTimeout(() => {
+    t.style.opacity   = '0';
+    t.style.transform = 'translateX(-50%) translateY(8px)';
+  }, 2800);
+}
+
+
+function clearSongSearch() {
+  const input = document.getElementById('searchInput');
+  if (input) input.value = '';
+  renderSongList('');
+}
+
+function openSpecificSong(songId) {
+  requestedSongId = songId;
+  const song = songs.find(s => String(s.id) === String(songId));
+  if (!song) return;
+  selectSong(song.id);
+  setTimeout(() => document.getElementById('songTitle')?.focus(), 40);
+}
+
+// ── Paste auto-title ──────────────────────────────────────────────────────────
+// When the user pastes into the lyrics editor, try to extract a title from the
+// pasted content and fill the title input if it's currently blank/untitled.
+function _titleCaseWords(str) {
+  return str.replace(/\b\w/g, c => c.toUpperCase());
+}
+function _extractAutoTitle(raw) {
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return '';
+  const firstLine = lines[0];
+  const byMatch   = firstLine.match(/^(.+?)\s+by\s+(.+)$/i);
+  const dashMatch = firstLine.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+  if (byMatch && !/^\[/.test(firstLine))   return _titleCaseWords(byMatch[1].trim());
+  if (dashMatch && !/^\[/.test(firstLine)) return _titleCaseWords(dashMatch[1].trim());
+  let contentLine = '';
+  for (const line of lines) {
+    const t = line.trim();
+    if (/^\[.+\]$/.test(t) || /^\{.+\}$/.test(t)) continue;
+    if (/^(verse|chorus|bridge|pre[\s-]?chorus|outro|tag|interlude|hook|refrain|vamp)\s*\d*[:\s]?$/i.test(t)) continue;
+    contentLine = t;
+    break;
+  }
+  if (!contentLine) return '';
+  const words = contentLine.split(/\s+/).slice(0, 5);
+  return _titleCaseWords(words.join(' '));
+}
+
+document.getElementById('lyricsEditor')?.addEventListener('paste', () => {
+  setTimeout(() => {
+    const song = getSong();
+    if (!song) return;
+    const titleInput = document.getElementById('songTitle');
+    const currentTitle = (titleInput?.value || '').trim();
+    if (currentTitle && currentTitle !== 'New Song') return;
+
+    const raw = document.getElementById('lyricsEditor').value.trim();
+    if (!raw) return;
+
+    const autoTitle = _extractAutoTitle(raw);
+    if (autoTitle && autoTitle !== 'New Song' && titleInput) {
+      titleInput.value = autoTitle;
+      song.title = autoTitle;
+      const parsed = parseLyrics(raw, '', '');
+      if (parsed.author && !document.getElementById('songAuthor')?.value.trim()) {
+        document.getElementById('songAuthor').value = parsed.author;
+        song.author = parsed.author;
+      }
+      renderSongList(document.getElementById('searchInput').value);
+      showToast(`✓ Title: "${autoTitle}"`);
+    }
+    onLyricsChange();
+  }, 50);
+});
+
+// ── Keyboard shortcuts ─────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey||e.metaKey) && e.key==='s') { e.preventDefault(); saveSongs(); }
+  if (e.key==='Escape') { closeImport(); closeGeniusSearch(); }
+});
+document.getElementById('importOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeImport();
+});
+document.getElementById('geniusOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeGeniusSearch();
+});
+
+// ── Genius Lyrics Search ───────────────────────────────────────────────────────
+var _geniusResults   = [];   // array of {id,title,artist,thumbnail,url}
+var _geniusSelected  = null; // currently selected result object
+var _geniusLyrics    = '';   // fetched lyrics text
+var _geniusSearching = false;
+var _geniusFetching  = false;
+
+function openGeniusSearch() {
+  document.getElementById('geniusOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('geniusInput')?.focus(), 80);
+}
+
+function closeGeniusSearch() {
+  document.getElementById('geniusOverlay').classList.remove('open');
+}
+
+// Search on Enter key in the input
+document.getElementById('geniusInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); geniusSearch(); }
+});
+
+async function geniusSearch() {
+  const q = (document.getElementById('geniusInput').value || '').trim();
+  if (!q) return;
+  if (_geniusSearching) return;
+
+  _geniusSearching = true;
+  const btn = document.getElementById('geniusSearchBtn');
+  btn.disabled = true;
+  btn.textContent = '…';
+  _geniusSetResults([]);
+
+  const resultsEl = document.getElementById('geniusResults');
+
+  try {
+    // ── Step 1: LRCLIB first (free, instant, no API key) ─────────────────────
+    resultsEl.innerHTML = '<div class="genius-status">🔍 Searching LRCLIB…</div>';
+    const lresp = await window.electronAPI.lrclibSearch({ query: q }).catch(() => ({ results: [] }));
+    const lrclibResults = lresp.results || [];
+
+    if (lrclibResults.length) {
+      _geniusSetResults(lrclibResults);
+      _showSourceBadge('lrclib', lrclibResults.length);
+      return;
+    }
+
+    // ── Step 2: Genius fallback ───────────────────────────────────────────────
+    resultsEl.innerHTML =
+      '<div class="genius-status" style="color:var(--text-dim);font-size:11px">' +
+      '🔍 Not on LRCLIB — trying Genius…</div>';
+    await new Promise(r => setTimeout(r, 250));
+
+    const resp = await window.electronAPI.geniusSearch({ query: q }).catch(() => ({ error: 'network', results: [] }));
+    const hasApiKey = !(resp.error || '').toLowerCase().includes('api key') &&
+                      !(resp.error || '').toLowerCase().includes('not configured');
+    const geniusResults = (resp.results || []).map(r => ({ ...r, source: 'genius' }));
+
+    if (geniusResults.length) {
+      _geniusSetResults(geniusResults);
+      _showSourceBadge('genius', geniusResults.length);
+      return;
+    }
+
+    // Both sources empty
+    if (!hasApiKey) {
+      resultsEl.innerHTML =
+        `<div class="genius-status" style="text-align:left;padding:20px 16px;line-height:1.8">
+          <div style="color:var(--gold);font-weight:700;font-size:13px;margin-bottom:8px">No Results Found</div>
+          <div style="color:var(--text-dim);font-size:12px">
+            LRCLIB found nothing. Genius could cover more songs but needs a free API key:<br><br>
+            1. Go to <span style="color:var(--gold)">genius.com/api-clients</span><br>
+            2. Sign up free → New API Client → copy <strong>Client Access Token</strong><br>
+            3. Paste in <strong style="color:var(--text)">Settings → Audio → Genius API Key</strong>
+          </div>
+        </div>`;
+    } else {
+      resultsEl.innerHTML =
+        '<div class="genius-status">No results on LRCLIB or Genius. Try different keywords.</div>';
+    }
+  } catch (e) {
+    resultsEl.innerHTML =
+      `<div class="genius-status" style="color:var(--live)">⚠ Search failed: ${escHtml(e.message||'unknown')}</div>`;
+  } finally {
+    _geniusSearching = false;
+    btn.disabled = false;
+    btn.textContent = 'Search';
+  }
+}
+
+function _showSourceBadge(source, count) {
+  const resultsEl = document.getElementById('geniusResults');
+  const badge = document.createElement('div');
+  badge.style.cssText = 'font-size:10px;color:var(--text-dim);padding:4px 10px 2px;' +
+    'display:flex;align-items:center;gap:6px;';
+  const dot = source === 'genius'
+    ? '<span style="color:#c9a84c;font-weight:700">✦ Genius</span>'
+    : '<span style="color:#4a9eff;font-weight:700">◈ LRCLIB</span>';
+  badge.innerHTML = dot + ` — ${count} result${count === 1 ? '' : 's'}`;
+  resultsEl.insertBefore(badge, resultsEl.firstChild);
+}
+
+function _geniusSetResults(results) {
+  _geniusResults = results;
+  _geniusSelected = null;
+  _geniusLyrics = '';
+  _geniusResetPreview();
+
+  const container = document.getElementById('geniusResults');
+  if (!results.length) {
+    container.innerHTML = '<div class="genius-status">No results found. Try a different search.</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  results.forEach((r, i) => {
+    const div = document.createElement('div');
+    div.className = 'genius-result';
+    div.dataset.idx = i;
+
+    const thumb = r.thumbnail
+      ? `<img class="genius-thumb" src="${escHtml(r.thumbnail)}" alt="" onerror="this.style.display='none'">`
+      : `<div class="genius-thumb-placeholder">🎵</div>`;
+
+    div.innerHTML = `
+      ${thumb}
+      <div style="min-width:0;flex:1">
+        <div class="genius-result-title">${escHtml(r.title)}</div>
+        <div class="genius-result-artist">${escHtml(r.artist)}</div>
+      </div>`;
+
+    div.addEventListener('click', () => _geniusSelectResult(i));
+    container.appendChild(div);
+  });
+}
+
+async function _geniusSelectResult(idx) {
+  const r = _geniusResults[idx];
+  if (!r) return;
+
+  // If LRCLIB result — lyrics already embedded, no extra fetch needed
+  if (r.source === 'lrclib') {
+    // Highlight selected row (same as Genius path)
+    document.querySelectorAll('.genius-result').forEach((el, i) => {
+      el.classList.toggle('active', i === idx);
+    });
+
+    _geniusSelected = r;
+    _geniusLyrics   = r.plainLyrics || '';
+
+    // Update preview header with title + artist
+    const titleEl  = document.getElementById('geniusPreviewTitle');
+    const artistEl = document.getElementById('geniusPreviewArtist');
+    if (titleEl)  { titleEl.textContent  = r.title;  titleEl.style.color = ''; }
+    if (artistEl) { artistEl.textContent = r.artist + (r.album ? ` — ${r.album}` : ''); }
+
+    // Hide loading spinner, show lyrics
+    const loadingEl = document.getElementById('geniusLyricsLoading');
+    const lyricsEl  = document.getElementById('geniusLyricsText');
+    const addBtn    = document.getElementById('geniusAddBtn');
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (lyricsEl) {
+      lyricsEl.textContent = _geniusLyrics || 'No lyrics available for this track.';
+      lyricsEl.style.color = _geniusLyrics ? '' : 'var(--text-dim)';
+    }
+    if (addBtn) {
+      addBtn.disabled     = !_geniusLyrics.trim();
+      addBtn.style.opacity = _geniusLyrics.trim() ? '1' : '.4';
+    }
+    return;
+  }
+
+  // Highlight the selected row
+  document.querySelectorAll('.genius-result').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+
+  _geniusSelected = r;
+  _geniusLyrics = '';
+
+  // Update preview header
+  document.getElementById('geniusPreviewTitle').textContent = r.title;
+  document.getElementById('geniusPreviewTitle').style.color = '';
+  document.getElementById('geniusPreviewArtist').textContent = r.artist;
+
+  // Reset lyrics area and disable Add button while loading
+  const lyricsEl = document.getElementById('geniusLyricsText');
+  const loadingEl = document.getElementById('geniusLyricsLoading');
+  const addBtn = document.getElementById('geniusAddBtn');
+  lyricsEl.textContent = '';
+  lyricsEl.style.color = '';
+  addBtn.disabled = true;
+  addBtn.style.opacity = '.4';
+
+  if (_geniusFetching) return;
+  _geniusFetching = true;
+  loadingEl.style.display = 'flex';
+
+  try {
+    const resp = await window.electronAPI.geniusFetchLyrics({ url: r.url, artist: r.artist, title: r.title });
+    if (resp.error) {
+      lyricsEl.textContent = `Could not load lyrics:\n${resp.error}`;
+      lyricsEl.style.color = 'var(--text-dim)';
+      return;
+    }
+    _geniusLyrics = resp.lyrics || '';
+    lyricsEl.textContent = _geniusLyrics;
+    // Enable Add button only if we got lyrics
+    if (_geniusLyrics.trim()) {
+      addBtn.disabled = false;
+      addBtn.style.opacity = '1';
+    }
+  } catch (e) {
+    lyricsEl.textContent = `Error: ${e.message}`;
+    lyricsEl.style.color = 'var(--live)';
+  } finally {
+    _geniusFetching = false;
+    loadingEl.style.display = 'none';
+  }
+}
+
+function _geniusResetPreview() {
+  document.getElementById('geniusPreviewTitle').textContent = 'Select a song from the results';
+  document.getElementById('geniusPreviewTitle').style.color = 'var(--text-dim)';
+  document.getElementById('geniusPreviewArtist').textContent = '';
+  document.getElementById('geniusLyricsText').textContent = '';
+  document.getElementById('geniusLyricsLoading').style.display = 'none';
+  const addBtn = document.getElementById('geniusAddBtn');
+  addBtn.disabled = true;
+  addBtn.style.opacity = '.4';
+}
+
+function geniusAddToLibrary() {
+  if (!_geniusLyrics.trim() || !_geniusSelected) {
+    showToast('⚠ No lyrics to add');
+    return;
+  }
+
+  // Build the raw text in the format parseLyrics() understands:
+  // "Title - Artist\n\n<lyrics>"
+  const header = `${_geniusSelected.title} - ${_geniusSelected.artist}`;
+  const raw = `${header}\n\n${_geniusLyrics}`;
+
+  const song = ensureSongSchema(parseLyrics(raw, _geniusSelected.title, _geniusSelected.artist));
+  songs.unshift(song);
+  currentSongId = song.id;
+
+  renderSongList();
+  renderEditor();
+  saveSongs();
+
+  closeGeniusSearch();
+  showToast(`✓ Added "${song.title}" · ${song.sections.length} slides`);
+}
+
+init();
+if (window.electronAPI?.on) {
+  window.electronAPI.on('song-manager-new-song', () => {
+    try { newSong(); } catch (e) {}
+  });
+  window.electronAPI.on('song-manager-open-song', (payload) => {
+    try { if (payload?.songId != null) openSpecificSong(payload.songId); } catch (e) {}
+  });
+}
+</script>
+</body>
+</html>

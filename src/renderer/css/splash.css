@@ -1,0 +1,17 @@
+
+html,body{margin:0;height:100%;background:#08101d;color:#e5e7eb;font-family:Inter,"Segoe UI",sans-serif;overflow:hidden}
+body{display:grid;place-items:center;background:radial-gradient(circle at 20% 20%, rgba(29,161,242,.18), transparent 24%),radial-gradient(circle at 80% 15%, rgba(123,97,255,.18), transparent 22%),linear-gradient(180deg,#0b1220,#08101d)}
+.wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:18px;padding:30px 42px;border:1px solid rgba(56,189,248,.12);border-radius:28px;background:rgba(9,17,31,.55);box-shadow:0 22px 60px rgba(0,0,0,.35);backdrop-filter: blur(12px)}
+.ring,.ring2{position:absolute;border-radius:50%;filter:blur(.2px);inset:auto;pointer-events:none}
+.ring{width:420px;height:420px;border:1px solid rgba(56,189,248,.12);animation:spin 16s linear infinite}
+.ring2{width:300px;height:300px;border:1px solid rgba(123,97,255,.16);animation:spin2 12s linear infinite reverse}
+.logo{width:132px;height:132px;object-fit:contain;filter:drop-shadow(0 12px 30px rgba(29,161,242,.22));animation:float 3.2s ease-in-out infinite}
+.name{font-size:34px;font-weight:800;letter-spacing:.04em;background:linear-gradient(135deg,#fff,#bae6fd 40%,#c4b5fd 70%,#38bdf8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#94a3b8}
+.loader{width:260px;height:8px;border-radius:999px;background:rgba(148,163,184,.16);overflow:hidden;position:relative}
+.loader::before{content:"";position:absolute;inset:0;width:40%;border-radius:999px;background:linear-gradient(90deg,#1da1f2,#7b61ff,#38bdf8);animation:load 1.5s infinite ease-in-out}
+.copy{font-size:12px;color:#64748b}
+@keyframes load{0%{transform:translateX(-120%)}50%{transform:translateX(150%)}100%{transform:translateX(300%)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes spin2{from{transform:rotate(0deg) scale(1)}50%{transform:rotate(180deg) scale(1.03)}to{transform:rotate(360deg) scale(1)}}

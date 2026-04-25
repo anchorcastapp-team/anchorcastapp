@@ -1,0 +1,3290 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08101d">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;
+             script-src 'self' 'unsafe-inline';
+             style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+             img-src 'self' data: blob: https:;">
+  <title>AnchorCast Options</title>
+  <script src="js/electron-shim.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"></noscript>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/anchorcast-theme.css">
+  <style>
+    @keyframes importPulse { 0%{opacity:.6} 50%{opacity:1} 100%{opacity:.6} }
+    @keyframes importProgress { 0%{width:5%} 15%{width:25%} 40%{width:50%} 60%{width:70%} 80%{width:85%} 100%{width:92%} }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;overflow:hidden;display:flex;flex-direction:column;
+      font-family:'DM Sans',sans-serif;background:var(--void);color:var(--text)}
+
+    /* ── Window chrome ── */
+    .win-header{height:40px;background:var(--deep);border-bottom:1px solid var(--border);
+      display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;-webkit-app-region:drag}
+    .win-header *{-webkit-app-region:no-drag}
+    .win-title{font-family:'Cinzel',serif;font-size:13px;font-weight:600;color:var(--gold-b);letter-spacing:1px}
+    .win-sub{font-size:11px;color:var(--sub)}
+    .win-sp{flex:1}
+
+    /* ── Main layout: sidebar + content ── */
+    .layout{display:flex;flex:1;min-height:0;overflow:hidden}
+
+    /* ── Left sidebar ── */
+    .sidebar{width:180px;flex-shrink:0;background:var(--deep);border-right:1px solid var(--border);
+      display:flex;flex-direction:column;overflow:hidden}
+    .sidebar-section{padding:6px 0;border-bottom:1px solid var(--border)}
+    .sidebar-hdr{padding:6px 14px 4px;font-size:9px;font-weight:700;color:var(--dim);
+      text-transform:uppercase;letter-spacing:.08em}
+    .sidebar-item{display:flex;align-items:center;gap:9px;padding:9px 14px;cursor:pointer;
+      font-size:12px;font-weight:500;color:var(--sub);border-left:3px solid transparent;
+      transition:all .12s;user-select:none}
+    .sidebar-item:hover{background:var(--card);color:var(--text)}
+    .sidebar-item.active{background:rgba(201,168,76,.07);color:var(--gold);
+      border-left-color:var(--gold)}
+    .sidebar-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+    .sidebar-preview{flex:1;padding:10px;display:flex;flex-direction:column;
+      align-items:center;justify-content:flex-end;gap:6px;min-height:0}
+    .preview-thumb{width:100%;aspect-ratio:16/9;border-radius:5px;overflow:hidden;
+      border:2px solid var(--border);background:#000;position:relative;
+      display:flex;align-items:center;justify-content:center}
+    .preview-label{font-size:9px;color:var(--dim);text-align:center}
+
+    /* ── Right content ── */
+    .content{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+
+    /* ── Module tabs (top of content) ── */
+    .mod-tabs{height:42px;background:var(--panel);border-bottom:1px solid var(--border);
+      display:flex;align-items:flex-end;padding:0 20px;flex-shrink:0;gap:2px}
+    .mod-tab{padding:8px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.6px;color:var(--dim);border-bottom:2px solid transparent;
+      cursor:pointer;transition:all .15s;white-space:nowrap}
+    .mod-tab:hover{color:var(--sub)}
+    .mod-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+
+    /* ── Content body ── */
+    .content-body{flex:1;overflow-y:auto;padding:22px 28px 16px}
+    .pane{display:none}
+    .pane.active{display:block}
+
+    /* ── Form elements ── */
+    .section-title{font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;
+      letter-spacing:.8px;margin:20px 0 12px;padding-bottom:6px;
+      border-bottom:1px solid var(--border)}
+    .section-title:first-child{margin-top:0}
+    .form-group{margin-bottom:14px}
+    .form-label{display:block;font-size:11px;font-weight:600;color:var(--sub);
+      text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+    .form-select,.form-input{width:100%;background:var(--card);border:1px solid var(--border-lit);
+      border-radius:var(--r);color:var(--text);font-family:inherit;font-size:12px;
+      padding:7px 10px;outline:none;transition:border .15s}
+    .form-select:focus,.form-input:focus{border-color:var(--gold-d)}
+    .form-hint{font-size:10px;color:var(--dim);margin-top:4px;line-height:1.5}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .form-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+    /* Checkbox row */
+    .check-group{display:flex;align-items:center;gap:8px;padding:8px 12px;
+      background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+      margin-bottom:8px;cursor:pointer;transition:border-color .12s}
+    .check-group:hover{border-color:var(--border-lit)}
+    .check-group input{accent-color:var(--gold);width:14px;height:14px;cursor:pointer;flex-shrink:0}
+    .check-label{font-size:12px;color:var(--text);flex:1}
+    .check-sub{font-size:10px;color:var(--dim);margin-top:1px}
+
+    /* Toggle switch */
+    .toggle-row{display:flex;align-items:center;justify-content:space-between;
+      background:var(--card);border:1px solid var(--border-lit);border-radius:var(--r);
+      padding:9px 12px;margin-bottom:8px}
+    .toggle-info{flex:1;min-width:0}
+    .toggle-name{font-size:12px;font-weight:600;color:var(--text)}
+    .toggle-sub{font-size:10px;color:var(--dim);margin-top:1px}
+    .toggle{width:42px;height:24px;border-radius:12px;position:relative;cursor:pointer;
+      flex-shrink:0;transition:background .2s;background:var(--border-lit)}
+    .toggle-knob{position:absolute;top:3px;left:3px;width:18px;height:18px;
+      background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+
+    /* Bottom bar */
+    .bottom-bar{height:52px;background:var(--deep);border-top:1px solid var(--border);
+      display:flex;align-items:center;padding:0 20px;gap:10px;flex-shrink:0}
+    .bottom-sp{flex:1}
+    .btn-cancel{padding:8px 18px;background:transparent;border:1px solid var(--border-lit);
+      border-radius:var(--r);color:var(--sub);font-family:inherit;font-size:12px;
+      font-weight:600;cursor:pointer;transition:all .12s}
+    .btn-cancel:hover{color:var(--text);border-color:var(--text)}
+    .btn-save{padding:8px 22px;background:rgba(201,168,76,.15);border:1px solid var(--gold);
+      border-radius:var(--r);color:var(--gold);font-family:inherit;font-size:12px;
+      font-weight:700;cursor:pointer;transition:all .12s;letter-spacing:.3px}
+    .btn-save:hover{background:rgba(201,168,76,.28)}
+    .version{font-size:10px;color:var(--dim)}
+
+    /* Bible version manager */
+    .bvm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+    .bvm-card{background:var(--card);border:1px solid var(--border);border-radius:8px;min-height:72px;
+      padding:11px 13px;display:flex;align-items:center;gap:9px;transition:border-color .15s}
+    .bvm-card.installed{border-color:rgba(46,204,113,.3);background:rgba(46,204,113,.03)}
+    .bvm-badge{width:40px;height:40px;border-radius:6px;display:flex;align-items:center;
+      justify-content:center;font-family:'Cinzel',serif;font-size:10px;font-weight:700;
+      flex-shrink:0;letter-spacing:.3px}
+    .bvm-badge.has{background:rgba(46,204,113,.12);color:#2ecc71;border:1px solid rgba(46,204,113,.3)}
+    .bvm-badge.no{background:var(--deep);color:var(--dim);border:1px solid var(--border)}
+    .bvm-info{flex:1;min-width:0}
+    .bvm-name{font-size:12px;font-weight:600;color:var(--text)}
+    .bvm-sub{font-size:10px;color:#b8b8d8;font-weight:600}
+    .bvm-count{font-size:10px;color:#2ecc71;margin-top:1px}
+    .bvm-license{font-size:10px;color:#7a7a9a;margin-top:2px;font-style:normal;line-height:1.4;white-space:normal}
+    .bvm-btn{padding:4px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;
+      transition:all .15s;font-family:inherit;border:1px solid;text-transform:uppercase;
+      letter-spacing:.3px;white-space:nowrap;flex-shrink:0}
+    .bvm-up{background:rgba(201,168,76,.1);border-color:var(--gold-dim);color:var(--gold)}
+    .bvm-up:hover{background:rgba(201,168,76,.2)}
+    .bvm-del{background:rgba(231,76,60,.07);border-color:rgba(192,57,43,.35);color:var(--live)}
+    .bvm-del:hover{background:rgba(231,76,60,.16)}
+    .upload-zone{border:2px dashed var(--border-lit);border-radius:10px;padding:20px 18px;
+      text-align:center;cursor:pointer;transition:all .18s;margin-bottom:14px}
+    .upload-zone:hover,.upload-zone.over{border-color:var(--gold);background:rgba(201,168,76,.04)}
+    .uz-icon{font-size:26px;margin-bottom:6px}
+    .uz-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px}
+    .uz-sub{font-size:10px;color:var(--sub);line-height:1.5}
+    input[type=file]{display:none}
+    .code-box{background:var(--card);border:1px solid var(--border);border-radius:7px;
+      padding:11px 13px;margin-bottom:12px}
+    .code-title{font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;
+      letter-spacing:.8px;margin-bottom:6px}
+    .code-block{background:var(--void);border-radius:4px;padding:8px 10px;
+      font-family:'Courier New',monospace;font-size:10px;color:#7ec8a0;
+      line-height:1.7;overflow-x:auto;white-space:pre}
+    .status-msg{font-size:11px;padding:7px 11px;border-radius:6px;margin-top:9px;line-height:1.5}
+    .msg-ok  {background:rgba(46,204,113,.08);color:#2ecc71;border:1px solid rgba(46,204,113,.2)}
+    .msg-err {background:rgba(231,76,60,.08);color:var(--live);border:1px solid rgba(192,57,43,.25)}
+    .msg-info{background:rgba(201,168,76,.07);color:var(--gold);border:1px solid var(--gold-dim)}
+  </style>
+</head>
+<body style="background:#08101d" style="background:#08101d">
+
+<!-- Window header -->
+<div class="win-header">
+  <span style="font-size:14px;color:var(--gold)">⚙</span>
+  <span class="win-title">Options</span>
+  <span class="win-sub" id="winSub">— General</span>
+  <div class="win-sp"></div>
+  <button class="btn-save" onclick="saveSettings()">✓ Save</button>
+  <button class="btn-cancel" onclick="closeSettings()">✕</button>
+</div>
+
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-hdr">Output</div>
+      <div class="sidebar-item active" data-section="main" onclick="setSection(this,'main')">
+        <span class="sidebar-icon">📺</span> Main Output
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-hdr">Modules</div>
+      <div class="sidebar-item" data-section="song" onclick="setSection(this,'song')">
+        <span class="sidebar-icon">🎵</span> Songs
+      </div>
+      <div class="sidebar-item" data-section="scripture" onclick="setSection(this,'scripture')">
+        <span class="sidebar-icon">📖</span> Scripture
+      </div>
+      <div class="sidebar-item" data-section="pres" onclick="setSection(this,'pres')">
+        <span class="sidebar-icon">📑</span> Presentations
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-hdr">System</div>
+      <div class="sidebar-item" data-section="audio" onclick="setSection(this,'audio')">
+        <span class="sidebar-icon">🎙</span> Audio & AI
+      </div>
+      <div class="sidebar-item" data-section="network" onclick="setSection(this,'network')">
+        <span class="sidebar-icon">🌐</span> Network
+      </div>
+      <div class="sidebar-item" data-section="bible" onclick="setSection(this,'bible')">
+        <span class="sidebar-icon">📚</span> Bible Versions
+      </div>
+      <div class="sidebar-item" data-section="alerts" onclick="setSection(this,'alerts')">
+        <span class="sidebar-icon">🔔</span> Alerts
+      </div>
+    </div>
+    <!-- Preview thumbnail -->
+    <div class="sidebar-preview">
+      <div class="preview-thumb" id="sidebarPreview">
+        <div style="font-size:9px;color:var(--dim);text-align:center;padding:8px">Live preview</div>
+      </div>
+      <div class="preview-label" id="versionInfo">AnchorCast v1.1.0</div>
+    </div>
+  </div>
+
+  <!-- ── Content area ── -->
+  <div class="content">
+
+    <!-- Module tabs -->
+    <div class="mod-tabs" id="modTabs">
+      <div class="mod-tab active" data-tab="general">General</div>
+      <!-- Additional tabs shown per section -->
+    </div>
+
+    <div class="content-body" id="contentBody">
+
+      <!-- ════════════════════════════════════════════════
+           MAIN OUTPUT — General
+      ════════════════════════════════════════════════ -->
+      <div class="pane active" id="pane-main-general">
+        <div class="section-title">Display</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Default Bible Translation</label>
+            <select class="form-select" id="translation"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Verse Font Size</label>
+            <select class="form-select" id="fontSize">
+              <option value="small">Small</option>
+              <option value="medium" selected>Medium (Recommended)</option>
+              <option value="large">Large</option>
+              <option value="xlarge">Extra Large</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Display Mode</label>
+          <select class="form-select" id="displayMode">
+            <option value="manual" selected>Manual — you choose what goes live</option>
+            <option value="auto">Auto — high-confidence verses display automatically</option>
+          </select>
+          <div class="form-hint">In Auto mode, clearly detected verses project immediately without confirmation.</div>
+        </div>
+
+        <div class="section-title">External Output (NDI / Web)</div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-name" id="ndiSettLabel">Off</div>
+            <div class="toggle-sub">Broadcast projection to OBS, vMix, or any browser via NDI</div>
+          </div>
+          <div class="toggle" id="ndiSettToggle" onclick="toggleNdiSetting()">
+            <div class="toggle-knob" id="ndiSettKnob"></div>
+          </div>
+        </div>
+        <div class="form-hint">Use <strong>Tools → External Output</strong> for OBS frame path and full NDI setup.</div>
+
+        <div class="section-title">Overlay on Media</div>
+        <label class="check-group">
+          <input type="checkbox" id="overlayTextOnMedia">
+          <div>
+            <div class="check-label">Overlay songs / scripture on projected media</div>
+            <div class="check-sub">Keep the current video or image in the background when sending scripture or songs live.</div>
+          </div>
+        </label>
+        <label class="check-group">
+          <input type="checkbox" id="overlayTextOnMediaSongs">
+          <div>
+            <div class="check-label">Allow song overlay</div>
+            <div class="check-sub">Songs can remain over active image or video backgrounds.</div>
+          </div>
+        </label>
+        <label class="check-group">
+          <input type="checkbox" id="overlayTextOnMediaScripture">
+          <div>
+            <div class="check-label">Allow scripture overlay</div>
+            <div class="check-sub">Scripture can remain over active image or video backgrounds.</div>
+          </div>
+        </label>
+        <label class="check-group">
+          <input type="checkbox" id="overlayTextOnMediaLowerThird">
+          <div>
+            <div class="check-label">Use lower-third mode</div>
+            <div class="check-sub">Place overlay text lower on the screen instead of centered.</div>
+          </div>
+        </label>
+        <div class="form-group">
+          <label class="form-label">Background dim behind overlaid text</label>
+          <input class="form-input" type="range" min="0" max="90" step="5" id="overlayTextOnMediaDim">
+          <div class="form-hint">Controls darkness added over the active background for readability.</div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           SONGS — General
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-song-general">
+
+        <div class="section-title">Song Library Management</div>
+
+        <!-- Unified progress bar — shared by all operations in this tab -->
+        <div id="songOpsProgress" style="display:none;padding:10px 14px;margin-bottom:12px;background:var(--deep);border:1px solid var(--border);border-radius:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span id="songOpsLabel" style="font-size:12px;font-weight:600;color:var(--text)">Working…</span>
+            <span id="songOpsStatus" style="font-size:11px;color:var(--text-dim)"></span>
+          </div>
+          <div style="width:100%;height:6px;background:var(--input);border-radius:3px;overflow:hidden">
+            <div id="songOpsBar" style="width:0%;height:100%;background:var(--gold);border-radius:3px;transition:width 0.3s ease"></div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Export Library</label>
+            <button class="btn-save" type="button" id="btnExportJson" style="width:100%;padding:10px 14px" onclick="exportSongsLibrary('json')">Export AnchorCast JSON</button>
+            <div class="form-hint">Use this to move your full song library to another computer.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Import Library</label>
+            <button class="btn-save" type="button" id="btnImportOther" style="width:100%;padding:10px 14px" onclick="importSmartSongs('merge')">Import From other app</button>
+            <button class="btn-cancel" type="button" id="btnImportGeneric" style="width:100%;margin-top:8px" onclick="importSongsLibrary('merge')">Import AnchorCast / Generic Files</button>
+            <button class="btn-cancel" type="button" id="btnImportReplace" style="width:100%;margin-top:8px" onclick="importSongsLibrary('replace')">Replace Entire Library</button>
+            <div class="form-hint" style="margin-top:10px">Click import, then choose a file or folder. AnchorCast will auto-detect the source and import songs only.</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Song Library Backups</label>
+            <button class="btn-save" type="button" id="btnSongBackup" style="width:100%;padding:10px 14px" onclick="backupSongsLibrary()">Create Song Backup Now</button>
+            <div class="form-hint">Creates a dated backup copy of your song library only.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Automatic Sunday Backup</label>
+            <label class="check-group">
+              <input type="checkbox" id="songAutoBackupSunday">
+              <div>
+                <div class="check-label">Auto backup every Sunday service</div>
+                <div class="check-sub">Creates one song-library backup on Sundays when AnchorCast starts.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Full AnchorCast Backup</label>
+            <button class="btn-save" type="button" id="btnFullBackup" style="width:100%;padding:10px 14px" onclick="backupFullAppData()">Backup Entire AppData Package</button>
+            <div class="form-hint">Backs up songs, settings, themes, schedules, Bible versions, presentations, transcripts, and related app data into one ZIP package.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Restore Backup</label>
+            <button class="btn-cancel" type="button" id="btnFullRestore" style="width:100%;padding:10px 14px" onclick="restoreFullAppData()">Restore Entire AppData Package</button>
+            <div class="form-hint">Restores a full AnchorCast backup ZIP. Restart AnchorCast after restore so every module reloads cleanly.</div>
+          </div>
+        </div>
+        <div id="songLibraryInfo" class="form-hint" style="margin-bottom:14px">Loading song library details…</div>
+
+        <input type="hidden" id="songVerticalAlign" value="">
+
+        <div class="section-title">Copyright Info</div>
+        <label class="check-group">
+          <input type="checkbox" id="showCopyright">
+          <div>
+            <div class="check-label">Display Copyright Information</div>
+            <div class="check-sub">Show CCLI / copyright line on song slides</div>
+          </div>
+        </label>
+        <div class="form-group">
+          <label class="form-label">CCLI License Number</label>
+          <input class="form-input" id="ccliNumber" placeholder="e.g. 1234567">
+          <div class="form-hint">Your church's CCLI license number (numbers only)</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">License Type</label>
+          <select class="form-input" id="ccliLicenseType">
+            <option value="streaming">CCLI Streaming License</option>
+            <option value="copyright">CCLI Copyright License</option>
+            <option value="custom">Custom / Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Copyright Display Format</label>
+          <select class="form-input" id="ccliDisplayFormat" onchange="updateCcliPreview()">
+            <option value="ccli_only">CCLI License # {number}</option>
+            <option value="copyright_ccli">© {year} {author} | CCLI # {number}</option>
+            <option value="copyright_only">© {year} {author}</option>
+            <option value="full">© {year} {author} | Used by permission | CCLI # {number}</option>
+          </select>
+          <div class="form-hint" id="ccliPreview" style="margin-top:6px;color:#c9a84c;font-style:italic;font-size:11px">
+            Preview: CCLI License # 1234567
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           SONGS — Font
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-song-font">
+
+        <div class="section-title">Font</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Font Name</label>
+            <select class="form-select" id="songFontFamily">
+              <option value="Calibri" selected>Calibri</option>
+              <option value="Arial">Arial</option>
+              <option value="DM Sans">DM Sans</option>
+              <option value="Crimson Pro">Crimson Pro</option>
+              <option value="Cinzel">Cinzel</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Times New Roman">Times New Roman</option>
+              <option value="Verdana">Verdana</option>
+              <option value="Trebuchet MS">Trebuchet MS</option>
+              <option value="Tahoma">Tahoma</option>
+              <option value="Impact">Impact</option>
+              <option value="Segoe UI">Segoe UI</option>
+              <option value="Open Sans">Open Sans</option>
+              <option value="Roboto">Roboto</option>
+              <option value="Lato">Lato</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Size</label>
+            <input class="form-input" type="number" id="songFontSize" value="64" min="12" max="200" step="2">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Color</label>
+            <input type="color" id="songFontColor" value="#ffffff" style="width:100%;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--input);cursor:pointer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Style</label>
+            <select class="form-select" id="songFontStyle">
+              <option value="normal">Normal</option>
+              <option value="bold" selected>Bold</option>
+              <option value="italic">Italic</option>
+              <option value="bold-italic">Bold Italic</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="display:flex;gap:16px;align-items:center;padding-top:6px">
+            <label class="check-group" style="margin:0">
+              <input type="checkbox" id="songUnderline">
+              <div><div class="check-label">Underline</div></div>
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Opacity (%)</label>
+            <input class="form-input" type="number" id="songFontOpacity" value="100" min="0" max="100" step="5">
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:16px">Alignment</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Text Alignment</label>
+            <select class="form-select" id="songTextAlign">
+              <option value="center" selected>Center</option>
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vertical Alignment</label>
+            <select class="form-select" id="songVerticalAlignFont">
+              <option value="" selected>Use Theme Default</option>
+              <option value="top">Top</option>
+              <option value="center">Center</option>
+              <option value="bottom">Bottom</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Line Spacing</label>
+            <input class="form-input" type="number" id="songLineSpacing" value="1.4" min="1.0" max="3.0" step="0.1">
+          </div>
+          <div class="form-group"></div>
+        </div>
+        <button class="btn-cancel" type="button" onclick="resetSongFontDefaults()" style="margin-top:12px">Reset</button>
+
+        <div class="section-title" style="margin-top:24px">Outline</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Style</label>
+            <select class="form-select" id="songOutlineStyle">
+              <option value="none" selected>None</option>
+              <option value="outer">Outer</option>
+              <option value="inner">Inner</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Color</label>
+            <input type="color" id="songOutlineColor" value="#000000" style="width:100%;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--input);cursor:pointer">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Join</label>
+            <select class="form-select" id="songOutlineJoin">
+              <option value="round" selected>Round</option>
+              <option value="bevel">Bevel</option>
+              <option value="miter">Miter</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Size (px)</label>
+            <input class="form-input" type="number" id="songOutlineWidth" value="11" min="0" max="40" step="1">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Outline Opacity (%)</label>
+          <input class="form-input" type="number" id="songOutlineOpacity" value="100" min="0" max="100" step="5">
+        </div>
+
+        <div class="section-title" style="margin-top:24px">Shadow</div>
+        <label class="check-group" style="margin-bottom:12px">
+          <input type="checkbox" id="songShadowEnabled" checked>
+          <div>
+            <div class="check-label">Enable Text Shadow</div>
+            <div class="check-sub">Adds a drop shadow behind lyrics for depth and contrast.</div>
+          </div>
+        </label>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Shadow Color</label>
+            <input type="color" id="songShadowColor" value="#000000" style="width:100%;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--input);cursor:pointer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Shadow Blur (px)</label>
+            <input class="form-input" type="number" id="songShadowBlur" value="8" min="0" max="50" step="1">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Offset X (px)</label>
+            <input class="form-input" type="number" id="songShadowX" value="2" min="-20" max="20" step="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Offset Y (px)</label>
+            <input class="form-input" type="number" id="songShadowY" value="2" min="-20" max="20" step="1">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Shadow Opacity (%)</label>
+          <input class="form-input" type="number" id="songShadowOpacity" value="80" min="0" max="100" step="5">
+        </div>
+
+        <div class="section-title" style="margin-top:24px">Margins</div>
+        <div class="form-hint" style="margin-bottom:12px">Controls the padding around song lyrics on the projection screen (in pixels).</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Left</label>
+            <input class="form-input" type="number" id="songMarginLeft" value="38" min="0" max="400" step="2">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Top</label>
+            <input class="form-input" type="number" id="songMarginTop" value="22" min="0" max="400" step="2">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Right</label>
+            <input class="form-input" type="number" id="songMarginRight" value="38" min="0" max="400" step="2">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bottom</label>
+            <input class="form-input" type="number" id="songMarginBottom" value="22" min="0" max="400" step="2">
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           SONGS — Labels
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-song-labels">
+
+        <div class="section-title">Labels for Importing and Color Coding</div>
+        <div class="form-hint" style="margin-bottom:14px">Configure section labels used for song importing, display colour coding, and keyboard shortcuts. These labels are matched when importing songs from other apps.</div>
+
+        <label class="check-group" style="margin-bottom:14px">
+          <input type="checkbox" id="showVerseChorusLabel" checked>
+          <div>
+            <div class="check-label">Show Verse / Chorus Label</div>
+            <div class="check-sub">Display the section label (e.g. "Chorus", "Verse 1") above lyrics on the Live Display and projection.</div>
+          </div>
+        </label>
+
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="background:rgba(255,255,255,.04)">
+                <th style="text-align:left;padding:8px 10px;color:var(--gold);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600">Label</th>
+                <th style="text-align:center;padding:8px 10px;color:var(--gold);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;width:100px">Colors</th>
+                <th style="text-align:left;padding:8px 10px;color:var(--gold);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;width:120px">Shortcut</th>
+                <th style="width:36px"></th>
+              </tr>
+            </thead>
+            <tbody id="sectionLabelsBody"></tbody>
+          </table>
+        </div>
+        <button class="btn-save" type="button" onclick="addSectionLabel()" style="padding:8px 20px">Add</button>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           SONGS — Format
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-song-format">
+
+        <div class="section-title">Auto Sizing</div>
+        <div style="margin-bottom:14px">
+          <label class="check-group" style="margin-bottom:6px">
+            <input type="radio" name="songAutoSize" id="songAutoSizeNone" value="none">
+            <div><div class="check-label">Do not auto size text</div></div>
+          </label>
+          <label class="check-group" style="margin-bottom:6px">
+            <input type="radio" name="songAutoSize" id="songAutoSizeResize" value="resize" checked>
+            <div><div class="check-label">Resize text to fit element</div></div>
+          </label>
+          <label class="check-group" style="margin-left:28px">
+            <input type="checkbox" id="songNormalizeSize" checked>
+            <div><div class="check-label">Normalize text size across slides</div></div>
+          </label>
+        </div>
+
+        <div class="section-title">Formatting</div>
+        <label class="check-group" style="margin-bottom:8px">
+          <input type="checkbox" id="songWordWrap" checked>
+          <div><div class="check-label">Word Wrapping</div></div>
+        </label>
+
+        <div class="section-title" style="margin-top:16px">Lyrics Capitalisation</div>
+        <div style="margin-bottom:14px">
+          <label class="check-group" style="margin-bottom:6px">
+            <input type="radio" name="songTextTransform" id="songTextTransformNone" value="none" checked>
+            <div><div class="check-label">Normal (as written)</div></div>
+          </label>
+          <label class="check-group" style="margin-bottom:6px">
+            <input type="radio" name="songTextTransform" id="songTextTransformUpper" value="uppercase">
+            <div><div class="check-label">ALL CAPITALS</div></div>
+          </label>
+          <label class="check-group" style="margin-bottom:6px">
+            <input type="radio" name="songTextTransform" id="songTextTransformLower" value="lowercase">
+            <div><div class="check-label">all lowercase</div></div>
+          </label>
+          <label class="check-group" style="margin-bottom:6px">
+            <input type="radio" name="songTextTransform" id="songTextTransformTitle" value="capitalize">
+            <div><div class="check-label">Title Case</div></div>
+          </label>
+        </div>
+        <div class="form-hint" style="margin-bottom:14px">Applies to song lyrics on preview, Live Display, and projection.</div>
+
+        <div class="section-title">Auto-Capitalize Words</div>
+        <label class="check-group" style="margin-bottom:12px">
+          <input type="checkbox" id="songAutoCapitalizeWords">
+          <div>
+            <div class="check-label">Automatically capitalize first character of these words</div>
+          </div>
+        </label>
+        <div class="form-group">
+          <textarea class="form-input" id="songCapitalizeWordList" rows="8" style="font-family:monospace;font-size:12px;line-height:1.6;resize:vertical">CHRIST
+FATHER
+GOD
+HE
+HIS
+HIM
+HIMSELF
+HOLY
+JESUS
+LORD
+SAVIOR
+SAVIOUR
+SON
+SPIRIT
+THEE
+THOU
+THY
+YOU
+YOUR</textarea>
+          <div class="form-hint">One word per line. These words will always start with an uppercase letter when found in lyrics.</div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           SCRIPTURE — General
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-scripture-general">
+        <div class="section-title">Display Options</div>
+        <label class="check-group" style="margin-bottom:8px">
+          <input type="checkbox" id="scriptureShowCompletePassage">
+          <div>
+            <div class="check-label">Show Complete Passage</div>
+            <div class="check-sub">Display the full passage text on each slide instead of individual verses</div>
+          </div>
+        </label>
+        <label class="check-group" style="margin-bottom:8px">
+          <input type="checkbox" id="scriptureAdditionalLineSpacing">
+          <div>
+            <div class="check-label">Additional Line Spacing</div>
+            <div class="check-sub">Increase vertical spacing between lines of scripture text</div>
+          </div>
+        </label>
+        <label class="check-group" style="margin-bottom:8px">
+          <input type="checkbox" id="scriptureBreakOnNewVerse">
+          <div>
+            <div class="check-label">Break on new verse</div>
+            <div class="check-sub">Start a new slide when a new verse number begins</div>
+          </div>
+        </label>
+
+        <div class="section-title" style="margin-top:16px">Flow</div>
+        <label class="check-group" style="margin-bottom:8px">
+          <input type="checkbox" id="autoFlowScripture" checked>
+          <div>
+            <div class="check-label">Automatically Flow Scripture on Multiple Slides</div>
+            <div class="check-sub">Long passages are split across slides automatically.</div>
+          </div>
+        </label>
+        <div class="form-group" style="max-width:300px">
+          <label class="form-label">Minimum font size before breaking slide</label>
+          <input class="form-input" type="number" id="scriptureMinFontSize" value="64" min="12" max="120" step="2">
+        </div>
+
+        <div class="section-title" style="margin-top:16px">Alignment</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Text Alignment</label>
+            <select class="form-select" id="scriptureTextAlign">
+              <option value="" selected>Use Theme Default</option>
+              <option value="center">Center</option>
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vertical Align</label>
+            <select class="form-select" id="scriptureVerticalAlign">
+              <option value="" selected>Use Theme Default</option>
+              <option value="top">Top</option>
+              <option value="center">Center</option>
+              <option value="bottom">Bottom</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Line Spacing</label>
+          <input class="form-input" type="number" id="scriptureLineSpacing" value="1.4" min="1.0" max="3.0" step="0.1">
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           SCRIPTURE — Font
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-scripture-font">
+
+        <div class="section-title">Font</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Font Name</label>
+            <select class="form-select" id="scriptureFontFamily">
+              <option value="Calibri" selected>Calibri</option>
+              <option value="Arial">Arial</option>
+              <option value="DM Sans">DM Sans</option>
+              <option value="Crimson Pro">Crimson Pro</option>
+              <option value="Cinzel">Cinzel</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Times New Roman">Times New Roman</option>
+              <option value="Verdana">Verdana</option>
+              <option value="Trebuchet MS">Trebuchet MS</option>
+              <option value="Tahoma">Tahoma</option>
+              <option value="Impact">Impact</option>
+              <option value="Segoe UI">Segoe UI</option>
+              <option value="Open Sans">Open Sans</option>
+              <option value="Roboto">Roboto</option>
+              <option value="Lato">Lato</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Size</label>
+            <input class="form-input" type="number" id="scriptureFontSize" value="80" min="12" max="200" step="2">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Color</label>
+            <input type="color" id="scriptureFontColor" value="#ffffff" style="width:100%;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--input);cursor:pointer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Style</label>
+            <select class="form-select" id="scriptureFontStyle">
+              <option value="normal">Normal</option>
+              <option value="bold" selected>Bold</option>
+              <option value="italic">Italic</option>
+              <option value="bold-italic">Bold Italic</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="display:flex;gap:16px;align-items:center;padding-top:6px">
+            <label class="check-group" style="margin:0">
+              <input type="checkbox" id="scriptureUnderline">
+              <div><div class="check-label">Underline</div></div>
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Opacity (%)</label>
+            <input class="form-input" type="number" id="scriptureFontOpacity" value="100" min="0" max="100" step="5">
+          </div>
+        </div>
+        <button class="btn-cancel" type="button" onclick="resetScriptureFontDefaults()" style="margin-top:12px">Reset</button>
+
+        <div class="section-title" style="margin-top:16px">Outline</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Style</label>
+            <select class="form-select" id="scriptureOutlineStyle">
+              <option value="none" selected>None</option>
+              <option value="outer">Outer</option>
+              <option value="inner">Inner</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Color</label>
+            <input type="color" id="scriptureOutlineColor" value="#000000" style="width:100%;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--input);cursor:pointer">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Join</label>
+            <select class="form-select" id="scriptureOutlineJoin">
+              <option value="round" selected>Round</option>
+              <option value="bevel">Bevel</option>
+              <option value="miter">Miter</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Size (px)</label>
+            <input class="form-input" type="number" id="scriptureOutlineWidth" value="12" min="0" max="40" step="1">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Outline Opacity (%)</label>
+          <input class="form-input" type="number" id="scriptureOutlineOpacity" value="100" min="0" max="100" step="5">
+        </div>
+
+        <div class="section-title" style="margin-top:24px">Shadow</div>
+        <label class="check-group" style="margin-bottom:12px">
+          <input type="checkbox" id="scriptureShadowEnabled" checked>
+          <div>
+            <div class="check-label">Enable Text Shadow</div>
+            <div class="check-sub">Adds a drop shadow behind scripture text for depth and contrast.</div>
+          </div>
+        </label>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Shadow Color</label>
+            <input type="color" id="scriptureShadowColor" value="#000000" style="width:100%;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--input);cursor:pointer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Shadow Blur (px)</label>
+            <input class="form-input" type="number" id="scriptureShadowBlur" value="8" min="0" max="50" step="1">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Offset X (px)</label>
+            <input class="form-input" type="number" id="scriptureShadowX" value="2" min="-20" max="20" step="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Offset Y (px)</label>
+            <input class="form-input" type="number" id="scriptureShadowY" value="2" min="-20" max="20" step="1">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Shadow Opacity (%)</label>
+          <input class="form-input" type="number" id="scriptureShadowOpacity" value="80" min="0" max="100" step="5">
+        </div>
+
+        <div class="section-title" style="margin-top:24px">Margins</div>
+        <div class="form-hint" style="margin-bottom:12px">Controls the padding around scripture text on the projection screen (in pixels).</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Left</label>
+            <input class="form-input" type="number" id="scriptureMarginLeft" value="200" min="0" max="600" step="2">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Top</label>
+            <input class="form-input" type="number" id="scriptureMarginTop" value="22" min="0" max="400" step="2">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Right</label>
+            <input class="form-input" type="number" id="scriptureMarginRight" value="200" min="0" max="600" step="2">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bottom</label>
+            <input class="form-input" type="number" id="scriptureMarginBottom" value="22" min="0" max="400" step="2">
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           SCRIPTURE — Reference
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-scripture-reference">
+
+        <div class="section-title">Reference Display</div>
+        <label class="check-group" style="margin-bottom:8px">
+          <input type="checkbox" id="showVerseNumbers" checked>
+          <div>
+            <div class="check-label">Show verse numbers</div>
+            <div class="check-sub">Display superscript verse numbers inline with text</div>
+          </div>
+        </label>
+        <label class="check-group" style="margin-bottom:8px">
+          <input type="checkbox" id="scriptureShowReference" checked>
+          <div>
+            <div class="check-label">Show Reference</div>
+            <div class="check-sub">Display the book, chapter, and verse reference on screen</div>
+          </div>
+        </label>
+        <div class="form-row" style="margin-bottom:8px">
+          <div class="form-group">
+            <label class="form-label">Reference Position</label>
+            <select class="form-select" id="scriptureRefPosition">
+              <option value="top" selected>Top — above verse text</option>
+              <option value="bottom">Bottom — below verse text</option>
+              <option value="hidden">Hidden — no reference shown</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reference Location</label>
+            <select class="form-select" id="scriptureRefLocation">
+              <option value="each" selected>Before Each Slide</option>
+              <option value="first">First Slide Only</option>
+              <option value="last">Last Slide Only</option>
+            </select>
+          </div>
+        </div>
+        <label class="check-group" style="margin-bottom:8px">
+          <input type="checkbox" id="scriptureReferenceIndent" checked>
+          <div>
+            <div class="check-label">Reference Indent</div>
+            <div class="check-sub">Indent the scripture text from the reference line</div>
+          </div>
+        </label>
+        <label class="check-group" style="margin-bottom:8px">
+          <input type="checkbox" id="scriptureAbbreviateBooks">
+          <div>
+            <div class="check-label">Abbreviate Book Names</div>
+            <div class="check-sub">Use abbreviated forms (e.g., Gen, Ex, Lev) instead of full book names</div>
+          </div>
+        </label>
+        <label class="check-group" style="margin-bottom:8px">
+          <input type="checkbox" id="scriptureShowRefOnly">
+          <div>
+            <div class="check-label">Show Reference Only (Hide Scripture Text)</div>
+            <div class="check-sub">Display only the reference without verse text</div>
+          </div>
+        </label>
+
+        <div class="section-title" style="margin-top:24px">Reference Font</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Font Name</label>
+            <select class="form-select" id="scriptureRefFontFamily">
+              <option value="Cinzel" selected>Cinzel</option>
+              <option value="Calibri">Calibri</option>
+              <option value="Arial">Arial</option>
+              <option value="DM Sans">DM Sans</option>
+              <option value="Crimson Pro">Crimson Pro</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Times New Roman">Times New Roman</option>
+              <option value="Verdana">Verdana</option>
+              <option value="Trebuchet MS">Trebuchet MS</option>
+              <option value="Tahoma">Tahoma</option>
+              <option value="Impact">Impact</option>
+              <option value="Segoe UI">Segoe UI</option>
+              <option value="Open Sans">Open Sans</option>
+              <option value="Roboto">Roboto</option>
+              <option value="Lato">Lato</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Size</label>
+            <input class="form-input" type="number" id="scriptureRefFontSize" value="38" min="12" max="120" step="2">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Color</label>
+            <input type="color" id="scriptureRefFontColor" value="#c9a84c" style="width:100%;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--input);cursor:pointer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Style</label>
+            <select class="form-select" id="scriptureRefFontStyle">
+              <option value="normal">Normal</option>
+              <option value="bold" selected>Bold</option>
+              <option value="italic">Italic</option>
+              <option value="bold-italic">Bold Italic</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="display:flex;gap:16px;align-items:center;padding-top:6px">
+            <label class="check-group" style="margin:0">
+              <input type="checkbox" id="scriptureRefUnderline">
+              <div><div class="check-label">Underline</div></div>
+            </label>
+            <label class="check-group" style="margin:0">
+              <input type="checkbox" id="scriptureRefUppercase" checked>
+              <div><div class="check-label">Uppercase</div></div>
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Opacity (%)</label>
+            <input class="form-input" type="number" id="scriptureRefFontOpacity" value="90" min="0" max="100" step="5">
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:16px">Alignment</div>
+        <div class="form-group">
+          <label class="form-label">Text Alignment</label>
+          <select class="form-select" id="scriptureRefTextAlign">
+            <option value="center" selected>Center</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Letter Spacing (em)</label>
+          <input class="form-input" type="number" id="scriptureRefLetterSpacing" value="0.25" min="0" max="1" step="0.05">
+        </div>
+
+        <div class="section-title" style="margin-top:24px">Reference Outline</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Style</label>
+            <select class="form-select" id="scriptureRefOutlineStyle">
+              <option value="none" selected>None</option>
+              <option value="outer">Outer</option>
+              <option value="inner">Inner</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Color</label>
+            <input type="color" id="scriptureRefOutlineColor" value="#000000" style="width:100%;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--input);cursor:pointer">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Size (px)</label>
+            <input class="form-input" type="number" id="scriptureRefOutlineWidth" value="0" min="0" max="40" step="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Opacity (%)</label>
+            <input class="form-input" type="number" id="scriptureRefOutlineOpacity" value="100" min="0" max="100" step="5">
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:24px">Reference Shadow</div>
+        <label class="check-group" style="margin-bottom:12px">
+          <input type="checkbox" id="scriptureRefShadowEnabled">
+          <div>
+            <div class="check-label">Enable Reference Shadow</div>
+            <div class="check-sub">Adds a drop shadow behind the reference text.</div>
+          </div>
+        </label>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Shadow Color</label>
+            <input type="color" id="scriptureRefShadowColor" value="#000000" style="width:100%;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--input);cursor:pointer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Shadow Blur (px)</label>
+            <input class="form-input" type="number" id="scriptureRefShadowBlur" value="4" min="0" max="50" step="1">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Offset X (px)</label>
+            <input class="form-input" type="number" id="scriptureRefShadowX" value="1" min="-20" max="20" step="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Offset Y (px)</label>
+            <input class="form-input" type="number" id="scriptureRefShadowY" value="1" min="-20" max="20" step="1">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Shadow Opacity (%)</label>
+          <input class="form-input" type="number" id="scriptureRefShadowOpacity" value="60" min="0" max="100" step="5">
+        </div>
+
+        <button class="btn-cancel" type="button" onclick="resetScriptureRefDefaults()" style="margin-top:12px">Reset</button>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           SCRIPTURE — Format
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-scripture-format">
+
+        <div class="section-title">Auto Sizing</div>
+        <div style="margin-bottom:14px">
+          <label class="check-group" style="margin-bottom:6px">
+            <input type="radio" name="scriptureAutoSize" id="scriptureAutoSizeNone" value="none">
+            <div><div class="check-label">Do not auto size text</div></div>
+          </label>
+          <label class="check-group" style="margin-bottom:6px">
+            <input type="radio" name="scriptureAutoSize" id="scriptureAutoSizeResize" value="resize" checked>
+            <div><div class="check-label">Resize text to fit element</div></div>
+          </label>
+          <label class="check-group" style="margin-left:28px">
+            <input type="checkbox" id="scriptureNormalizeSize" checked>
+            <div><div class="check-label">Normalize text size across slides</div></div>
+          </label>
+        </div>
+
+        <div class="section-title">Formatting</div>
+        <label class="check-group" style="margin-bottom:8px">
+          <input type="checkbox" id="scriptureWordWrap" checked>
+          <div><div class="check-label">Word Wrapping</div></div>
+        </label>
+
+        <div class="section-title" style="margin-top:16px">Scripture Capitalization</div>
+        <div style="margin-bottom:14px">
+          <label class="check-group" style="margin-bottom:6px">
+            <input type="radio" name="scriptureTextTransform" id="scriptureTextTransformNone" value="none" checked>
+            <div><div class="check-label">Original casing</div></div>
+          </label>
+          <label class="check-group" style="margin-bottom:6px">
+            <input type="radio" name="scriptureTextTransform" id="scriptureTextTransformUpper" value="uppercase">
+            <div><div class="check-label">UPPERCASE</div></div>
+          </label>
+          <label class="check-group" style="margin-bottom:6px">
+            <input type="radio" name="scriptureTextTransform" id="scriptureTextTransformLower" value="lowercase">
+            <div><div class="check-label">lowercase</div></div>
+          </label>
+          <label class="check-group" style="margin-bottom:6px">
+            <input type="radio" name="scriptureTextTransform" id="scriptureTextTransformTitle" value="capitalize">
+            <div><div class="check-label">Title Case</div></div>
+          </label>
+        </div>
+        <div class="form-hint" style="margin-bottom:14px">Applies to scripture text on preview, Live Display, and projection.</div>
+
+        <div class="section-title">Auto-Capitalize Words</div>
+        <label class="check-group" style="margin-bottom:12px">
+          <input type="checkbox" id="scriptureAutoCapitalizeWords">
+          <div>
+            <div class="check-label">Automatically capitalize first character of these words</div>
+          </div>
+        </label>
+        <div class="form-group">
+          <textarea class="form-input" id="scriptureCapitalizeWordList" rows="8" style="font-family:monospace;font-size:12px;line-height:1.6;resize:vertical">CHRIST
+FATHER
+GOD
+HE
+HIS
+HIM
+HIMSELF
+HOLY
+JESUS
+LORD
+SAVIOR
+SAVIOUR
+SON
+SPIRIT
+THEE
+THOU
+THY
+YOU
+YOUR</textarea>
+          <div class="form-hint">One word per line. These words will always start with an uppercase letter when found in scripture text.</div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           PRESENTATIONS — General
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-pres-general">
+        <div class="section-title">Presentation Display</div>
+        <div class="form-group">
+          <label class="form-label">Default Slide Transition</label>
+          <select class="form-select" id="presTransition">
+            <option value="none" selected>None (instant)</option>
+            <option value="fade">Fade</option>
+            <option value="slide">Slide</option>
+          </select>
+        </div>
+        <label class="check-group">
+          <input type="checkbox" id="presAutoAdvance">
+          <div>
+            <div class="check-label">Auto-advance Slides</div>
+            <div class="check-sub">Automatically move to next slide after a set interval</div>
+          </div>
+        </label>
+        <div class="form-group">
+          <label class="form-label">Auto-advance Interval (seconds)</label>
+          <input class="form-input" id="presAutoInterval" type="number" min="1" max="60" value="5">
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           AUDIO & AI
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-audio-general">
+        <div class="section-title">Microphone Input</div>
+        <div class="form-group">
+          <label class="form-label">Input Device</label>
+          <select class="form-select" id="microphone">
+            <option value="default">System Default</option>
+          </select>
+        </div>
+
+        <div class="section-title">AI & Transcription</div>
+        <div class="form-group">
+          <label class="form-label">Claude API Key <span style="color:var(--dim);font-weight:400">— verse detection</span></label>
+          <input class="form-input" id="apiKey" type="password" placeholder="sk-ant-api03-…">
+          <div class="form-hint">Powers AI verse detection and sermon notes. Get yours at console.anthropic.com</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deepgram API Key <span style="color:var(--dim);font-weight:400">— real-time transcription</span></label>
+          <input class="form-input" id="deepgramKey" type="password" placeholder="…">
+          <div class="form-hint">Best quality + lowest latency (~300ms). ~$0.0043/min. Get free key at <strong>deepgram.com</strong></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">OpenAI API Key <span style="color:var(--dim);font-weight:400">— cloud fallback</span></label>
+          <input class="form-input" id="openAiKey" type="password" placeholder="sk-…">
+          <div class="form-hint">Used if Deepgram is not set. ~$0.006/min via Whisper API.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Genius API Key <span style="color:var(--dim);font-weight:400">— song lyrics search</span></label>
+          <input class="form-input" id="geniusApiKey" type="password" placeholder="Paste your Genius API token…">
+          <div class="form-hint">Powers the Search Lyrics feature in Song Manager. Get a free key at <strong>genius.com/api-clients</strong></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1">
+            <label class="form-label">Local Whisper Model</label>
+            <select class="form-select" id="whisperModel">
+              <option value="small.en" selected>Small English (~244 MB) — Accurate ✓</option>
+            </select>
+            <div id="whisperModelManager" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+            <div class="form-hint" style="margin-top:6px">
+              ✓ = installed &nbsp;|&nbsp; Click <strong>Download</strong> to add more models
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Detection Mode</label>
+            <select class="form-select" id="detectionMode">
+              <option value="online">Online (best accuracy)</option>
+              <option value="offline">Offline (no internet)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">AI Confidence Threshold</label>
+          <select class="form-select" id="confidence">
+            <option value="0.6">Low (60%) — show more results</option>
+            <option value="0.75" selected>Medium (75%) — balanced</option>
+            <option value="0.85">High (85%) — precise only</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           AUDIO — Learning (Adaptive Transcript Memory)
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-audio-learning">
+
+        <div class="section-title" style="margin-top:0">Adaptive Corrections</div>
+        <label class="check-group">
+          <input type="checkbox" id="adaptiveEnabled" checked onchange="saveAdaptiveSettings()">
+          <div>
+            <div class="check-label">Enable Adaptive Corrections</div>
+            <div class="check-sub">Automatically correct Bible book names, verbal references, and learned phrases after Whisper transcribes</div>
+          </div>
+        </label>
+        <label class="check-group">
+          <input type="checkbox" id="adaptiveLearningEnabled" checked onchange="saveAdaptiveSettings()">
+          <div>
+            <div class="check-label">Enable Offline Learning</div>
+            <div class="check-sub">After each session, mine corrections and suggest new rules. Rules require your approval before activating.</div>
+          </div>
+        </label>
+
+        <div class="section-title">Speaker Profiles</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <select class="form-select" id="profilesList" style="flex:1" onchange="onProfileSelect(this.value)">
+            <option value="">— Select profile —</option>
+          </select>
+          <button type="button" class="secondary-btn" onclick="newProfile()">+ New</button>
+          <button type="button" class="secondary-btn danger-btn" id="deleteProfileBtn" onclick="deleteProfile()" style="display:none">🗑</button>
+        </div>
+        <div id="profileEditor" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:10px">
+          <div class="form-group">
+            <label class="form-label">Name</label>
+            <input class="form-input" id="profileName" placeholder="e.g. Pastor John">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <input class="form-input" id="profileDesc" placeholder="e.g. Senior Pastor, often quotes Romans">
+          </div>
+          <label class="check-group" style="margin-bottom:8px">
+            <input type="checkbox" id="profileDefault">
+            <div><div class="check-label">Set as default profile</div></div>
+          </label>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="secondary-btn" onclick="saveProfile()">✓ Save</button>
+            <button type="button" class="secondary-btn" onclick="cancelProfileEdit()">Cancel</button>
+          </div>
+        </div>
+
+        <div class="section-title">Custom Vocabulary</div>
+        <div class="form-hint" style="margin-bottom:8px">Teach AnchorCast church names, pastor names, ministries, and local terms it should always recognize correctly.</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <input class="form-input" id="vocabTerm" placeholder="Canonical term (e.g. Mount Zion Assembly)" style="flex:1">
+          <input class="form-input" id="vocabAliases" placeholder="Aliases, comma-separated" style="flex:1">
+          <button type="button" class="secondary-btn" onclick="addVocabTerm()">Add</button>
+        </div>
+        <div id="vocabList" style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+
+        <div class="section-title">Correction Rules</div>
+        <div class="form-hint" style="margin-bottom:8px">Direct phrase substitutions applied after every transcription.</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          <input class="form-input" id="ruleSource" placeholder="Whisper writes… (e.g. revelations)" style="flex:1;min-width:100px">
+          <input class="form-input" id="ruleTarget" placeholder="Should be… (e.g. Revelation)" style="flex:1;min-width:100px">
+          <button type="button" class="secondary-btn" onclick="addCorrectionRule()">Add Rule</button>
+        </div>
+        <div id="rulesList" style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+
+        <div class="section-title">Learning Suggestions</div>
+        <div class="form-hint" style="margin-bottom:8px">These patterns were detected in your correction history. Review and approve to activate them.</div>
+        <button type="button" class="secondary-btn" onclick="runLearningJob()" style="margin-bottom:10px">↺ Run Learning Job Now</button>
+        <div id="learningQueue" style="display:flex;flex-direction:column;gap:6px"></div>
+        <div id="learningEmpty" style="font-size:11px;color:var(--text-dim);padding:8px 0">No suggestions yet. Use the app more to build up correction history.</div>
+
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           NETWORK
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-network-general">
+        <div class="section-title">Remote Control</div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-name" id="remoteStatusLabel">Loading…</div>
+            <div class="toggle-sub" id="remoteUrlLabel">Allow phones/tablets on same WiFi to control AnchorCast</div>
+          </div>
+          <div class="toggle" id="settRemoteToggle" onclick="toggleRemoteServer()">
+            <div class="toggle-knob" id="settRemoteKnob"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Remote Control Port</label>
+            <input class="form-input" id="httpPort" type="number" min="1024" max="65535" value="8080">
+            <div class="form-hint">Default 8080. Restart app after changing.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Network Adapter</label>
+            <select class="form-select" id="networkAdapter" onchange="onAdapterChange(this.value)">
+              <option value="">Auto-detect (recommended)</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Require Remote PIN</label>
+            <select class="form-select" id="remoteRequireAuth">
+              <option value="true">Yes, require authentication</option>
+              <option value="false">No authentication</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Admin Remote PIN</label>
+            <input class="form-input" id="remotePin" type="text" inputmode="numeric" maxlength="8" placeholder="6-digit PIN">
+            <div class="form-hint">Full control of scripture, songs, media, and broadcast actions.</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Scripture-only PIN</label>
+            <input class="form-input" id="remoteScripturePin" type="text" inputmode="numeric" maxlength="8" placeholder="PIN for scripture remote">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Songs-only PIN</label>
+            <input class="form-input" id="remoteSongsPin" type="text" inputmode="numeric" maxlength="8" placeholder="PIN for songs remote">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Media-only PIN</label>
+            <input class="form-input" id="remoteMediaPin" type="text" inputmode="numeric" maxlength="8" placeholder="PIN for media remote">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Monitor-only PIN</label>
+            <input class="form-input" id="remoteMonitorPin" type="text" inputmode="numeric" maxlength="8" placeholder="PIN for read-only monitor remote">
+            <div class="form-hint">Read-only remote for status and current output monitoring.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Role Notes</label>
+            <div class="form-hint" style="margin-top:8px">Scripture PIN: scriptures, translation, next/prev. Songs PIN: song library and song slides. Media PIN: media library. Admin PIN: full control.</div>
+          </div>
+        </div>
+
+        <div id="remoteCodeArea"></div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           BIBLE VERSIONS
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-bible-general">
+        <div class="section-title">Installed Translations</div>
+        <div class="bvm-grid" id="bvmGrid">
+          <div style="color:var(--dim);font-size:12px;grid-column:1/-1;padding:8px 0">Loading…</div>
+        </div>
+
+        <div class="section-title">Upload New Translation</div>
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+          <div class="uz-icon">📂</div>
+          <div class="uz-title">Click or drag a Bible translation file here</div>
+          <div class="uz-sub">Supported: .json (AnchorCast format) · KJV included built-in</div>
+        </div>
+        <input type="file" id="fileInput" accept=".json" onchange="processFile(this.files[0])">
+        <div id="uploadStatus"></div>
+
+        <div class="section-title">Custom Translation (Advanced)</div>
+        <div class="code-box">
+          <div class="code-title">Custom Abbreviation</div>
+          <input class="form-input" id="customAbbrev" placeholder="e.g. ASV, WEB, YLT" maxlength="10"
+            style="margin-bottom:8px">
+          <div class="code-title">Paste JSON Data</div>
+          <textarea class="form-input" id="customJson" rows="5"
+            placeholder='{"1": {"1": {"1": "In the beginning..."}}}'
+            style="font-family:monospace;font-size:11px;resize:vertical"></textarea>
+          <button onclick="importCustom()"
+            style="margin-top:8px;padding:7px 16px;background:rgba(201,168,76,.1);border:1px solid var(--gold-d);
+              border-radius:var(--r);color:var(--gold);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">
+            Import Translation
+          </button>
+        </div>
+        <div id="customStatus"></div>
+      </div>
+
+
+      <!-- ════════════════════════════════════════════════
+           ALERTS
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-alerts-general">
+
+        <div class="section-title">Nursery Alert Options</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="check-group">
+              <input type="checkbox" id="nurseryAlertEnabled" checked>
+              <div>
+                <div class="check-label">Enable Nursery Alert</div>
+                <div class="check-sub">Allow nursery notifications to appear on the projection screen.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Background Color</label>
+            <input type="color" class="form-input" id="nurseryAlertBgColor" value="#cc0000" style="height:36px;padding:2px 4px;cursor:pointer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Background Opacity</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="range" id="nurseryAlertBgOpacity" min="0" max="100" value="100" style="flex:1">
+              <span id="nurseryAlertBgOpacityVal" style="font-size:11px;color:var(--text-dim);min-width:28px">100</span>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Screen Location</label>
+            <select class="form-select" id="nurseryAlertPosition">
+              <option value="bottom-left" selected>Bottom Left</option>
+              <option value="bottom-right">Bottom Right</option>
+              <option value="top-left">Top Left</option>
+              <option value="top-right">Top Right</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Font Size</label>
+            <input type="number" class="form-input" id="nurseryAlertFontSize" value="48" min="12" max="120">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Font Color</label>
+            <input type="color" class="form-input" id="nurseryAlertFontColor" value="#ffffff" style="height:36px;padding:2px 4px;cursor:pointer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Font Family</label>
+            <select class="form-select" id="nurseryAlertFontFamily">
+              <option value="Tahoma" selected>Tahoma</option>
+              <option value="Arial">Arial</option>
+              <option value="Calibri">Calibri</option>
+              <option value="DM Sans">DM Sans</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Crimson Pro">Crimson Pro</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="check-group">
+              <input type="checkbox" id="nurseryAlertAutoRemove" checked>
+              <div>
+                <div class="check-label">Automatically Remove</div>
+                <div class="check-sub">Dismiss the nursery alert after a set time.</div>
+              </div>
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Auto-remove After (seconds)</label>
+            <input type="number" class="form-input" id="nurseryAlertAutoRemoveTime" value="60" min="5" max="600">
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:24px">Message Alert Options</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="check-group">
+              <input type="checkbox" id="messageAlertEnabled" checked>
+              <div>
+                <div class="check-label">Enable Message Alert</div>
+                <div class="check-sub">Allow scrolling message alerts on the projection screen.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Background Color</label>
+            <input type="color" class="form-input" id="messageAlertBgColor" value="#000000" style="height:36px;padding:2px 4px;cursor:pointer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Background Opacity</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="range" id="messageAlertBgOpacity" min="0" max="100" value="100" style="flex:1">
+              <span id="messageAlertBgOpacityVal" style="font-size:11px;color:var(--text-dim);min-width:28px">100</span>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Screen Location</label>
+            <select class="form-select" id="messageAlertPosition">
+              <option value="top" selected>Top</option>
+              <option value="bottom">Bottom</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Scroll Speed</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="range" id="messageAlertScrollSpeed" min="1" max="10" value="5" style="flex:1">
+              <span id="messageAlertScrollSpeedVal" style="font-size:11px;color:var(--text-dim);min-width:28px">5</span>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Font Size</label>
+            <input type="number" class="form-input" id="messageAlertFontSize" value="48" min="12" max="120">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Font Color</label>
+            <input type="color" class="form-input" id="messageAlertFontColor" value="#f5deb3" style="height:36px;padding:2px 4px;cursor:pointer">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Font Family</label>
+            <select class="form-select" id="messageAlertFontFamily">
+              <option value="Calibri" selected>Calibri</option>
+              <option value="Tahoma">Tahoma</option>
+              <option value="Arial">Arial</option>
+              <option value="DM Sans">DM Sans</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Crimson Pro">Crimson Pro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Repeat Count</label>
+            <input type="number" class="form-input" id="messageAlertRepeatCount" value="2" min="1" max="20">
+            <div class="form-hint">How many times the message scrolls across the screen.</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content-body -->
+  </div><!-- /content -->
+</div><!-- /layout -->
+
+<!-- Bottom bar -->
+<div class="bottom-bar">
+  <div class="version" id="versionInfo">AnchorCast v1.1.0</div>
+  <div class="bottom-sp"></div>
+  <button class="btn-cancel" onclick="closeSettings()">Cancel</button>
+  <button class="btn-save" onclick="saveSettings()">Save Settings</button>
+</div>
+
+<script>
+// ── Section / tab switching ────────────────────────────────────
+
+const SECTION_TABS = {
+  main:       ['General'],
+  song:       ['General', 'Font', 'Labels', 'Format'],
+  scripture:  ['General', 'Font', 'Reference', 'Format'],
+  pres:       ['General'],
+  audio:      ['General', 'Learning'],
+  network:    ['General'],
+  bible:      ['General'],
+  alerts:     ['General'],
+
+};
+
+const SECTION_LABELS = {
+  main: 'Main Output', song: 'Songs', scripture: 'Scripture',
+  pres: 'Presentations', audio: 'Audio & AI', network: 'Network', bible: 'Bible Versions',
+  alerts: 'Alerts',
+};
+
+let activeSection = 'main', activeTab = 'general';
+
+function setSection(el, section) {
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  activeSection = section;
+  activeTab = 'general';
+  renderTabs();
+  showPane();
+  document.getElementById('winSub').textContent = '— ' + (SECTION_LABELS[section] || section);
+  if (section === 'bible') loadBvmGrid();
+  if (section === 'network') loadRemoteStatus();
+  if (section === 'audio') loadAdaptiveLearningPane();
+
+}
+
+function setTab(el, tab) {
+  document.querySelectorAll('.mod-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  activeTab = tab;
+  showPane();
+  if (activeSection === 'audio' && tab === 'learning') loadAdaptiveLearningPane();
+}
+
+function loadAdaptiveLearningPane() {
+  // Only load once per settings open, unless explicitly refreshed
+  if (_tmData.profiles?.length > 0 && document.getElementById('profilesList')?.options.length > 1) return;
+  loadAdaptiveData();
+}
+
+function renderTabs() {
+  const tabs = SECTION_TABS[activeSection] || ['General'];
+  const bar = document.getElementById('modTabs');
+  bar.innerHTML = tabs.map((t, i) =>
+    `<div class="mod-tab${i===0?' active':''}" onclick="setTab(this,'${t.toLowerCase()}')">${t}</div>`
+  ).join('');
+}
+
+
+function openBibleManagerStandalone() {
+  const sidebar = document.querySelector('.sidebar');
+  const winTitle = document.getElementById('winTitle');
+  const winSub = document.getElementById('winSub');
+  const bottomSave = document.querySelector('.btn-save');
+  document.querySelectorAll('.sidebar-item').forEach(item => {
+    const keep = item.getAttribute('data-section') === 'bible';
+    item.style.display = keep ? 'flex' : 'none';
+    if (keep) setSection(item, 'bible');
+  });
+  if (sidebar) sidebar.style.width = '180px';
+  if (winTitle) winTitle.textContent = 'Bible Manager';
+  if (winSub) winSub.textContent = '— Manage Bible Versions';
+  if (bottomSave) bottomSave.textContent = 'Done';
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if ((location.hash || '').includes('bible-manager')) {
+    openBibleManagerStandalone();
+  }
+  const _svLayout = document.getElementById('songVerticalAlign');
+  const _svFont   = document.getElementById('songVerticalAlignFont');
+  if (_svLayout && _svFont) {
+    _svLayout.addEventListener('change', () => { _svFont.value = _svLayout.value; });
+    _svFont.addEventListener('change', () => { _svLayout.value = _svFont.value; });
+  }
+  // Load whisper model manager
+  _loadWhisperModelManager();
+  // Listen for download progress and completion
+  window.electronAPI?.on?.('whisper-model-progress', ({ modelId, line }) => {
+    const bar = document.getElementById('wm-progress-' + modelId);
+    if (bar) bar.textContent = line.length > 60 ? line.slice(0, 60) + '…' : line;
+  });
+  window.electronAPI?.on?.('whisper-model-downloaded', ({ modelId, success }) => {
+    if (success) _loadWhisperModelManager(); // refresh list
+  });
+  ['nurseryAlertBgOpacity','messageAlertBgOpacity','messageAlertScrollSpeed'].forEach(id => {
+    const el = document.getElementById(id);
+    const lbl = document.getElementById(id + 'Val');
+    if (el && lbl) el.addEventListener('input', () => { lbl.textContent = el.value; });
+  });
+});
+
+function showPane() {
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  const pane = document.getElementById(`pane-${activeSection}-${activeTab}`);
+  if (pane) pane.classList.add('active');
+}
+
+// ── Translation metadata ───────────────────────────────────────
+const KNOWN_TRANS = [
+  { id:'KJV',  name:'King James Version',         year:'1611', pd:true,  publisher:'Crown Copyright / Public Domain',     license:'Public Domain — Originally Published by the Church of England' },
+  { id:'NKJV', name:'New King James Version',      year:'1982', pd:false, publisher:'Thomas Nelson, Inc.',                license:'© 1982 Thomas Nelson, Inc. All rights reserved.'                },
+  { id:'NIV',  name:'New International Version',   year:'1978', pd:false, publisher:'Biblica, Inc. (IBS)',                license:'© 1973, 1978, 1984, 2011 Biblica, Inc.'                         },
+  { id:'NLT',  name:'New Living Translation',      year:'1996', pd:false, publisher:'Tyndale House Publishers',           license:'© 1996, 2004, 2007, 2013, 2015 Tyndale House Foundation'        },
+  { id:'ESV',  name:'English Standard Version',    year:'2001', pd:false, publisher:'Crossway / Good News Publishers',    license:'© 2001 Crossway, a publishing ministry of Good News Publishers'  },
+  { id:'NASB', name:'New American Standard Bible', year:'1971', pd:false, publisher:'The Lockman Foundation',             license:'© 1960, 1971, 1977, 1995, 2020 The Lockman Foundation'          },
+  { id:'ASV',  name:'American Standard Version',   year:'1901', pd:true,  publisher:'Public Domain',                     license:'Public Domain — Copyright expired'                               },
+  { id:'YLT',  name:"Young's Literal Translation", year:'1898', pd:true, publisher:'Robert Young / Public Domain',      license:'Public Domain — Copyright expired'                               },
+  { id:'WEB',  name:'World English Bible',         year:'2000', pd:true,  publisher:'World English Bible Project',        license:'Public Domain — No copyright (freely redistributable)'           },
+  { id:'MSG',  name:'The Message',                 year:'2002', pd:false, publisher:'NavPress Publishing Group',          license:'© 1993, 2002, 2018 Eugene H. Peterson. NavPress.'               },
+  { id:'AMP',  name:'Amplified Bible',             year:'1958', pd:false, publisher:'The Lockman Foundation',             license:'© 1954, 1958, 1962, 1964, 1965, 1987, 2015 The Lockman Foundation' },
+  { id:'CSB',  name:'Christian Standard Bible',    year:'2017', pd:false, publisher:'Holman Bible Publishers (B&H)',      license:'© 2017 Holman Bible Publishers. B&H Publishing Group.'          },
+];
+let installed = {};
+
+async function loadBvmGrid() {
+  if (window.electronAPI?.getInstalledVersions) {
+    try { installed = await window.electronAPI.getInstalledVersions() || {}; }
+    catch(e) { installed = {}; }
+  }
+  renderGrid();
+  populateTranslationDropdown();
+}
+
+function populateTranslationDropdown() {
+  const sel = document.getElementById('translation');
+  if (!sel) return;
+  const currentVal = sel.value;
+  sel.innerHTML = '';
+  const allIds = new Set([...KNOWN_TRANS.map(t => t.id), ...Object.keys(installed)]);
+  allIds.add('KJV');
+  let hasInstalled = false;
+  for (const id of allIds) {
+    if (installed[id] || id === 'KJV') {
+      const meta = KNOWN_TRANS.find(t => t.id === id);
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = meta ? `${id} — ${meta.name}` : id;
+      sel.appendChild(opt);
+      hasInstalled = true;
+    }
+  }
+  if (!hasInstalled) {
+    KNOWN_TRANS.slice(0,6).forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id; opt.textContent = `${t.id} — ${t.name}`;
+      sel.appendChild(opt);
+    });
+  }
+  if (currentVal && sel.querySelector(`option[value="${currentVal}"]`)) sel.value = currentVal;
+}
+
+function renderGrid() {
+  const grid = document.getElementById('bvmGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const shownIds = new Set(KNOWN_TRANS.map(t => t.id));
+  Object.keys(installed).forEach(id => { if (!shownIds.has(id)) shownIds.add(id); });
+  for (const id of shownIds) {
+    const meta = KNOWN_TRANS.find(t => t.id === id);
+    const isIn = !!installed[id];
+    const card = document.createElement('div');
+    card.className = 'bvm-card' + (isIn ? ' installed' : '');
+    card.innerHTML = `
+      <div class="bvm-badge ${isIn?'has':'no'}">${id}</div>
+      <div class="bvm-info">
+        <div class="bvm-name">${meta?.name || id}</div>
+        <div class="bvm-sub">${meta ? meta.year + ' · ' + (meta.publisher || 'Unknown Publisher') : 'Custom'}</div>
+        <div class="bvm-license">${meta ? (meta.pd ? '📖 Public Domain' : '© Licensed — ' + (meta.license || meta.publisher || '')) : ''}</div>
+        ${isIn ? `<div class="bvm-count">✓ ${installed[id].toLocaleString()} verses</div>` : ''}
+      </div>
+      ${isIn && id !== 'KJV' ? `<button class="bvm-btn bvm-del" onclick="deleteTrans('${id}')">Remove</button>` : ''}
+      ${!isIn ? `<button class="bvm-btn bvm-up" onclick="promptUpload('${id}')">Upload</button>` : ''}`;
+    grid.appendChild(card);
+  }
+}
+
+function promptUpload(id) {
+  document.getElementById('customAbbrev').value = id;
+  document.getElementById('fileInput').click();
+}
+
+async function processFile(file) {
+  if (!file) return;
+  const status = document.getElementById('uploadStatus');
+  status.innerHTML = '<div class="status-msg msg-info">⏳ Processing…</div>';
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    let abbrev = document.getElementById('customAbbrev')?.value.trim().toUpperCase();
+    if (!abbrev) {
+      abbrev = file.name.replace(/\.json$/i,'').replace(/[^A-Z0-9]/gi,'').toUpperCase().slice(0,8);
+    }
+    if (!abbrev) throw new Error('Could not determine abbreviation');
+    if (window.electronAPI?.importTranslation) {
+      const r = await window.electronAPI.importTranslation({ abbrev, data });
+      if (r?.success) {
+        status.innerHTML = `<div class="status-msg msg-ok">✓ ${abbrev} imported (${r.verseCount?.toLocaleString()} verses)</div>`;
+        await loadBvmGrid();
+      } else throw new Error(r?.error || 'Import failed');
+    }
+  } catch(e) {
+    status.innerHTML = `<div class="status-msg msg-err">⚠ ${e.message}</div>`;
+  }
+}
+
+async function importCustom() {
+  const abbrev = document.getElementById('customAbbrev')?.value.trim().toUpperCase();
+  const raw    = document.getElementById('customJson')?.value.trim();
+  const status = document.getElementById('customStatus');
+  if (!abbrev) { status.innerHTML = '<div class="status-msg msg-err">⚠ Enter an abbreviation first</div>'; return; }
+  if (!raw)    { status.innerHTML = '<div class="status-msg msg-err">⚠ Paste JSON data first</div>'; return; }
+  try {
+    const data = JSON.parse(raw);
+    if (window.electronAPI?.importTranslation) {
+      const r = await window.electronAPI.importTranslation({ abbrev, data });
+      if (r?.success) {
+        status.innerHTML = `<div class="status-msg msg-ok">✓ ${abbrev} imported (${r.verseCount?.toLocaleString()} verses)</div>`;
+        await loadBvmGrid();
+      } else throw new Error(r?.error || 'Import failed');
+    }
+  } catch(e) {
+    status.innerHTML = `<div class="status-msg msg-err">⚠ ${e.message}</div>`;
+  }
+}
+
+async function deleteTrans(id) {
+  if (!confirm(`Remove ${id} translation? This cannot be undone.`)) return;
+  if (window.electronAPI?.deleteTranslation) {
+    await window.electronAPI.deleteTranslation(id);
+    await loadBvmGrid();
+  }
+}
+
+// ── Upload drag-drop ──────────────────────────────────────────
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover',  e => { e.preventDefault(); uploadZone.classList.add('over'); });
+uploadZone.addEventListener('dragleave', ()=> uploadZone.classList.remove('over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+});
+
+
+function escapeHtml(str='') {
+  return String(str).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function buildFallbackQrSvg(url='') {
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><rect width="160" height="160" rx="12" fill="#ffffff"/><rect x="10" y="10" width="140" height="140" rx="10" fill="#fff" stroke="#d4af37" stroke-width="2"/><rect x="22" y="22" width="28" height="28" fill="#111"/><rect x="110" y="22" width="28" height="28" fill="#111"/><rect x="22" y="110" width="28" height="28" fill="#111"/><rect x="28" y="28" width="16" height="16" fill="#fff"/><rect x="116" y="28" width="16" height="16" fill="#fff"/><rect x="28" y="116" width="16" height="16" fill="#fff"/><rect x="32" y="32" width="8" height="8" fill="#111"/><rect x="120" y="32" width="8" height="8" fill="#111"/><rect x="32" y="120" width="8" height="8" fill="#111"/><text x="80" y="84" text-anchor="middle" font-size="11" font-family="Segoe UI, Arial, sans-serif" fill="#111" font-weight="700">Open link below</text><text x="80" y="100" text-anchor="middle" font-size="9" font-family="Segoe UI, Arial, sans-serif" fill="#666">QR fallback</text></svg>`)}`;
+}
+function makeRemoteRoleCard(role, item, exp) {
+  const safeRole = escapeHtml(role);
+  const safeUrl = escapeHtml(item?.url || '');
+  const qrSrc = item?.qrDataUri || buildFallbackQrSvg(item?.url || '');
+  const qrHtml = `<img alt="${safeRole} QR" style="width:140px;height:140px;border-radius:10px;background:#fff;padding:6px;object-fit:contain" src="${qrSrc}" onerror="this.onerror=null;this.src=buildFallbackQrSvg('${safeUrl}')">`;
+  return `<div class="settings-card" style="padding:12px">
+    <div style="font-weight:700;text-transform:capitalize;margin-bottom:8px">${safeRole}</div>
+    ${qrHtml}
+    <input class="form-input" readonly value="${safeUrl}" style="margin-top:8px;font-size:11px" onclick="this.select()">
+    <div class="form-hint">Expires: ${escapeHtml(exp)}</div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button type="button" class="secondary-btn" onclick="copyRemoteUrl('${safeRole}')">Copy URL</button>
+      <button type="button" class="secondary-btn" onclick="openRemoteUrl('${safeRole}')">Open</button>
+    </div>
+  </div>`;
+}
+
+async function getRemoteInfoForLinks() {
+  return window.electronAPI.getRemoteStatus ? window.electronAPI.getRemoteStatus() : window.electronAPI.getRemoteInfo();
+}
+
+async function copyRemoteUrl(role) {
+  const s = await getRemoteInfoForLinks();
+  const url = s?.roleLinks?.[role]?.url;
+  if (!url) return;
+  let copied = false;
+  try {
+    if (window.electronAPI?.copyToClipboard) {
+      const r = await window.electronAPI.copyToClipboard(url);
+      copied = !r || r.success !== false;
+    }
+    if (!copied && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+      copied = true;
+    }
+    if (!copied) {
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      copied = document.execCommand('copy');
+      ta.remove();
+    }
+  } catch (e) {
+    console.warn('copyRemoteUrl failed', e);
+  }
+  try { window.prompt(copied ? 'URL copied. You can also copy from here:' : 'Copy this URL:', url); } catch(_) {}
+  if (typeof toast === 'function' && copied) toast('📋 URL copied!');
+}
+async function copyAllRemoteUrls() {
+  const s = await getRemoteInfoForLinks();
+  const roles = ['admin','scripture','songs','media','monitor'];
+  const joined = roles.map(role => s?.roleLinks?.[role]?.url).filter(Boolean).join('\n');
+  if (!joined) return;
+  let copied = false;
+  try {
+    if (window.electronAPI?.copyToClipboard) {
+      const r = await window.electronAPI.copyToClipboard(joined);
+      copied = !r || r.success !== false;
+    }
+    if (!copied && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(joined);
+      copied = true;
+    }
+  } catch (e) {
+    console.warn('copyAllRemoteUrls failed', e);
+  }
+  try { window.prompt(copied ? 'All remote URLs copied. You can also copy from here:' : 'Copy all remote URLs:', joined); } catch(_) {}
+  if (typeof toast === 'function' && copied) toast('📋 All remote URLs copied!');
+}
+
+async function openRemoteUrl(role) {
+  try {
+    const s = await getRemoteInfoForLinks();
+    const url = s?.roleLinks?.[role]?.url;
+    if (!url) return;
+    window.open(url, '_blank');
+  } catch (e) {}
+}
+
+
+// ── Network / Remote ──────────────────────────────────────────
+async function loadRemoteStatus() {
+  if (!window.electronAPI) return;
+  try {
+    const s = await (window.electronAPI.getRemoteStatus ? window.electronAPI.getRemoteStatus() : window.electronAPI.getRemoteInfo());
+    const label = document.getElementById('remoteStatusLabel');
+    const url   = document.getElementById('remoteUrlLabel');
+    const tog   = document.getElementById('settRemoteToggle');
+    const knob  = document.getElementById('settRemoteKnob');
+    if (!label) return;
+    const qrArea = document.getElementById('remoteCodeArea');
+    if (s?.running || s?.enabled) {
+      label.textContent = '🟢 Remote control running';
+      if (url) url.textContent = s.url || (s.ip ? `http://${s.ip}:${s.port || 8080}/remote` : '');
+      if (tog) tog.style.background = '#27ae60';
+      if (knob) knob.style.left = '21px';
+      if (qrArea && s.roleLinks) {
+        const roles = ['admin','scripture','songs','media','monitor'];
+        qrArea.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:18px"><div class="section-title" style="margin:0">Role QR Login Links</div><button type="button" class="secondary-btn" onclick="copyAllRemoteUrls()">Copy all links</button></div><div class="remote-qr-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px"></div>';
+        const grid = qrArea.querySelector('.remote-qr-grid');
+        roles.forEach(role => {
+          const item = s.roleLinks[role];
+          if (!item) return;
+          const exp = new Date(item.expiresAt).toLocaleString();
+          grid.insertAdjacentHTML('beforeend', makeRemoteRoleCard(role, item, exp));
+        });
+      }
+    } else {
+      label.textContent = s?.enabled ? (s?.running ? '🟢 Remote control running' : '🟡 Remote enabled') : 'Remote control off';
+      if (url) url.textContent = s?.url || (s?.ip ? `http://${s.ip}:${s.port || 8080}/remote` : '');
+      if (tog) tog.style.background = s?.enabled ? '#27ae60' : 'var(--border-lit)';
+      if (knob) knob.style.left = s?.enabled ? '21px' : '3px';
+      if (qrArea && s?.roleLinks) {
+        const roles = ['admin','scripture','songs','media','monitor'];
+        qrArea.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:18px"><div class="section-title" style="margin:0">Role QR Login Links</div><button type="button" class="secondary-btn" onclick="copyAllRemoteUrls()">Copy all links</button></div><div class="remote-qr-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px"></div>';
+        const grid = qrArea.querySelector('.remote-qr-grid');
+        roles.forEach(role => {
+          const item = s.roleLinks[role]; if (!item) return;
+          const exp = new Date(item.expiresAt).toLocaleString();
+          grid.insertAdjacentHTML('beforeend', makeRemoteRoleCard(role, item, exp));
+        });
+      } else if (qrArea) qrArea.innerHTML = '';
+    }
+  } catch(e) { const label=document.getElementById('remoteStatusLabel'); if(label) label.textContent='Remote status unavailable'; }
+}
+
+
+async function toggleRemoteServer() {
+  if (!window.electronAPI) return;
+  const info = await window.electronAPI.getRemoteInfo().catch(() => null);
+  const shouldEnable = !(info?.running);
+  if (shouldEnable) {
+    if (window.electronAPI.startRemote) await window.electronAPI.startRemote().catch(()=>{});
+    else await window.electronAPI.toggleRemote?.(true).catch(()=>{});
+  } else {
+    if (window.electronAPI.stopRemote) await window.electronAPI.stopRemote().catch(()=>{});
+    else await window.electronAPI.toggleRemote?.(false).catch(()=>{});
+  }
+  setTimeout(loadRemoteStatus, 350);
+}
+
+function onAdapterChange(val) {}
+
+// ── NDI ───────────────────────────────────────────────────────
+let _ndiEnabled = false;
+function updateNdiSettUI(enabled) {
+  _ndiEnabled = enabled;
+  const toggle = document.getElementById('ndiSettToggle');
+  const knob   = document.getElementById('ndiSettKnob');
+  const label  = document.getElementById('ndiSettLabel');
+  if (!toggle) return;
+  toggle.style.background = enabled ? '#27ae60' : 'var(--border-lit)';
+  if (knob) knob.style.left = enabled ? '21px' : '3px';
+  if (label) label.textContent = enabled ? '🟢 Running' : 'NDI / Web Output — Off';
+}
+
+async function toggleNdiSetting() {
+  if (!window.electronAPI) return;
+  _ndiEnabled = !_ndiEnabled;
+  if (_ndiEnabled) {
+    const r = await window.electronAPI.ndiStart().catch(() => null);
+    updateNdiSettUI(r?.status === 'running' || r?.status === 'fallback');
+  } else {
+    await window.electronAPI.ndiStop().catch(() => null);
+    updateNdiSettUI(false);
+  }
+}
+
+// ── Adaptive Learning Pane ─────────────────────────────────────
+let _tmData = { rules:[], vocab:[], profiles:[], learningQueue:[] };
+let _editingProfileId = null;
+
+async function loadAdaptiveLearningPane() {
+  if (!window.electronAPI?.loadAdaptiveMemory) return;
+  try {
+    _tmData = await window.electronAPI.loadAdaptiveMemory() || _tmData;
+    renderProfilesList();
+    renderVocabList();
+    renderRulesList();
+    renderLearningQueue();
+    // Load current settings into checkboxes
+    const s = await window.electronAPI.getSettings();
+    const ae = document.getElementById('adaptiveEnabled');
+    const al = document.getElementById('adaptiveLearningEnabled');
+    if (ae) ae.checked = s.adaptiveEnabled !== false;
+    if (al) al.checked = s.adaptiveLearningEnabled !== false;
+  } catch(e) { console.warn('loadAdaptiveLearningPane', e); }
+}
+
+async function saveAdaptiveSettings() {
+  const existing = await window.electronAPI.getSettings().catch(()=>({}));
+  await window.electronAPI.saveSettings({
+    ...existing,
+    adaptiveEnabled: document.getElementById('adaptiveEnabled')?.checked ?? true,
+    adaptiveLearningEnabled: document.getElementById('adaptiveLearningEnabled')?.checked ?? true,
+  });
+}
+
+// ── Speaker Profiles ──────────────────────────────────────────
+function renderProfilesList() {
+  const sel = document.getElementById('profilesList');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Select profile —</option>';
+  (_tmData.profiles || []).forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name + (p.isDefault ? ' ★' : '');
+    if (p.id === current) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function onProfileSelect(id) {
+  const delBtn = document.getElementById('deleteProfileBtn');
+  if (!id) {
+    document.getElementById('profileEditor').style.display = 'none';
+    if (delBtn) delBtn.style.display = 'none';
+    _editingProfileId = null;
+    return;
+  }
+  _editingProfileId = id;
+  const p = _tmData.profiles?.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('profileName').value = p.name || '';
+  document.getElementById('profileDesc').value = p.description || '';
+  document.getElementById('profileDefault').checked = !!p.isDefault;
+  document.getElementById('profileEditor').style.display = 'block';
+  if (delBtn) delBtn.style.display = id === 'default' ? 'none' : '';
+}
+
+function newProfile() {
+  _editingProfileId = null;
+  document.getElementById('profileName').value = '';
+  document.getElementById('profileDesc').value = '';
+  document.getElementById('profileDefault').checked = false;
+  document.getElementById('profileEditor').style.display = 'block';
+  const delBtn = document.getElementById('deleteProfileBtn');
+  if (delBtn) delBtn.style.display = 'none';
+  document.getElementById('profilesList').value = '';
+  document.getElementById('profileName').focus();
+}
+
+async function saveProfile() {
+  const name = document.getElementById('profileName').value.trim();
+  if (!name) { alert('Profile name is required'); return; }
+  const profile = {
+    id: _editingProfileId || ('prof_' + Date.now()),
+    name,
+    description: document.getElementById('profileDesc').value.trim(),
+    isDefault: document.getElementById('profileDefault').checked ? 1 : 0,
+    isActive: 1,
+  };
+  const idx = _tmData.profiles.findIndex(p => p.id === profile.id);
+  if (idx >= 0) _tmData.profiles[idx] = { ..._tmData.profiles[idx], ...profile, updatedAt: new Date().toISOString() };
+  else _tmData.profiles.push({ ...profile, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+  if (profile.isDefault) _tmData.profiles.forEach(p => { if (p.id !== profile.id) p.isDefault = 0; });
+  await window.electronAPI.saveAdaptiveMemory({ type:'profiles', data: _tmData.profiles });
+  _editingProfileId = profile.id;
+  document.getElementById('profileEditor').style.display = 'none';
+  renderProfilesList();
+  document.getElementById('profilesList').value = profile.id;
+  const delBtn = document.getElementById('deleteProfileBtn');
+  if (delBtn) delBtn.style.display = profile.id === 'default' ? 'none' : '';
+}
+
+async function deleteProfile() {
+  if (!_editingProfileId || _editingProfileId === 'default') return;
+  const p = _tmData.profiles.find(x => x.id === _editingProfileId);
+  if (!p || !confirm(`Delete "${p.name}"? All rules linked to this profile will remain but lose their profile link.`)) return;
+  _tmData.profiles = _tmData.profiles.filter(x => x.id !== _editingProfileId);
+  await window.electronAPI.saveAdaptiveMemory({ type:'profiles', data: _tmData.profiles });
+  _editingProfileId = null;
+  document.getElementById('profileEditor').style.display = 'none';
+  renderProfilesList();
+}
+
+function cancelProfileEdit() {
+  document.getElementById('profileEditor').style.display = 'none';
+  _editingProfileId = null;
+}
+
+// ── Custom Vocabulary ─────────────────────────────────────────
+function renderVocabList() {
+  const el = document.getElementById('vocabList');
+  if (!el) return;
+  el.innerHTML = '';
+  const items = _tmData.vocab || [];
+  if (!items.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:4px 0">No vocabulary terms yet.</div>';
+    return;
+  }
+  items.forEach(v => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-size:11px';
+    row.innerHTML = `
+      <div style="flex:1;min-width:0">
+        <span style="color:var(--text);font-weight:600">${escapeHtml(v.canonicalTerm)}</span>
+        ${v.aliases?.length ? `<span style="color:var(--text-dim)"> ← ${escapeHtml(v.aliases.join(', '))}</span>` : ''}
+      </div>
+      <span style="font-size:9px;color:var(--text-dim);flex-shrink:0">${v.scope||'global'}</span>
+      <button type="button" style="padding:2px 6px;background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--live);font-size:10px;cursor:pointer" onclick="removeVocabTerm('${v.id}')">✕</button>`;
+    el.appendChild(row);
+  });
+}
+
+async function addVocabTerm() {
+  const term    = document.getElementById('vocabTerm').value.trim();
+  const aliases = document.getElementById('vocabAliases').value.trim();
+  if (!term) { document.getElementById('vocabTerm').focus(); return; }
+  const aliasList = aliases ? aliases.split(',').map(a=>a.trim()).filter(Boolean) : [];
+  const existing  = _tmData.vocab.find(v => v.canonicalTerm.toLowerCase() === term.toLowerCase());
+  if (existing) {
+    existing.aliases = [...new Set([...(existing.aliases||[]), ...aliasList])];
+    existing.updatedAt = new Date().toISOString();
+  } else {
+    _tmData.vocab.push({
+      id: 'vocab_'+Date.now(), scope:'global', speakerProfileId:null,
+      canonicalTerm:term, aliases:aliasList, category:'general',
+      weight:1.0, usageCount:0, isActive:1,
+      createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()
+    });
+  }
+  await window.electronAPI.saveAdaptiveMemory({ type:'vocab', data: _tmData.vocab });
+  document.getElementById('vocabTerm').value = '';
+  document.getElementById('vocabAliases').value = '';
+  renderVocabList();
+}
+
+async function removeVocabTerm(id) {
+  _tmData.vocab = _tmData.vocab.filter(v => v.id !== id);
+  await window.electronAPI.saveAdaptiveMemory({ type:'vocab', data: _tmData.vocab });
+  renderVocabList();
+}
+
+// ── Correction Rules ──────────────────────────────────────────
+function renderRulesList() {
+  const el = document.getElementById('rulesList');
+  if (!el) return;
+  el.innerHTML = '';
+  const rules = (_tmData.rules || []).filter(r => r.isActive !== 0);
+  if (!rules.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:4px 0">No custom rules yet. Add rules above or approve learning suggestions below.</div>';
+    return;
+  }
+  rules.forEach(r => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-size:11px';
+    const hits = r.hitCount ? `<span style="font-size:9px;color:var(--text-dim)"> (${r.hitCount}×)</span>` : '';
+    const src  = r.createdBy === 'system' ? '🤖' : r.createdBy === 'user_approved' ? '✅' : '👤';
+    row.innerHTML = `
+      <span style="flex-shrink:0;font-size:12px">${src}</span>
+      <div style="flex:1;min-width:0">
+        <span style="color:var(--live)">${escapeHtml(r.sourceText)}</span>
+        <span style="color:var(--text-dim)"> → </span>
+        <span style="color:var(--gold)">${escapeHtml(r.targetText)}</span>${hits}
+      </div>
+      <span style="font-size:9px;color:var(--text-dim);flex-shrink:0">${r.scope||'global'}</span>
+      <button type="button" style="padding:2px 6px;background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--live);font-size:10px;cursor:pointer" onclick="removeCorrectionRule('${r.id}')">✕</button>`;
+    el.appendChild(row);
+  });
+}
+
+async function addCorrectionRule() {
+  const src = document.getElementById('ruleSource').value.trim();
+  const tgt = document.getElementById('ruleTarget').value.trim();
+  if (!src || !tgt) { document.getElementById('ruleSource').focus(); return; }
+  const existing = _tmData.rules.find(r => r.sourceText?.toLowerCase() === src.toLowerCase() && r.scope === 'global');
+  if (existing) {
+    existing.targetText  = tgt;
+    existing.isActive    = 1;
+    existing.updatedAt   = new Date().toISOString();
+  } else {
+    _tmData.rules.push({
+      id:'rule_'+Date.now(), scope:'global', speakerProfileId:null,
+      ruleType:'phrase', sourceText:src, targetText:tgt,
+      priority:100, confidence:1.0,
+      hitCount:0, approvedCount:0, rejectedCount:0, isActive:1,
+      createdBy:'user', createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()
+    });
+  }
+  await window.electronAPI.saveAdaptiveMemory({ type:'rules', data: _tmData.rules });
+  document.getElementById('ruleSource').value = '';
+  document.getElementById('ruleTarget').value = '';
+  renderRulesList();
+}
+
+async function removeCorrectionRule(id) {
+  const r = _tmData.rules.find(x => x.id === id);
+  if (r) { r.isActive = 0; r.updatedAt = new Date().toISOString(); }
+  await window.electronAPI.saveAdaptiveMemory({ type:'rules', data: _tmData.rules });
+  renderRulesList();
+}
+
+// ── Learning Queue ─────────────────────────────────────────────
+function renderLearningQueue() {
+  const el    = document.getElementById('learningQueue');
+  const empty = document.getElementById('learningEmpty');
+  if (!el) return;
+  const queue = _tmData.learningQueue || [];
+  el.innerHTML = '';
+  if (!queue.length) {
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  queue.forEach(s => {
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px';
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="color:var(--live)">${escapeHtml(s.sourceText)}</span>
+        <span style="color:var(--text-dim)">→</span>
+        <span style="color:var(--gold)">${escapeHtml(s.targetText)}</span>
+        <span style="margin-left:auto;font-size:9px;color:var(--text-dim)">${escapeHtml(s.evidence||'')}</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button type="button" onclick="approveSuggestion('${s.id}')"
+          style="padding:4px 10px;background:rgba(46,204,113,.1);border:1px solid rgba(46,204,113,.3);
+          border-radius:4px;color:#2ecc71;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">
+          ✓ Approve
+        </button>
+        <button type="button" onclick="rejectSuggestion('${s.id}')"
+          style="padding:4px 10px;background:transparent;border:1px solid var(--border);
+          border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;font-family:inherit">
+          ✕ Reject
+        </button>
+      </div>`;
+    el.appendChild(card);
+  });
+}
+
+async function approveSuggestion(id) {
+  const s = (_tmData.learningQueue || []).find(x => x.id === id);
+  if (!s) return;
+  // Add as active rule
+  _tmData.rules.push({
+    id:'rule_'+Date.now(), scope:'global', speakerProfileId:null,
+    ruleType:s.ruleType||'phrase', sourceText:s.sourceText, targetText:s.targetText,
+    priority:100, confidence:1.0,
+    hitCount:s.hitCount||0, approvedCount:(s.approvedCount||0)+1, rejectedCount:0, isActive:1,
+    createdBy:'user_approved', createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()
+  });
+  _tmData.learningQueue = (_tmData.learningQueue||[]).filter(x => x.id !== id);
+  await Promise.all([
+    window.electronAPI.saveAdaptiveMemory({ type:'rules', data: _tmData.rules }),
+    window.electronAPI.saveAdaptiveMemory({ type:'learningQueue', data: _tmData.learningQueue }),
+  ]);
+  renderRulesList();
+  renderLearningQueue();
+}
+
+async function rejectSuggestion(id) {
+  _tmData.learningQueue = (_tmData.learningQueue||[]).filter(x => x.id !== id);
+  await window.electronAPI.saveAdaptiveMemory({ type:'learningQueue', data: _tmData.learningQueue });
+  renderLearningQueue();
+}
+
+async function runLearningJob() {
+  if (!window.electronAPI?.loadLearningData) return;
+  const btn = document.querySelector('button[onclick="runLearningJob()"]');
+  if (btn) { btn.textContent = '⏳ Running…'; btn.disabled = true; }
+  try {
+    const data  = await window.electronAPI.loadLearningData();
+    const events = data?.correctionEvents || [];
+    const grouped = {};
+    for (const ev of events) {
+      if (!ev.wasUserEdited || !ev.beforeText || !ev.afterText) continue;
+      const key = `${ev.beforeText.toLowerCase()}|||${ev.afterText}`;
+      if (!grouped[key]) grouped[key] = { before:ev.beforeText, after:ev.afterText, events:[] };
+      grouped[key].events.push(ev);
+    }
+    const existingKeys = new Set((_tmData.learningQueue||[]).map(s=>`${s.sourceText.toLowerCase()}|||${s.targetText}`));
+    const ruleKeys     = new Set((_tmData.rules||[]).filter(r=>r.isActive!==0).map(r=>`${(r.sourceText||'').toLowerCase()}|||${r.targetText}`));
+    let added = 0;
+    for (const [key, info] of Object.entries(grouped)) {
+      const total    = info.events.length;
+      const accepted = info.events.filter(e=>e.accepted!==0).length;
+      const rate     = total > 0 ? accepted/total : 0;
+      if (total >= 3 && rate >= 0.7 && !existingKeys.has(key) && !ruleKeys.has(key)) {
+        (_tmData.learningQueue = _tmData.learningQueue||[]).push({
+          id:'sug_'+Date.now()+'_'+(Math.random().toString(36).slice(2,5)),
+          sourceText:info.before, targetText:info.after,
+          ruleType:'phrase', scope:'global',
+          hitCount:total, approvedCount:accepted,
+          evidence:`Seen ${total}× — accepted ${Math.round(rate*100)}%`,
+          createdAt:new Date().toISOString()
+        });
+        added++;
+      }
+    }
+    await window.electronAPI.saveAdaptiveMemory({ type:'learningQueue', data: _tmData.learningQueue });
+    renderLearningQueue();
+    if (btn) btn.textContent = added ? `↺ Found ${added} suggestion${added>1?'s':''}` : '↺ No new suggestions';
+  } catch(e) {
+    if (btn) btn.textContent = '↺ Run Learning Job Now';
+  } finally {
+    if (btn) { btn.disabled = false; setTimeout(()=>{ if(btn) btn.textContent='↺ Run Learning Job Now'; }, 3000); }
+  }
+}
+
+
+function openAdaptiveManagementWindow() {
+  window.electronAPI?.openAdaptiveManagement?.();
+}
+
+async function exportAdaptiveData() {
+  const res = await window.electronAPI?.exportAdaptiveData?.();
+  if (res?.success) alert('Adaptive data exported:\n' + res.file);
+  else if (!res?.cancelled) alert('Export failed: ' + (res?.error || 'Unknown error'));
+}
+
+async function importAdaptiveData(mode = 'merge') {
+  const res = await window.electronAPI?.importAdaptiveData?.({ mode });
+  if (res?.success) {
+    alert(`Adaptive data imported (${mode}).`);
+    await loadAdaptiveLearningUI();
+  } else if (!res?.cancelled) {
+    alert('Import failed: ' + (res?.error || 'Unknown error'));
+  }
+}
+
+async function saveAdaptiveSpeakerUpgrade() {
+  try {
+    const dashboard = await window.electronAPI?.getAdaptiveDashboard?.();
+    const profiles = Array.isArray(dashboard?.speakerProfiles) ? dashboard.speakerProfiles : [];
+    const selectedId = document.getElementById('adaptiveSpeakerProfile')?.value || 'default';
+    const idx = profiles.findIndex(p => String(p.id) === String(selectedId));
+    if (idx === -1) return alert('Select a speaker profile first.');
+    profiles[idx] = {
+      ...profiles[idx],
+      preferredBibleVersion: document.getElementById('speakerPreferredBibleVersion')?.value || 'KJV',
+      commonBooks: (document.getElementById('speakerCommonBooks')?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+      phrasePatterns: (document.getElementById('speakerPhrasePatterns')?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+      vocabularyBias: (document.getElementById('speakerVocabularyBias')?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+      updatedAt: new Date().toISOString(),
+    };
+    await window.electronAPI?.saveAdaptiveMemory?.({ type:'profiles', data: profiles });
+    await loadAdaptiveLearningUI();
+    alert('Speaker profile upgrades saved.');
+  } catch (e) {
+    alert('Could not save speaker upgrades.');
+  }
+}
+
+async function runAdaptiveTestMode() {
+  const input = (document.getElementById('adaptiveTestInput')?.value || '').trim();
+  if (!input) return;
+  const lines = [input];
+  let corrected = input;
+  try {
+    if (window.parent?.TranscriptMemory?.process) {
+      const result = window.parent.TranscriptMemory.process(input);
+      corrected = result?.corrected || input;
+    }
+  } catch (_) {}
+  let detections = [];
+  try {
+    if (window.parent?.AIDetection?.detectDirect) detections.push(...(window.parent.AIDetection.detectDirect(corrected) || []));
+    if (window.parent?.AIDetection?.detectVerbal) detections.push(...(window.parent.AIDetection.detectVerbal(corrected) || []));
+    if (window.parent?.AIDetection?.detectKeyword) detections.push(...(window.parent.AIDetection.detectKeyword(corrected) || []));
+    if (window.parent?.AIDetection?.detectLearnedPhrases) detections.push(...(window.parent.AIDetection.detectLearnedPhrases(corrected) || []));
+  } catch (_) {}
+  const uniq = [];
+  const seen = new Set();
+  for (const d of detections) {
+    const key = `${d.ref}|${d.type}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniq.push(d);
+  }
+  document.getElementById('adaptiveTestOutput').innerHTML = `
+    <strong>Corrected:</strong> ${escapeHtml(corrected)}<br>
+    <strong>Detections:</strong> ${uniq.length ? uniq.map(d => `${escapeHtml(d.ref)} <span style="color:var(--gold)">(${escapeHtml(d.type || 'unknown')}, ${Math.round(Number(d.confidence || 0) * 100)}%)</span>`).join('<br>') : 'None'}
+  `;
+}
+
+// ── Save ──────────────────────────────────────────────────────
+function updateCcliPreview() {
+  const num    = (document.getElementById('ccliNumber')?.value || '').replace(/\D/g,'') || '1234567';
+  const fmt    = document.getElementById('ccliDisplayFormat')?.value || 'ccli_only';
+  const year   = new Date().getFullYear();
+  const author = 'Author Name';
+  let preview = '';
+  switch(fmt) {
+    case 'ccli_only':      preview = `CCLI License # ${num}`; break;
+    case 'copyright_ccli': preview = `\u00A9 ${year} ${author} | CCLI # ${num}`; break;
+    case 'copyright_only': preview = `\u00A9 ${year} ${author}`; break;
+    case 'full':           preview = `\u00A9 ${year} ${author} | Used by permission | CCLI # ${num}`; break;
+    default:               preview = `CCLI License # ${num}`;
+  }
+  const el = document.getElementById('ccliPreview');
+  if (el) el.textContent = 'Preview: ' + preview;
+}
+document.getElementById('ccliNumber')?.addEventListener('input', updateCcliPreview);
+
+function closeSettings() {
+  if (window.electronAPI?.isWeb) {
+    if (window.opener) { window.close(); } else { window.location.href = '/'; }
+  } else {
+    window.close();
+  }
+}
+
+function _showSaveToast(text, color) {
+  const prev = document.getElementById('settings-toast');
+  if (prev) prev.remove();
+  const toast = document.createElement('div');
+  toast.id = 'settings-toast';
+  toast.textContent = text;
+  toast.style.cssText = `position:fixed;top:20px;left:50%;transform:translateX(-50%);
+    background:${color === 'red' ? '#e74c3c' : '#2ecc71'};color:#fff;padding:10px 28px;
+    border-radius:8px;font-size:14px;font-weight:600;z-index:99999;
+    box-shadow:0 4px 16px rgba(0,0,0,.4);transition:opacity .4s`;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 2500);
+}
+
+// ── Whisper Model Manager ─────────────────────────────────────────────────────
+async function _loadWhisperModelManager() {
+  const container = document.getElementById('whisperModelManager');
+  const select    = document.getElementById('whisperModel');
+  if (!container || !select) return;
+
+  const models = await window.electronAPI?.getWhisperModels?.() || [];
+  if (!models.length) return;
+
+  // Rebuild the dropdown with only installed models
+  const currentVal = select.value;
+  select.innerHTML = '';
+  models.filter(m => m.installed).forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = `${m.name} (${m.size}) — ${m.tag}`;
+    if (m.id === currentVal || (!select.options.length && m.id === 'small.en')) opt.selected = true;
+    select.appendChild(opt);
+  });
+  if (!select.options.length) {
+    const opt = document.createElement('option');
+    opt.value = 'small.en'; opt.textContent = 'Small English (~244 MB) — Accurate';
+    select.appendChild(opt);
+  }
+
+  // Build model cards
+  container.innerHTML = '';
+  const tagColors = { Fastest: '#22c55e', Balanced: '#3b82f6', Accurate: '#a855f7' };
+
+  models.forEach(m => {
+    const card = document.createElement('div');
+    card.style.cssText = [
+      'display:flex','align-items:center','gap:10px',
+      'padding:8px 10px','border-radius:8px','border:1px solid',
+      m.installed ? 'border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.05)'
+                  : 'border-color:var(--border);background:var(--card)',
+    ].join(';');
+
+    const tagCol = tagColors[m.tag] || '#888';
+    card.innerHTML = `
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:12px;font-weight:600;color:var(--text)">${m.name}</span>
+          <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;
+            background:${tagCol}22;color:${tagCol};border:1px solid ${tagCol}44">${m.tag}</span>
+          <span style="font-size:10px;color:var(--text-dim)">${m.size}</span>
+          ${m.installed ? '<span style="font-size:10px;color:#22c55e;font-weight:700">✓ Installed</span>' : ''}
+        </div>
+        <div id="wm-progress-${m.id}" style="font-size:10px;color:var(--text-dim);margin-top:2px;display:none"></div>
+      </div>
+      ${m.installed
+        ? `<span style="font-size:18px;color:#22c55e">✓</span>`
+        : `<button id="wm-btn-${m.id}" style="
+            background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.4);
+            color:#60a5fa;border-radius:6px;padding:4px 10px;font-size:11px;
+            font-weight:700;cursor:pointer;white-space:nowrap">
+            ↓ Download
+           </button>`
+      }
+    `;
+
+    if (!m.installed) {
+      card.querySelector(`#wm-btn-${m.id}`)?.addEventListener('click', async () => {
+        const btn = card.querySelector(`#wm-btn-${m.id}`);
+        const prog = card.querySelector(`#wm-progress-${m.id}`);
+        btn.textContent = 'Downloading…';
+        btn.disabled = true;
+        if (prog) { prog.style.display = 'block'; prog.textContent = 'Starting download…'; }
+        const r = await window.electronAPI?.downloadWhisperModel?.(m.id);
+        if (r?.ok) _loadWhisperModelManager();
+        else {
+          btn.textContent = '↓ Download';
+          btn.disabled = false;
+          if (prog) prog.textContent = 'Download failed. Check internet connection.';
+        }
+      });
+    }
+    container.appendChild(card);
+  });
+}
+
+async function saveSettings() {
+  if (!window.electronAPI) return;
+  try {
+    const existing = await window.electronAPI.getSettings().catch(() => ({}));
+    await window.electronAPI.saveSettings({
+      ...existing,
+      apiKey:               document.getElementById('apiKey')?.value || '',
+      deepgramKey:          document.getElementById('deepgramKey')?.value || '',
+      openAiKey:            document.getElementById('openAiKey')?.value || '',
+      geniusApiKey:         document.getElementById('geniusApiKey')?.value || '',
+      whisperModel:         document.getElementById('whisperModel')?.value || 'small.en',
+      translation:          document.getElementById('translation')?.value || 'KJV',
+      fontSize:             document.getElementById('fontSize')?.value || 'medium',
+      displayMode:          document.getElementById('displayMode')?.value || 'manual',
+      songVerticalAlign:    document.getElementById('songVerticalAlignFont')?.value || document.getElementById('songVerticalAlign')?.value || '',
+      songTextTransform:    document.querySelector('input[name="songTextTransform"]:checked')?.value || 'none',
+      showSongMetadata:     document.getElementById('showVerseChorusLabel')?.checked ?? false,
+      songFontFamily:       document.getElementById('songFontFamily')?.value || 'DM Sans',
+      songFontSize:         parseInt(document.getElementById('songFontSize')?.value || '56'),
+      songFontColor:        document.getElementById('songFontColor')?.value || '#ffffff',
+      songFontStyle:        document.getElementById('songFontStyle')?.value || 'bold',
+      songLineSpacing:      parseFloat(document.getElementById('songLineSpacing')?.value || '1.6'),
+      songTextAlign:        document.getElementById('songTextAlign')?.value || 'center',
+      songUnderline:        document.getElementById('songUnderline')?.checked ?? false,
+      songFontOpacity:      parseInt(document.getElementById('songFontOpacity')?.value || '100'),
+      songOutlineStyle:     document.getElementById('songOutlineStyle')?.value || 'none',
+      songOutlineColor:     document.getElementById('songOutlineColor')?.value || '#000000',
+      songOutlineJoin:      document.getElementById('songOutlineJoin')?.value || 'round',
+      songOutlineWidth:     parseInt(document.getElementById('songOutlineWidth')?.value || '11'),
+      songOutlineOpacity:   parseInt(document.getElementById('songOutlineOpacity')?.value || '100'),
+      songShadowEnabled:    document.getElementById('songShadowEnabled')?.checked ?? true,
+      songShadowColor:      document.getElementById('songShadowColor')?.value || '#000000',
+      songShadowBlur:       parseInt(document.getElementById('songShadowBlur')?.value || '8'),
+      songShadowX:          parseInt(document.getElementById('songShadowX')?.value || '2'),
+      songShadowY:          parseInt(document.getElementById('songShadowY')?.value || '2'),
+      songShadowOpacity:    parseInt(document.getElementById('songShadowOpacity')?.value || '80'),
+      songMarginTop:        parseInt(document.getElementById('songMarginTop')?.value || '80'),
+      songMarginBottom:     parseInt(document.getElementById('songMarginBottom')?.value || '80'),
+      songMarginLeft:       parseInt(document.getElementById('songMarginLeft')?.value || '80'),
+      songMarginRight:      parseInt(document.getElementById('songMarginRight')?.value || '80'),
+      overlayTextOnMedia:   document.getElementById('overlayTextOnMedia')?.checked ?? false,
+      overlayTextOnMediaSongs: document.getElementById('overlayTextOnMediaSongs')?.checked ?? true,
+      overlayTextOnMediaScripture: document.getElementById('overlayTextOnMediaScripture')?.checked ?? true,
+      overlayTextOnMediaLowerThird: document.getElementById('overlayTextOnMediaLowerThird')?.checked ?? false,
+      overlayTextOnMediaDim: parseInt(document.getElementById('overlayTextOnMediaDim')?.value || '35'),
+      scriptureTextTransform: document.querySelector('input[name="scriptureTextTransform"]:checked')?.value || 'none',
+      scriptureRefPosition: document.getElementById('scriptureRefPosition')?.value || 'top',
+      scriptureRefLocation: document.getElementById('scriptureRefLocation')?.value || 'each',
+      scriptureRefFontFamily: document.getElementById('scriptureRefFontFamily')?.value || 'Cinzel',
+      scriptureRefFontSize: parseInt(document.getElementById('scriptureRefFontSize')?.value || '38'),
+      scriptureRefFontColor: document.getElementById('scriptureRefFontColor')?.value || '#c9a84c',
+      scriptureRefFontStyle: document.getElementById('scriptureRefFontStyle')?.value || 'bold',
+      scriptureRefUnderline: document.getElementById('scriptureRefUnderline')?.checked ?? false,
+      scriptureRefUppercase: document.getElementById('scriptureRefUppercase')?.checked ?? true,
+      scriptureRefFontOpacity: parseInt(document.getElementById('scriptureRefFontOpacity')?.value || '90'),
+      scriptureRefTextAlign: document.getElementById('scriptureRefTextAlign')?.value || 'center',
+      scriptureRefLetterSpacing: parseFloat(document.getElementById('scriptureRefLetterSpacing')?.value || '0.25'),
+      scriptureRefOutlineStyle: document.getElementById('scriptureRefOutlineStyle')?.value || 'none',
+      scriptureRefOutlineColor: document.getElementById('scriptureRefOutlineColor')?.value || '#000000',
+      scriptureRefOutlineWidth: parseInt(document.getElementById('scriptureRefOutlineWidth')?.value || '0'),
+      scriptureRefOutlineOpacity: parseInt(document.getElementById('scriptureRefOutlineOpacity')?.value || '100'),
+      scriptureRefShadowEnabled: document.getElementById('scriptureRefShadowEnabled')?.checked ?? false,
+      scriptureRefShadowColor: document.getElementById('scriptureRefShadowColor')?.value || '#000000',
+      scriptureRefShadowBlur: parseInt(document.getElementById('scriptureRefShadowBlur')?.value || '4'),
+      scriptureRefShadowX: parseInt(document.getElementById('scriptureRefShadowX')?.value || '1'),
+      scriptureRefShadowY: parseInt(document.getElementById('scriptureRefShadowY')?.value || '1'),
+      scriptureRefShadowOpacity: parseInt(document.getElementById('scriptureRefShadowOpacity')?.value || '60'),
+      scriptureShowReference: document.getElementById('scriptureShowReference')?.checked ?? true,
+      scriptureShowCompletePassage: document.getElementById('scriptureShowCompletePassage')?.checked ?? false,
+      scriptureReferenceIndent: document.getElementById('scriptureReferenceIndent')?.checked ?? true,
+      scriptureAbbreviateBooks: document.getElementById('scriptureAbbreviateBooks')?.checked ?? false,
+      scriptureAdditionalLineSpacing: document.getElementById('scriptureAdditionalLineSpacing')?.checked ?? false,
+      scriptureShowRefOnly: document.getElementById('scriptureShowRefOnly')?.checked ?? false,
+      scriptureBreakOnNewVerse: document.getElementById('scriptureBreakOnNewVerse')?.checked ?? false,
+      scriptureMinFontSize: parseInt(document.getElementById('scriptureMinFontSize')?.value || '64'),
+      scriptureFontFamily:    document.getElementById('scriptureFontFamily')?.value || 'Calibri',
+      scriptureFontSize:      parseInt(document.getElementById('scriptureFontSize')?.value || '80'),
+      scriptureFontColor:     document.getElementById('scriptureFontColor')?.value || '#ffffff',
+      scriptureFontStyle:     document.getElementById('scriptureFontStyle')?.value || 'bold',
+      scriptureUnderline:     document.getElementById('scriptureUnderline')?.checked ?? false,
+      scriptureFontOpacity:   parseInt(document.getElementById('scriptureFontOpacity')?.value || '100'),
+      scriptureLineSpacing:   parseFloat(document.getElementById('scriptureLineSpacing')?.value || '1.4'),
+      scriptureTextAlign:     document.getElementById('scriptureTextAlign')?.value || '',
+      scriptureVerticalAlign: document.getElementById('scriptureVerticalAlign')?.value || '',
+      scriptureOutlineStyle:  document.getElementById('scriptureOutlineStyle')?.value || 'none',
+      scriptureOutlineColor:  document.getElementById('scriptureOutlineColor')?.value || '#000000',
+      scriptureOutlineJoin:   document.getElementById('scriptureOutlineJoin')?.value || 'round',
+      scriptureOutlineWidth:  parseInt(document.getElementById('scriptureOutlineWidth')?.value || '12'),
+      scriptureOutlineOpacity: parseInt(document.getElementById('scriptureOutlineOpacity')?.value || '100'),
+      scriptureShadowEnabled: document.getElementById('scriptureShadowEnabled')?.checked ?? true,
+      scriptureShadowColor:   document.getElementById('scriptureShadowColor')?.value || '#000000',
+      scriptureShadowBlur:    parseInt(document.getElementById('scriptureShadowBlur')?.value || '8'),
+      scriptureShadowX:       parseInt(document.getElementById('scriptureShadowX')?.value || '2'),
+      scriptureShadowY:       parseInt(document.getElementById('scriptureShadowY')?.value || '2'),
+      scriptureShadowOpacity: parseInt(document.getElementById('scriptureShadowOpacity')?.value || '80'),
+      scriptureMarginTop:     parseInt(document.getElementById('scriptureMarginTop')?.value || '22'),
+      scriptureMarginBottom:  parseInt(document.getElementById('scriptureMarginBottom')?.value || '22'),
+      scriptureMarginLeft:    parseInt(document.getElementById('scriptureMarginLeft')?.value || '200'),
+      scriptureMarginRight:   parseInt(document.getElementById('scriptureMarginRight')?.value || '200'),
+      scriptureAutoSize:      document.querySelector('input[name="scriptureAutoSize"]:checked')?.value || 'resize',
+      scriptureNormalizeSize: document.getElementById('scriptureNormalizeSize')?.checked ?? true,
+      scriptureWordWrap:      document.getElementById('scriptureWordWrap')?.checked ?? true,
+      scriptureAutoCapitalizeWords: document.getElementById('scriptureAutoCapitalizeWords')?.checked ?? false,
+      scriptureCapitalizeWordList: (document.getElementById('scriptureCapitalizeWordList')?.value || '').split('\n').map(w => w.trim()).filter(Boolean),
+      confidenceThreshold:  parseFloat(document.getElementById('confidence')?.value || '0.75'),
+      microphoneId:         document.getElementById('microphone')?.value || 'default',
+      onlineMode:           (document.getElementById('detectionMode')?.value) === 'online',
+      httpPort:             parseInt(document.getElementById('httpPort')?.value || '8080'),
+      networkAdapter:       document.getElementById('networkAdapter')?.value || null,
+      remoteRequireAuth:    (document.getElementById('remoteRequireAuth')?.value || 'true') === 'true',
+      remotePin:            (document.getElementById('remotePin')?.value || '').replace(/\D/g,'').slice(0,8),
+      remoteAdminPin:       (document.getElementById('remotePin')?.value || '').replace(/\D/g,'').slice(0,8),
+      remoteScripturePin:   (document.getElementById('remoteScripturePin')?.value || '').replace(/\D/g,'').slice(0,8),
+      remoteSongsPin:       (document.getElementById('remoteSongsPin')?.value || '').replace(/\D/g,'').slice(0,8),
+      remoteMediaPin:       (document.getElementById('remoteMediaPin')?.value || '').replace(/\D/g,'').slice(0,8),
+      remoteMonitorPin:     (document.getElementById('remoteMonitorPin')?.value || '').replace(/\D/g,'').slice(0,8),
+      showVerseNumbers:     document.getElementById('showVerseNumbers')?.checked ?? true,
+      autoFlowScripture:    document.getElementById('autoFlowScripture')?.checked ?? true,
+      songAutoBackupSunday: document.getElementById('songAutoBackupSunday')?.checked ?? true,
+      showVerseChorusLabel: document.getElementById('showVerseChorusLabel')?.checked ?? true,
+      songSectionLabels:   getSectionLabelsData(),
+      songAutoSize:        document.querySelector('input[name="songAutoSize"]:checked')?.value || 'resize',
+      songNormalizeSize:   document.getElementById('songNormalizeSize')?.checked ?? true,
+      songWordWrap:        document.getElementById('songWordWrap')?.checked ?? true,
+      songAutoCapitalizeWords: document.getElementById('songAutoCapitalizeWords')?.checked ?? false,
+      songCapitalizeWordList: (document.getElementById('songCapitalizeWordList')?.value || '').split('\n').map(w => w.trim()).filter(Boolean),
+      adaptiveEnabled:      document.getElementById('adaptiveEnabled')?.checked ?? true,
+      adaptiveLearningEnabled: document.getElementById('adaptiveLearningEnabled')?.checked ?? true,
+      nurseryAlertEnabled:       document.getElementById('nurseryAlertEnabled')?.checked ?? true,
+      nurseryAlertBgColor:       document.getElementById('nurseryAlertBgColor')?.value || '#cc0000',
+      nurseryAlertBgOpacity:     parseInt(document.getElementById('nurseryAlertBgOpacity')?.value || '100'),
+      nurseryAlertPosition:      document.getElementById('nurseryAlertPosition')?.value || 'bottom-left',
+      nurseryAlertFontSize:      parseInt(document.getElementById('nurseryAlertFontSize')?.value || '48'),
+      nurseryAlertFontColor:     document.getElementById('nurseryAlertFontColor')?.value || '#ffffff',
+      nurseryAlertFontFamily:    document.getElementById('nurseryAlertFontFamily')?.value || 'Tahoma',
+      nurseryAlertAutoRemove:    document.getElementById('nurseryAlertAutoRemove')?.checked ?? true,
+      nurseryAlertAutoRemoveTime: parseInt(document.getElementById('nurseryAlertAutoRemoveTime')?.value || '60'),
+      messageAlertEnabled:       document.getElementById('messageAlertEnabled')?.checked ?? true,
+      messageAlertBgColor:       document.getElementById('messageAlertBgColor')?.value || '#000000',
+      messageAlertBgOpacity:     parseInt(document.getElementById('messageAlertBgOpacity')?.value || '100'),
+      messageAlertPosition:      document.getElementById('messageAlertPosition')?.value || 'top',
+      messageAlertScrollSpeed:   parseInt(document.getElementById('messageAlertScrollSpeed')?.value || '5'),
+      messageAlertFontSize:      parseInt(document.getElementById('messageAlertFontSize')?.value || '48'),
+      messageAlertFontColor:     document.getElementById('messageAlertFontColor')?.value || '#f5deb3',
+      messageAlertFontFamily:    document.getElementById('messageAlertFontFamily')?.value || 'Calibri',
+      messageAlertRepeatCount:   parseInt(document.getElementById('messageAlertRepeatCount')?.value || '2'),
+      showCopyright:     document.getElementById('showCopyright')?.checked ?? false,
+      ccliNumber:        (document.getElementById('ccliNumber')?.value || '').replace(/\D/g,'').trim(),
+      ccliLicenseType:   document.getElementById('ccliLicenseType')?.value || 'streaming',
+      ccliDisplayFormat: document.getElementById('ccliDisplayFormat')?.value || 'ccli_only',
+    });
+    try {
+      const newModel = document.getElementById('whisperModel')?.value || 'small.en';
+      const resolved = newModel === 'small' ? 'small.en'
+        : newModel === 'base'  ? 'base.en'
+        : newModel === 'tiny'  ? 'tiny.en'
+        : newModel;
+      if (window.electronAPI?.startWhisper) {
+        await window.electronAPI.startWhisper(resolved);
+      }
+    } catch (_) {}
+    _showSaveToast('✓ Settings saved successfully', 'green');
+  } catch (err) {
+    console.error('Save settings error:', err);
+    _showSaveToast('✕ Failed to save settings', 'red');
+  }
+}
+
+
+async function loadSongLibraryInfo() {
+  const el = document.getElementById('songLibraryInfo');
+  if (!el || !window.electronAPI?.getSongLibraryInfo) return;
+  try {
+    const info = await window.electronAPI.getSongLibraryInfo();
+    el.innerHTML = `Songs in library: <strong>${Number(info.count || 0).toLocaleString()}</strong> · Backups: <strong>${Number(info.backups || 0).toLocaleString()}</strong><br><span style="color:var(--dim)">Library: ${escapeHtml(info.path || '—')}</span>`;
+  } catch (e) {
+    el.textContent = 'Could not load song library details';
+  }
+}
+
+async function exportSongsLibrary(mode) {
+  if (!window.electronAPI?.exportSongs) return;
+  const res = await window.electronAPI.exportSongs({ mode });
+  if (res?.canceled) return;
+  if (res?.success) {
+    _songOpsResult(true, '✓ Library exported', (res.path||'').split(/[\\/]/).pop());
+    await loadSongLibraryInfo();
+  } else {
+    _songOpsResult(false, '✕ Export failed', res?.error || 'Unknown error');
+    alert('Export failed: ' + (res?.error || 'Unknown error'));
+  }
+}
+
+
+
+// ── Unified Songs-tab operation progress bar ──────────────────────────────────
+// ── Songs-tab unified result indicator ────────────────────────────────────────
+// The IPC calls (export/import/backup) open a native file dialog AND complete
+// the operation in a single await — there is no meaningful "in progress" window
+// to animate. So we show the bar only AFTER the operation completes as a brief
+// result confirmation (green full bar = success, instant hide = fail/cancel).
+//
+//   _songOpsResult(success, label, status) — show full/empty bar then fade out
+//   _songOpsCancelHide()                   — instant hide, no flash
+
+const _SONG_OPS_BTNS = ['btnExportJson','btnImportOther','btnImportGeneric','btnImportReplace','btnSongBackup','btnFullBackup','btnFullRestore'];
+
+function _songOpsSetBtns(disabled) {
+  _SONG_OPS_BTNS.forEach(id => {
+    const b = document.getElementById(id);
+    if (b) { b.disabled = disabled; b.style.opacity = disabled ? '0.45' : ''; b.style.pointerEvents = disabled ? 'none' : ''; }
+  });
+}
+
+function _songOpsResult(success, label, status) {
+  const prog = document.getElementById('songOpsProgress');
+  const lbl  = document.getElementById('songOpsLabel');
+  const stat = document.getElementById('songOpsStatus');
+  const bar  = document.getElementById('songOpsBar');
+  if (!prog) return;
+  // Show instantly at correct state — no animation build-up
+  if (lbl)  lbl.textContent  = label  || (success ? 'Done' : 'Failed');
+  if (stat) stat.textContent = status || '';
+  if (bar) {
+    bar.style.transition = 'none';
+    bar.style.width = success ? '100%' : '30%';
+    bar.style.background = success ? 'var(--gold)' : '#e74c3c';
+  }
+  prog.style.display = 'block';
+  _songOpsSetBtns(false);
+  // Fade out after a moment so user can read the result
+  setTimeout(() => {
+    if (prog) prog.style.display = 'none';
+    if (bar)  { bar.style.background = ''; bar.style.width = '0%'; }
+  }, success ? 2000 : 1200);
+}
+
+function _songOpsCancelHide() {
+  const prog = document.getElementById('songOpsProgress');
+  const bar  = document.getElementById('songOpsBar');
+  if (prog) prog.style.display = 'none';
+  if (bar)  { bar.style.transition = 'none'; bar.style.width = '0%'; bar.style.background = ''; }
+  _songOpsSetBtns(false);
+}
+
+// Legacy aliases used by import functions
+function _showImportProgress(label) { /* no-op — result shown by _songOpsResult */ }
+function _hideImportProgress(success) { /* no-op — result shown by _songOpsResult */ }
+
+async function importSmartSongs(mode = 'merge') {
+  if (!window.electronAPI?.importSmartSongSource) {
+    alert('Feature not available');
+    return;
+  }
+  const message = mode === 'replace'
+    ? 'This will replace the current song library with songs from the selected EasyWorship / ProPresenter source. Continue?'
+    : 'Import and merge songs from an EasyWorship / ProPresenter source?';
+  if (!confirm(message)) return;
+  const res = await window.electronAPI.importSmartSongSource({ mode });
+  if (res?.canceled) return;
+  if (res?.success) {
+    const detected = res.detected ? ` · ${res.detected}` : '';
+    _songOpsResult(true, `✓ ${Number(res.imported||0).toLocaleString()} songs imported`, detected.trim());
+    await loadSongLibraryInfo();
+    const source = res.source ? `\nSource: ${res.source}` : '';
+    alert(`Imported ${Number(res.imported || 0).toLocaleString()} song(s).\nTotal library: ${Number(res.total || 0).toLocaleString()}${detected}${source}`);
+  } else {
+    _songOpsResult(false, '✕ Import failed', res?.error || 'Unknown error');
+    alert('Import failed: ' + (res?.error || 'Unknown error'));
+  }
+}
+
+async function importEasyWorshipData() {
+  if (!window.electronAPI?.importEasyworshipDataFolder) {
+    alert('Feature not available');
+    return;
+  }
+  const res = await window.electronAPI.importEasyworshipDataFolder({ mode: 'merge' });
+  if (res?.canceled) return;
+  if (res?.success) {
+    _songOpsResult(true, `✓ ${Number(res.imported||0).toLocaleString()} songs imported`, 'EasyWorship');
+    await loadSongLibraryInfo();
+    alert(`Imported ${Number(res.imported || 0).toLocaleString()} song(s) from EasyWorship.\n\nScanned: ${Number(res.scanned || 0).toLocaleString()}\nLibrary total: ${Number(res.total || 0).toLocaleString()}`);
+  } else {
+    _songOpsResult(false, '✕ Import failed', res?.error || 'Unknown error');
+    alert('Import failed: ' + (res?.error || 'Unknown error'));
+  }
+}
+
+async function importSongsLibrary(mode) {
+  if (!window.electronAPI?.importSongsFile) return;
+  const message = mode === 'replace'
+    ? 'This will replace the entire current song library with the imported songs. Continue?'
+    : 'Import and merge songs into the current library?';
+  if (!confirm(message)) return;
+  const res = await window.electronAPI.importSongsFile({ mode });
+  if (res?.canceled) return;
+  if (res?.success) {
+    _songOpsResult(true, `✓ ${Number(res.imported||0).toLocaleString()} songs imported`, '');
+    alert(`Imported ${Number(res.imported || 0).toLocaleString()} song(s).\nTotal library: ${Number(res.total || 0).toLocaleString()}`);
+    await loadSongLibraryInfo();
+  } else {
+    _songOpsResult(false, '✕ Import failed', res?.error || '');
+    alert('Import failed: ' + (res?.error || 'Unknown error'));
+  }
+}
+
+
+async function backupFullAppData() {
+  if (!window.electronAPI?.backupFullAppData) return;
+  const res = await window.electronAPI.backupFullAppData();
+  if (res?.canceled) return;
+  if (res?.success) {
+    _songOpsResult(true, '✓ Backup created', (res.path||'').split(/[\\/]/).pop());
+    await loadSongLibraryInfo();
+  } else {
+    _songOpsResult(false, '✕ Backup failed', res?.error || 'Unknown error');
+    alert('Backup failed: ' + (res?.error || 'Unknown error'));
+  }
+}
+
+async function restoreFullAppData() {
+  if (!window.electronAPI?.restoreFullAppData) return;
+  const ok = confirm('This will restore a full AnchorCast backup package over the current app data. Continue?');
+  if (!ok) return;
+  const res = await window.electronAPI.restoreFullAppData();
+  if (res?.canceled) return;
+  if (res?.success) {
+    _songOpsResult(true, '✓ Restore complete', 'Please restart AnchorCast');
+    alert(`Backup restored successfully.\n\nSource: ${res.restoredFrom}\n\nPlease close and reopen AnchorCast now.`);
+  } else {
+    _songOpsResult(false, '✕ Restore failed', res?.error || 'Unknown error');
+    alert('Restore failed: ' + (res?.error || 'Unknown error'));
+  }
+}
+
+async function backupSongsLibrary() {
+  if (!window.electronAPI?.backupSongLibrary) return;
+  const res = await window.electronAPI.backupSongLibrary({ reason: 'manual' });
+  if (res?.canceled) return;
+  if (res?.success) {
+    _songOpsResult(true, '✓ Song backup created', (res.path||'').split(/[\/\\]/).pop());
+    await loadSongLibraryInfo();
+  } else {
+    _songOpsResult(false, '✕ Backup failed', res?.error || 'Unknown error');
+    alert('Backup failed: ' + (res?.error || 'Unknown error'));
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────
+async function init() {
+  if (!window.electronAPI) return;
+  const openParams = await window.electronAPI.getSettingsOpenParams?.().catch(() => null);
+  const s = await window.electronAPI.getSettings();
+
+  try { installed = await window.electronAPI.getInstalledVersions() || {}; } catch(e) { installed = {}; }
+  populateTranslationDropdown();
+
+  if (s.apiKey)               document.getElementById('apiKey').value = s.apiKey;
+  if (s.deepgramKey)          document.getElementById('deepgramKey').value = s.deepgramKey;
+  if (s.openAiKey)            document.getElementById('openAiKey').value = s.openAiKey;
+  if (s.geniusApiKey)         document.getElementById('geniusApiKey').value = s.geniusApiKey;
+  if (s.whisperModel) {
+    const _m = s.whisperModel;
+    const displayModel = _m==='small'?'small.en': _m==='base'?'base.en': _m==='tiny'?'tiny.en': _m;
+    // Set immediately (may already be populated) and also after model manager loads
+    const sel = document.getElementById('whisperModel');
+    if (sel) sel.value = displayModel;
+    // Re-apply after dynamic model list is built
+    _loadWhisperModelManager().then(() => {
+      const sel2 = document.getElementById('whisperModel');
+      if (sel2 && displayModel) sel2.value = displayModel;
+    });
+  }
+  if (s.translation)          document.getElementById('translation').value = s.translation;
+  if (s.fontSize)             document.getElementById('fontSize').value = s.fontSize;
+  if (s.displayMode)          document.getElementById('displayMode').value = s.displayMode;
+  if (s.songVerticalAlign) {
+    document.getElementById('songVerticalAlign').value = s.songVerticalAlign;
+    document.getElementById('songVerticalAlignFont').value = s.songVerticalAlign;
+  }
+  if (s.songTextTransform) { const r = document.querySelector(`input[name="songTextTransform"][value="${s.songTextTransform}"]`); if (r) r.checked = true; }
+  document.getElementById('showVerseChorusLabel').checked = !!(s.showSongMetadata ?? s.showVerseChorusLabel);
+  // CCLI / Copyright settings
+  if (s.ccliNumber    != null) document.getElementById('ccliNumber').value = s.ccliNumber;
+  if (s.showCopyright != null) document.getElementById('showCopyright').checked = !!s.showCopyright;
+  if (s.ccliLicenseType) { const el = document.getElementById('ccliLicenseType'); if(el) el.value = s.ccliLicenseType; }
+  if (s.ccliDisplayFormat) { const el = document.getElementById('ccliDisplayFormat'); if(el) el.value = s.ccliDisplayFormat; }
+  updateCcliPreview();
+  if (s.songFontFamily)       document.getElementById('songFontFamily').value = s.songFontFamily;
+  if (s.songFontSize)         document.getElementById('songFontSize').value = s.songFontSize;
+  if (s.songFontColor)        document.getElementById('songFontColor').value = s.songFontColor;
+  if (s.songFontStyle)        document.getElementById('songFontStyle').value = s.songFontStyle;
+  if (s.songLineSpacing)      document.getElementById('songLineSpacing').value = s.songLineSpacing;
+  if (s.songTextAlign)        document.getElementById('songTextAlign').value = s.songTextAlign;
+  document.getElementById('songUnderline').checked = !!s.songUnderline;
+  if (s.songFontOpacity != null) document.getElementById('songFontOpacity').value = s.songFontOpacity;
+  if (s.songOutlineStyle)     document.getElementById('songOutlineStyle').value = s.songOutlineStyle;
+  if (s.songOutlineColor)     document.getElementById('songOutlineColor').value = s.songOutlineColor;
+  if (s.songOutlineJoin)      document.getElementById('songOutlineJoin').value = s.songOutlineJoin;
+  if (s.songOutlineWidth != null) document.getElementById('songOutlineWidth').value = s.songOutlineWidth;
+  if (s.songOutlineOpacity != null) document.getElementById('songOutlineOpacity').value = s.songOutlineOpacity;
+  document.getElementById('songShadowEnabled').checked = s.songShadowEnabled !== false;
+  if (s.songShadowColor)      document.getElementById('songShadowColor').value = s.songShadowColor;
+  if (s.songShadowBlur != null) document.getElementById('songShadowBlur').value = s.songShadowBlur;
+  if (s.songShadowX != null)  document.getElementById('songShadowX').value = s.songShadowX;
+  if (s.songShadowY != null)  document.getElementById('songShadowY').value = s.songShadowY;
+  if (s.songShadowOpacity != null) document.getElementById('songShadowOpacity').value = s.songShadowOpacity;
+  if (s.songMarginTop != null) document.getElementById('songMarginTop').value = s.songMarginTop;
+  if (s.songMarginBottom != null) document.getElementById('songMarginBottom').value = s.songMarginBottom;
+  if (s.songMarginLeft != null) document.getElementById('songMarginLeft').value = s.songMarginLeft;
+  if (s.songMarginRight != null) document.getElementById('songMarginRight').value = s.songMarginRight;
+  document.getElementById('overlayTextOnMedia').checked = !!s.overlayTextOnMedia;
+  document.getElementById('overlayTextOnMediaSongs').checked = s.overlayTextOnMediaSongs !== false;
+  document.getElementById('overlayTextOnMediaScripture').checked = s.overlayTextOnMediaScripture !== false;
+  document.getElementById('overlayTextOnMediaLowerThird').checked = !!s.overlayTextOnMediaLowerThird;
+  document.getElementById('overlayTextOnMediaDim').value = String(Number.isFinite(Number(s.overlayTextOnMediaDim)) ? Number(s.overlayTextOnMediaDim) : 35);
+  if (s.scriptureTextTransform) { const r = document.querySelector(`input[name="scriptureTextTransform"][value="${s.scriptureTextTransform}"]`); if (r) r.checked = true; }
+  if (s.scriptureRefPosition) document.getElementById('scriptureRefPosition').value = s.scriptureRefPosition;
+  if (s.scriptureRefLocation) document.getElementById('scriptureRefLocation').value = s.scriptureRefLocation;
+  if (s.scriptureRefFontFamily) document.getElementById('scriptureRefFontFamily').value = s.scriptureRefFontFamily;
+  if (s.scriptureRefFontSize != null) document.getElementById('scriptureRefFontSize').value = s.scriptureRefFontSize;
+  if (s.scriptureRefFontColor) document.getElementById('scriptureRefFontColor').value = s.scriptureRefFontColor;
+  if (s.scriptureRefFontStyle) document.getElementById('scriptureRefFontStyle').value = s.scriptureRefFontStyle;
+  document.getElementById('scriptureRefUnderline').checked = !!s.scriptureRefUnderline;
+  document.getElementById('scriptureRefUppercase').checked = s.scriptureRefUppercase !== false;
+  if (s.scriptureRefFontOpacity != null) document.getElementById('scriptureRefFontOpacity').value = s.scriptureRefFontOpacity;
+  if (s.scriptureRefTextAlign) document.getElementById('scriptureRefTextAlign').value = s.scriptureRefTextAlign;
+  if (s.scriptureRefLetterSpacing != null) document.getElementById('scriptureRefLetterSpacing').value = s.scriptureRefLetterSpacing;
+  if (s.scriptureRefOutlineStyle) document.getElementById('scriptureRefOutlineStyle').value = s.scriptureRefOutlineStyle;
+  if (s.scriptureRefOutlineColor) document.getElementById('scriptureRefOutlineColor').value = s.scriptureRefOutlineColor;
+  if (s.scriptureRefOutlineWidth != null) document.getElementById('scriptureRefOutlineWidth').value = s.scriptureRefOutlineWidth;
+  if (s.scriptureRefOutlineOpacity != null) document.getElementById('scriptureRefOutlineOpacity').value = s.scriptureRefOutlineOpacity;
+  document.getElementById('scriptureRefShadowEnabled').checked = !!s.scriptureRefShadowEnabled;
+  if (s.scriptureRefShadowColor) document.getElementById('scriptureRefShadowColor').value = s.scriptureRefShadowColor;
+  if (s.scriptureRefShadowBlur != null) document.getElementById('scriptureRefShadowBlur').value = s.scriptureRefShadowBlur;
+  if (s.scriptureRefShadowX != null) document.getElementById('scriptureRefShadowX').value = s.scriptureRefShadowX;
+  if (s.scriptureRefShadowY != null) document.getElementById('scriptureRefShadowY').value = s.scriptureRefShadowY;
+  if (s.scriptureRefShadowOpacity != null) document.getElementById('scriptureRefShadowOpacity').value = s.scriptureRefShadowOpacity;
+  document.getElementById('scriptureShowReference').checked = s.scriptureShowReference !== false;
+  document.getElementById('scriptureShowCompletePassage').checked = !!s.scriptureShowCompletePassage;
+  document.getElementById('scriptureReferenceIndent').checked = s.scriptureReferenceIndent !== false;
+  document.getElementById('scriptureAbbreviateBooks').checked = !!s.scriptureAbbreviateBooks;
+  document.getElementById('scriptureAdditionalLineSpacing').checked = !!s.scriptureAdditionalLineSpacing;
+  document.getElementById('scriptureShowRefOnly').checked = !!s.scriptureShowRefOnly;
+  document.getElementById('scriptureBreakOnNewVerse').checked = !!s.scriptureBreakOnNewVerse;
+  if (s.scriptureMinFontSize != null) document.getElementById('scriptureMinFontSize').value = s.scriptureMinFontSize;
+  if (s.scriptureFontFamily) document.getElementById('scriptureFontFamily').value = s.scriptureFontFamily;
+  if (s.scriptureFontSize != null) document.getElementById('scriptureFontSize').value = s.scriptureFontSize;
+  if (s.scriptureFontColor) document.getElementById('scriptureFontColor').value = s.scriptureFontColor;
+  if (s.scriptureFontStyle) document.getElementById('scriptureFontStyle').value = s.scriptureFontStyle;
+  document.getElementById('scriptureUnderline').checked = !!s.scriptureUnderline;
+  if (s.scriptureFontOpacity != null) document.getElementById('scriptureFontOpacity').value = s.scriptureFontOpacity;
+  if (s.scriptureLineSpacing != null) document.getElementById('scriptureLineSpacing').value = s.scriptureLineSpacing;
+  if (s.scriptureTextAlign) document.getElementById('scriptureTextAlign').value = s.scriptureTextAlign;
+  if (s.scriptureVerticalAlign) document.getElementById('scriptureVerticalAlign').value = s.scriptureVerticalAlign;
+  if (s.scriptureOutlineStyle) document.getElementById('scriptureOutlineStyle').value = s.scriptureOutlineStyle;
+  if (s.scriptureOutlineColor) document.getElementById('scriptureOutlineColor').value = s.scriptureOutlineColor;
+  if (s.scriptureOutlineJoin) document.getElementById('scriptureOutlineJoin').value = s.scriptureOutlineJoin;
+  if (s.scriptureOutlineWidth != null) document.getElementById('scriptureOutlineWidth').value = s.scriptureOutlineWidth;
+  if (s.scriptureOutlineOpacity != null) document.getElementById('scriptureOutlineOpacity').value = s.scriptureOutlineOpacity;
+  document.getElementById('scriptureShadowEnabled').checked = s.scriptureShadowEnabled !== false;
+  if (s.scriptureShadowColor) document.getElementById('scriptureShadowColor').value = s.scriptureShadowColor;
+  if (s.scriptureShadowBlur != null) document.getElementById('scriptureShadowBlur').value = s.scriptureShadowBlur;
+  if (s.scriptureShadowX != null) document.getElementById('scriptureShadowX').value = s.scriptureShadowX;
+  if (s.scriptureShadowY != null) document.getElementById('scriptureShadowY').value = s.scriptureShadowY;
+  if (s.scriptureShadowOpacity != null) document.getElementById('scriptureShadowOpacity').value = s.scriptureShadowOpacity;
+  if (s.scriptureMarginTop != null) document.getElementById('scriptureMarginTop').value = s.scriptureMarginTop;
+  if (s.scriptureMarginBottom != null) document.getElementById('scriptureMarginBottom').value = s.scriptureMarginBottom;
+  if (s.scriptureMarginLeft != null) document.getElementById('scriptureMarginLeft').value = s.scriptureMarginLeft;
+  if (s.scriptureMarginRight != null) document.getElementById('scriptureMarginRight').value = s.scriptureMarginRight;
+  if (s.scriptureAutoSize === 'none') document.getElementById('scriptureAutoSizeNone').checked = true;
+  else document.getElementById('scriptureAutoSizeResize').checked = true;
+  if (s.scriptureNormalizeSize === false) document.getElementById('scriptureNormalizeSize').checked = false;
+  if (s.scriptureWordWrap === false) document.getElementById('scriptureWordWrap').checked = false;
+  document.getElementById('scriptureAutoCapitalizeWords').checked = !!s.scriptureAutoCapitalizeWords;
+  if (Array.isArray(s.scriptureCapitalizeWordList)) document.getElementById('scriptureCapitalizeWordList').value = s.scriptureCapitalizeWordList.join('\n');
+  if (s.confidenceThreshold)  document.getElementById('confidence').value = s.confidenceThreshold;
+  if (s.httpPort)             document.getElementById('httpPort').value = s.httpPort;
+  document.getElementById('remoteRequireAuth').value = String(s.remoteRequireAuth !== false);
+  if (s.remoteAdminPin || s.remotePin) document.getElementById('remotePin').value = s.remoteAdminPin || s.remotePin;
+  if (s.remoteScripturePin) document.getElementById('remoteScripturePin').value = s.remoteScripturePin;
+  if (s.remoteSongsPin) document.getElementById('remoteSongsPin').value = s.remoteSongsPin;
+  if (s.remoteMediaPin) document.getElementById('remoteMediaPin').value = s.remoteMediaPin;
+  if (s.remoteMonitorPin) document.getElementById('remoteMonitorPin').value = s.remoteMonitorPin;
+  if (s.onlineMode === false) document.getElementById('detectionMode').value = 'offline';
+  if (s.showVerseNumbers === false) document.getElementById('showVerseNumbers').checked = false;
+  if (s.autoFlowScripture === false) document.getElementById('autoFlowScripture').checked = false;
+  if (Array.isArray(s.songSectionLabels)) _sectionLabels = s.songSectionLabels;
+  renderSectionLabelsTable();
+  if (s.songAutoSize === 'none') document.getElementById('songAutoSizeNone').checked = true;
+  else document.getElementById('songAutoSizeResize').checked = true;
+  if (s.songNormalizeSize === false) document.getElementById('songNormalizeSize').checked = false;
+  if (s.songWordWrap === false) document.getElementById('songWordWrap').checked = false;
+  document.getElementById('songAutoCapitalizeWords').checked = !!s.songAutoCapitalizeWords;
+  if (Array.isArray(s.songCapitalizeWordList)) document.getElementById('songCapitalizeWordList').value = s.songCapitalizeWordList.join('\n');
+
+  if (s.nurseryAlertEnabled === false) document.getElementById('nurseryAlertEnabled').checked = false;
+  if (s.nurseryAlertBgColor) document.getElementById('nurseryAlertBgColor').value = s.nurseryAlertBgColor;
+  if (s.nurseryAlertBgOpacity != null) { document.getElementById('nurseryAlertBgOpacity').value = s.nurseryAlertBgOpacity; document.getElementById('nurseryAlertBgOpacityVal').textContent = s.nurseryAlertBgOpacity; }
+  if (s.nurseryAlertPosition) document.getElementById('nurseryAlertPosition').value = s.nurseryAlertPosition;
+  if (s.nurseryAlertFontSize) document.getElementById('nurseryAlertFontSize').value = s.nurseryAlertFontSize;
+  if (s.nurseryAlertFontColor) document.getElementById('nurseryAlertFontColor').value = s.nurseryAlertFontColor;
+  if (s.nurseryAlertFontFamily) document.getElementById('nurseryAlertFontFamily').value = s.nurseryAlertFontFamily;
+  if (s.nurseryAlertAutoRemove === false) document.getElementById('nurseryAlertAutoRemove').checked = false;
+  if (s.nurseryAlertAutoRemoveTime) document.getElementById('nurseryAlertAutoRemoveTime').value = s.nurseryAlertAutoRemoveTime;
+  if (s.messageAlertEnabled === false) document.getElementById('messageAlertEnabled').checked = false;
+  if (s.messageAlertBgColor) document.getElementById('messageAlertBgColor').value = s.messageAlertBgColor;
+  if (s.messageAlertBgOpacity != null) { document.getElementById('messageAlertBgOpacity').value = s.messageAlertBgOpacity; document.getElementById('messageAlertBgOpacityVal').textContent = s.messageAlertBgOpacity; }
+  if (s.messageAlertPosition) document.getElementById('messageAlertPosition').value = s.messageAlertPosition;
+  if (s.messageAlertScrollSpeed != null) { document.getElementById('messageAlertScrollSpeed').value = s.messageAlertScrollSpeed; document.getElementById('messageAlertScrollSpeedVal').textContent = s.messageAlertScrollSpeed; }
+  if (s.messageAlertFontSize) document.getElementById('messageAlertFontSize').value = s.messageAlertFontSize;
+  if (s.messageAlertFontColor) document.getElementById('messageAlertFontColor').value = s.messageAlertFontColor;
+  if (s.messageAlertFontFamily) document.getElementById('messageAlertFontFamily').value = s.messageAlertFontFamily;
+  if (s.messageAlertRepeatCount) document.getElementById('messageAlertRepeatCount').value = s.messageAlertRepeatCount;
+
+  const info = await window.electronAPI.getAppInfo();
+  const vEls = document.querySelectorAll('#versionInfo');
+  vEls.forEach(el => { el.textContent = `AnchorCast v${info.version} · ${info.platform}`; });
+
+  loadRemoteStatus();
+  setInterval(loadRemoteStatus, 2500);
+
+  if (window.electronAPI?.ndiStatus) {
+    window.electronAPI.ndiStatus().then(info => {
+      if (info) updateNdiSettUI(info.status === 'running' || info.status === 'fallback');
+    }).catch(()=>{});
+  }
+
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const sel = document.getElementById('microphone');
+    devices.filter(d => d.kind === 'audioinput').forEach((m, i) => {
+      const opt = document.createElement('option');
+      opt.value = m.deviceId;
+      opt.textContent = m.label || `Microphone ${i + 1}`;
+      if (m.deviceId === s.microphoneId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
+
+  // Load network adapters
+  try {
+    const adapters = await window.electronAPI.getNetworkAdapters?.() || [];
+    const sel = document.getElementById('networkAdapter');
+    adapters.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.name; opt.textContent = `${a.name} (${a.address})`;
+      if (a.name === s.networkAdapter) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
+
+}
+
+
+const DEFAULT_SECTION_LABELS = [
+  { name: 'VERSE',        bgColor: '#4a5568', textColor: '#ffffff', shortcut: 'V, NUM.' },
+  { name: 'CHORUS',       bgColor: '#9b2c6d', textColor: '#ffffff', shortcut: 'C' },
+  { name: 'BRIDGE',       bgColor: '#6b46c1', textColor: '#ffffff', shortcut: 'B, NUM.' },
+  { name: 'PRE-CHORUS',   bgColor: '#2b6cb0', textColor: '#ffffff', shortcut: 'P' },
+  { name: 'ENDING',       bgColor: '#c53030', textColor: '#ffffff', shortcut: 'E, NUM.' },
+  { name: 'INTRO',        bgColor: '#276749', textColor: '#ffffff', shortcut: 'I' },
+  { name: 'INTERLUDE',    bgColor: '#2c7a7b', textColor: '#ffffff', shortcut: 'INT' },
+  { name: 'TAG',          bgColor: '#744210', textColor: '#ffffff', shortcut: 'T' },
+  { name: 'MISC',         bgColor: '#4a5568', textColor: '#ffffff', shortcut: 'M' },
+];
+let _sectionLabels = JSON.parse(JSON.stringify(DEFAULT_SECTION_LABELS));
+
+function getSectionLabelsData() {
+  const rows = document.querySelectorAll('#sectionLabelsBody tr');
+  const labels = [];
+  rows.forEach(row => {
+    const name = row.querySelector('.sl-name')?.value || '';
+    const bgColor = row.querySelector('.sl-bg')?.value || '#4a5568';
+    const textColor = row.querySelector('.sl-text')?.value || '#ffffff';
+    const shortcut = row.querySelector('.sl-shortcut')?.value || '';
+    if (name.trim()) labels.push({ name: name.trim().toUpperCase(), bgColor, textColor, shortcut });
+  });
+  return labels;
+}
+
+function renderSectionLabelsTable() {
+  const tbody = document.getElementById('sectionLabelsBody');
+  if (!tbody) return;
+  tbody.innerHTML = _sectionLabels.map((lb, i) => `
+    <tr style="border-top:1px solid var(--border)">
+      <td style="padding:6px 10px">
+        <input class="form-input sl-name" value="${lb.name}" style="font-size:11px;font-weight:700;text-transform:uppercase;padding:5px 8px;background:${lb.bgColor};color:${lb.textColor};border:none;border-radius:4px;width:100%">
+      </td>
+      <td style="padding:6px 10px;text-align:center">
+        <div style="display:flex;gap:4px;justify-content:center">
+          <input type="color" class="sl-bg" value="${lb.bgColor}" title="Background color" style="width:28px;height:28px;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:0" onchange="this.closest('tr').querySelector('.sl-name').style.background=this.value">
+          <input type="color" class="sl-text" value="${lb.textColor}" title="Text color" style="width:28px;height:28px;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:0" onchange="this.closest('tr').querySelector('.sl-name').style.color=this.value">
+        </div>
+      </td>
+      <td style="padding:6px 10px">
+        <input class="form-input sl-shortcut" value="${lb.shortcut}" placeholder="Key" style="font-size:11px;padding:5px 8px;width:100%">
+      </td>
+      <td style="padding:6px 4px;text-align:center">
+        <button type="button" onclick="removeSectionLabel(${i})" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:4px" title="Remove">—</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function addSectionLabel() {
+  _sectionLabels.push({ name: 'NEW', bgColor: '#4a5568', textColor: '#ffffff', shortcut: '' });
+  renderSectionLabelsTable();
+}
+
+function removeSectionLabel(idx) {
+  _sectionLabels = getSectionLabelsData();
+  _sectionLabels.splice(idx, 1);
+  renderSectionLabelsTable();
+}
+
+
+
+function resetScriptureFontDefaults() {
+  document.getElementById('scriptureFontFamily').value = 'Calibri';
+  document.getElementById('scriptureFontSize').value = '80';
+  document.getElementById('scriptureFontColor').value = '#ffffff';
+  document.getElementById('scriptureFontStyle').value = 'bold';
+  document.getElementById('scriptureUnderline').checked = false;
+  document.getElementById('scriptureFontOpacity').value = '100';
+  document.getElementById('scriptureLineSpacing').value = '1.4';
+  document.getElementById('scriptureTextAlign').value = '';
+  document.getElementById('scriptureVerticalAlign').value = '';
+  document.getElementById('scriptureOutlineStyle').value = 'outer';
+  document.getElementById('scriptureOutlineColor').value = '#000000';
+  document.getElementById('scriptureOutlineJoin').value = 'round';
+  document.getElementById('scriptureOutlineWidth').value = '12';
+  document.getElementById('scriptureOutlineOpacity').value = '100';
+  document.getElementById('scriptureShadowEnabled').checked = true;
+  document.getElementById('scriptureShadowColor').value = '#000000';
+  document.getElementById('scriptureShadowBlur').value = '8';
+  document.getElementById('scriptureShadowX').value = '2';
+  document.getElementById('scriptureShadowY').value = '2';
+  document.getElementById('scriptureShadowOpacity').value = '80';
+  document.getElementById('scriptureMarginLeft').value = '200';
+  document.getElementById('scriptureMarginTop').value = '22';
+  document.getElementById('scriptureMarginRight').value = '200';
+  document.getElementById('scriptureMarginBottom').value = '22';
+}
+
+function resetScriptureRefDefaults() {
+  document.getElementById('scriptureRefFontFamily').value = 'Cinzel';
+  document.getElementById('scriptureRefFontSize').value = '38';
+  document.getElementById('scriptureRefFontColor').value = '#c9a84c';
+  document.getElementById('scriptureRefFontStyle').value = 'bold';
+  document.getElementById('scriptureRefUnderline').checked = false;
+  document.getElementById('scriptureRefUppercase').checked = true;
+  document.getElementById('scriptureRefFontOpacity').value = '90';
+  document.getElementById('scriptureRefTextAlign').value = 'center';
+  document.getElementById('scriptureRefLetterSpacing').value = '0.25';
+  document.getElementById('scriptureRefOutlineStyle').value = 'none';
+  document.getElementById('scriptureRefOutlineColor').value = '#000000';
+  document.getElementById('scriptureRefOutlineWidth').value = '0';
+  document.getElementById('scriptureRefOutlineOpacity').value = '100';
+  document.getElementById('scriptureRefShadowEnabled').checked = false;
+  document.getElementById('scriptureRefShadowColor').value = '#000000';
+  document.getElementById('scriptureRefShadowBlur').value = '4';
+  document.getElementById('scriptureRefShadowX').value = '1';
+  document.getElementById('scriptureRefShadowY').value = '1';
+  document.getElementById('scriptureRefShadowOpacity').value = '60';
+}
+
+function resetSongFontDefaults() {
+  document.getElementById('songFontFamily').value = 'Calibri';
+  document.getElementById('songFontSize').value = '64';
+  document.getElementById('songFontColor').value = '#ffffff';
+  document.getElementById('songFontStyle').value = 'bold';
+  document.getElementById('songUnderline').checked = false;
+  document.getElementById('songFontOpacity').value = '100';
+  document.getElementById('songLineSpacing').value = '1.4';
+  document.getElementById('songTextAlign').value = 'center';
+  document.getElementById('songVerticalAlignFont').value = '';
+  document.getElementById('songVerticalAlign').value = 'center';
+  document.getElementById('songOutlineStyle').value = 'outer';
+  document.getElementById('songOutlineColor').value = '#000000';
+  document.getElementById('songOutlineJoin').value = 'round';
+  document.getElementById('songOutlineWidth').value = '11';
+  document.getElementById('songOutlineOpacity').value = '100';
+  document.getElementById('songShadowEnabled').checked = true;
+  document.getElementById('songShadowColor').value = '#000000';
+  document.getElementById('songShadowBlur').value = '8';
+  document.getElementById('songShadowX').value = '2';
+  document.getElementById('songShadowY').value = '2';
+  document.getElementById('songShadowOpacity').value = '80';
+  document.getElementById('songMarginLeft').value = '38';
+  document.getElementById('songMarginTop').value = '22';
+  document.getElementById('songMarginRight').value = '38';
+  document.getElementById('songMarginBottom').value = '22';
+}
+
+init();
+</script>
+</body>
+</html>

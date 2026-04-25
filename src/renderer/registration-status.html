@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Registration Status</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    background:#0a0a1a;color:#e0e0e0;display:flex;flex-direction:column;
+    height:100vh;overflow:hidden}
+  .header{background:linear-gradient(135deg,#0d0d20,#1a1a35);
+    padding:18px 28px;text-align:center;border-bottom:1px solid rgba(201,168,76,.2);flex-shrink:0}
+  .logo{color:#c9a84c;font-size:16px;font-weight:700;letter-spacing:1px}
+  .body{flex:1;padding:16px 22px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+
+  /* Registered view */
+  .reg-banner{background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.25);
+    border-radius:10px;padding:18px 16px;text-align:center;flex-shrink:0}
+  .reg-check{width:50px;height:50px;background:#2ecc71;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;margin:0 auto 10px;
+    font-size:26px;font-weight:700;color:#fff;box-shadow:0 0 22px rgba(46,204,113,.4)}
+  .reg-title{font-size:13px;font-weight:600;color:#2ecc71;margin-bottom:6px}
+  .reg-name{font-size:18px;font-weight:700;color:#fff;margin-bottom:2px}
+  .reg-email{font-size:13px;color:#2ecc71;font-weight:600}
+  .reg-church{font-size:11px;color:#777;margin-top:4px}
+
+  .info-card{background:#0d0d20;border:1px solid rgba(255,255,255,.08);
+    border-radius:8px;overflow:hidden;flex-shrink:0}
+  .info-row{display:flex;justify-content:space-between;align-items:center;
+    padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px}
+  .info-row:last-child{border-bottom:none}
+  .info-lbl{color:#555;font-size:11px}
+  .info-val{color:#bbb;font-family:monospace;font-size:11px;text-align:right}
+
+  /* Support section */
+  .support-card{background:#13132a;border:1px solid rgba(255,255,255,.08);
+    border-radius:10px;padding:16px 18px;flex-shrink:0}
+  .support-title{font-size:13px;font-weight:700;color:#e0e0e0;
+    text-align:center;margin-bottom:5px}
+  .support-sub{font-size:11px;color:#555;text-align:center;line-height:1.6;margin-bottom:13px}
+  .btn-row{display:flex;gap:10px}
+  .btn-paypal{flex:1;padding:11px 8px;border:none;border-radius:8px;cursor:pointer;
+    font-size:12px;font-weight:700;font-family:inherit;
+    background:#1565c0;color:#fff;display:flex;align-items:center;
+    justify-content:center;gap:7px;transition:opacity .15s}
+  .btn-paypal:hover{opacity:.85}
+  .btn-github{flex:1;padding:11px 8px;border:1px solid rgba(201,168,76,.4);
+    border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;
+    font-family:inherit;background:rgba(201,168,76,.1);color:#c9a84c;
+    display:flex;align-items:center;justify-content:center;gap:7px;transition:opacity .15s}
+  .btn-github:hover{opacity:.85}
+  .oss{text-align:center;font-size:10px;color:#2a2a3a;padding-top:2px}
+  .oss a{color:#3a3a5a;cursor:pointer;text-decoration:none}
+  .oss a:hover{color:#c9a84c}
+
+  /* Unregistered — show register and import actions */
+  .unreg{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    flex:1;text-align:center;gap:14px;padding:20px}
+  .unreg-card{width:min(100%,500px);background:#0d0d20;border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;padding:22px 20px;box-shadow:0 18px 40px rgba(0,0,0,.22)}
+  .action-stack{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+  .btn-reg,.btn-import,.btn-copy{padding:13px 24px;border:none;border-radius:8px;cursor:pointer;font-size:13px;
+    font-weight:700;font-family:inherit;transition:opacity .15s ease, transform .15s ease}
+  .btn-reg{background:linear-gradient(135deg,#c9a84c,#e0bf6a);color:#000}
+  .btn-import{background:#1c2543;color:#fff;border:1px solid rgba(255,255,255,.1)}
+  .btn-copy{background:rgba(201,168,76,.08);color:#c9a84c;border:1px solid rgba(201,168,76,.28)}
+  .btn-reg:hover,.btn-import:hover,.btn-copy:hover{opacity:.9;transform:translateY(-1px)}
+  .hw-box{margin-top:4px;padding:11px 12px;border-radius:10px;background:#090913;border:1px solid rgba(255,255,255,.07);
+    color:#bbb;font-family:monospace;font-size:12px;word-break:break-all}
+  .muted{font-size:11px;color:#666;line-height:1.7}
+  .inline-link{color:#c9a84c;cursor:pointer;text-decoration:none}
+  .inline-link:hover{opacity:.88}
+</style>
+</head><body>
+<div class="header">
+  <div class="logo">⚓ ANCHORCAST</div>
+  <div style="color:#444;font-size:10px;letter-spacing:1.5px;margin-top:2px">LIVE SERMON DISPLAY</div>
+</div>
+
+<div class="body" id="mainBody">
+  <div style="padding:30px;text-align:center;color:#444;font-size:12px">Loading…</div>
+</div>
+
+<script>
+  function openExternal(url) { window.electronAPI?.openExternal(url); }
+
+  async function init() {
+    let reg;
+    try {
+      // Try query param first (passed from main process)
+      const params = new URLSearchParams(window.location.search);
+      const data = params.get('data');
+      if (data) {
+        reg = JSON.parse(decodeURIComponent(data));
+      } else {
+        reg = await window.electronAPI.getRegistrationStatus();
+      }
+    } catch(e) {
+      reg = { registered: false, hwId: '' };
+    }
+
+    const body = document.getElementById('mainBody');
+
+    if (reg && reg.registered) {
+      const date = reg.registeredAt
+        ? new Date(reg.registeredAt).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })
+        : 'Unknown';
+      body.innerHTML = `
+        <div class="reg-banner">
+          <div class="reg-check">✓</div>
+          <div class="reg-title">This product is registered to</div>
+          <div class="reg-name">${reg.fullName || ''}</div>
+          <div class="reg-email">${reg.email || ''}</div>
+          ${reg.churchName ? '<div class="reg-church">' + reg.churchName + '</div>' : ''}
+        </div>
+        <div class="info-card">
+          <div class="info-row">
+            <span class="info-lbl">Registered on</span>
+            <span class="info-val">${date}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-lbl">Hardware ID</span>
+            <span class="info-val">${reg.hwId || ''}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-lbl">Status</span>
+            <span class="info-val" style="color:#2ecc71">● Active — All features unlocked</span>
+          </div>
+        </div>
+        <div class="support-card">
+          <div class="support-title">❤ Support this Project</div>
+          <div class="support-sub">
+            AnchorCast is built with love for churches everywhere.<br>
+            Donations help keep development going — thank you!
+          </div>
+          <div class="btn-row">
+            <button class="btn-paypal" onclick="openExternal('https://paypal.me/rommeltechdev')">
+              <span>💳</span> Donate via PayPal
+            </button>
+            <button class="btn-github" onclick="openExternal('https://github.com/anchorcastapp-team/anchorcastapp')">
+              <span>⭐</span> Star on GitHub
+            </button>
+          </div>
+        </div>
+        <div class="oss">
+          Free &amp; Open Source —
+          <a onclick="openExternal('https://github.com/anchorcastapp-team/anchorcastapp')">
+            github.com/anchorcastapp-team/anchorcastapp
+          </a>
+        </div>`;
+    } else {
+      const hwId = reg?.hwId || (await window.electronAPI?.getHardwareId?.()) || '';
+      body.innerHTML = `
+        <div class="unreg">
+          <div class="unreg-card">
+            <div style="font-size:40px;margin-bottom:10px">🔑</div>
+            <div style="font-size:18px;font-weight:700;color:#fff">Registration Required</div>
+            <div style="font-size:12px;color:#666;line-height:1.7;max-width:420px;margin:10px auto 0">
+              AnchorCast is free &amp; open source. You can register from the main app or import an existing registration file to unlock this device immediately.
+            </div>
+            <div class="hw-box" id="hwidBox">${hwId}</div>
+            <div class="muted">Hardware ID for manual activation or support requests.</div>
+            <div class="action-stack">
+              <button class="btn-reg" id="registerNowBtn">Open registration form</button>
+              <button class="btn-import" id="importLicenseBtn">Import registration file</button>
+              <button class="btn-copy" id="copyHwBtn">Copy hardware ID</button>
+            </div>
+            <div class="muted" style="margin-top:12px">
+              Already registered on another system? Import the file you received, or go back to the app and complete the email activation flow.
+            </div>
+          </div>
+        </div>`;
+      document.getElementById('registerNowBtn')?.addEventListener('click', () => window.close());
+      document.getElementById('copyHwBtn')?.addEventListener('click', async () => {
+        if (!hwId) return;
+        await window.electronAPI?.copyToClipboard?.(hwId);
+        const btn = document.getElementById('copyHwBtn');
+        if (btn) {
+          const prev = btn.textContent;
+          btn.textContent = 'Copied';
+          setTimeout(() => { btn.textContent = prev; }, 1200);
+        }
+      });
+      document.getElementById('importLicenseBtn')?.addEventListener('click', async () => {
+        const res = await window.electronAPI?.importLicenseFile?.();
+        if (res?.success) {
+          location.reload();
+          return;
+        }
+        if (res?.canceled) return;
+        const msg = res?.error || 'Could not import registration file.';
+        alert(msg);
+      });
+    }
+  }
+
+  init();
+</script>
+</body></html>

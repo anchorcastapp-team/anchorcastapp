@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<!-- Dedicated Bible Manager module -->
+<html lang="en" style="background:#08101d">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;
+             script-src 'self' 'unsafe-inline';
+             style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+             connect-src 'self';">
+  <title>AnchorCast Bible Manager</title>
+  <script src="js/electron-shim.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"></noscript>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/anchorcast-theme.css">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;overflow:hidden;display:flex;flex-direction:column;
+      font-family:'DM Sans',sans-serif;background:var(--void);color:var(--text)}
+
+    /* ── Window chrome ── */
+    .win-header{height:40px;background:var(--deep);border-bottom:1px solid var(--border);
+      display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;-webkit-app-region:drag}
+    .win-header *{-webkit-app-region:no-drag}
+    .win-title{font-family:'Cinzel',serif;font-size:13px;font-weight:600;color:var(--gold-b);letter-spacing:1px}
+    .win-sub{font-size:11px;color:var(--sub)}
+    .win-sp{flex:1}
+
+    /* ── Main layout: sidebar + content ── */
+    .layout{display:flex;flex:1;min-height:0;overflow:hidden}
+
+    /* ── Left sidebar ── */
+    .sidebar{width:180px;flex-shrink:0;background:var(--deep);border-right:1px solid var(--border);
+      display:flex;flex-direction:column;overflow:hidden}
+    .sidebar-section{padding:6px 0;border-bottom:1px solid var(--border)}
+    .sidebar-hdr{padding:6px 14px 4px;font-size:9px;font-weight:700;color:var(--dim);
+      text-transform:uppercase;letter-spacing:.08em}
+    .sidebar-item{display:flex;align-items:center;gap:9px;padding:9px 14px;cursor:pointer;
+      font-size:12px;font-weight:500;color:var(--sub);border-left:3px solid transparent;
+      transition:all .12s;user-select:none}
+    .sidebar-item:hover{background:var(--card);color:var(--text)}
+    .sidebar-item.active{background:rgba(201,168,76,.07);color:var(--gold);
+      border-left-color:var(--gold)}
+    .sidebar-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+    .sidebar-preview{flex:1;padding:10px;display:flex;flex-direction:column;
+      align-items:center;justify-content:flex-end;gap:6px;min-height:0}
+    .preview-thumb{width:100%;aspect-ratio:16/9;border-radius:5px;overflow:hidden;
+      border:2px solid var(--border);background:#000;position:relative;
+      display:flex;align-items:center;justify-content:center}
+    .preview-label{font-size:9px;color:var(--dim);text-align:center}
+
+    /* ── Right content ── */
+    .content{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+
+    /* ── Module tabs (top of content) ── */
+    .mod-tabs{height:42px;background:var(--panel);border-bottom:1px solid var(--border);
+      display:flex;align-items:flex-end;padding:0 20px;flex-shrink:0;gap:2px}
+    .mod-tab{padding:8px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.6px;color:var(--dim);border-bottom:2px solid transparent;
+      cursor:pointer;transition:all .15s;white-space:nowrap}
+    .mod-tab:hover{color:var(--sub)}
+    .mod-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+
+    /* ── Content body ── */
+    .content-body{flex:1;overflow-y:auto;padding:22px 28px 16px}
+    .pane{display:none}
+    .pane.active{display:block}
+
+    /* ── Form elements ── */
+    .section-title{font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;
+      letter-spacing:.8px;margin:20px 0 12px;padding-bottom:6px;
+      border-bottom:1px solid var(--border)}
+    .section-title:first-child{margin-top:0}
+    .form-group{margin-bottom:14px}
+    .form-label{display:block;font-size:11px;font-weight:600;color:var(--sub);
+      text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+    .form-select,.form-input{width:100%;background:var(--card);border:1px solid var(--border-lit);
+      border-radius:var(--r);color:var(--text);font-family:inherit;font-size:12px;
+      padding:7px 10px;outline:none;transition:border .15s}
+    .form-select:focus,.form-input:focus{border-color:var(--gold-d)}
+    .form-hint{font-size:10px;color:var(--dim);margin-top:4px;line-height:1.5}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .form-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+    /* Checkbox row */
+    .check-group{display:flex;align-items:center;gap:8px;padding:8px 12px;
+      background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+      margin-bottom:8px;cursor:pointer;transition:border-color .12s}
+    .check-group:hover{border-color:var(--border-lit)}
+    .check-group input{accent-color:var(--gold);width:14px;height:14px;cursor:pointer;flex-shrink:0}
+    .check-label{font-size:12px;color:var(--text);flex:1}
+    .check-sub{font-size:10px;color:var(--dim);margin-top:1px}
+
+    /* Toggle switch */
+    .toggle-row{display:flex;align-items:center;justify-content:space-between;
+      background:var(--card);border:1px solid var(--border-lit);border-radius:var(--r);
+      padding:9px 12px;margin-bottom:8px}
+    .toggle-info{flex:1;min-width:0}
+    .toggle-name{font-size:12px;font-weight:600;color:var(--text)}
+    .toggle-sub{font-size:10px;color:var(--dim);margin-top:1px}
+    .toggle{width:42px;height:24px;border-radius:12px;position:relative;cursor:pointer;
+      flex-shrink:0;transition:background .2s;background:var(--border-lit)}
+    .toggle-knob{position:absolute;top:3px;left:3px;width:18px;height:18px;
+      background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+
+    /* Bottom bar */
+    .bottom-bar{height:52px;background:var(--deep);border-top:1px solid var(--border);
+      display:flex;align-items:center;padding:0 20px;gap:10px;flex-shrink:0}
+    .bottom-sp{flex:1}
+    .btn-cancel{padding:8px 18px;background:transparent;border:1px solid var(--border-lit);
+      border-radius:var(--r);color:var(--sub);font-family:inherit;font-size:12px;
+      font-weight:600;cursor:pointer;transition:all .12s}
+    .btn-cancel:hover{color:var(--text);border-color:var(--text)}
+    .btn-save{padding:8px 22px;background:rgba(201,168,76,.15);border:1px solid var(--gold);
+      border-radius:var(--r);color:var(--gold);font-family:inherit;font-size:12px;
+      font-weight:700;cursor:pointer;transition:all .12s;letter-spacing:.3px}
+    .btn-save:hover{background:rgba(201,168,76,.28)}
+    .version{font-size:10px;color:var(--dim)}
+
+    /* Bible version manager */
+    .bvm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+    .bvm-card{background:var(--card);border:1px solid var(--border);border-radius:8px;
+      padding:11px 13px;display:flex;align-items:center;gap:9px;transition:border-color .15s}
+    .bvm-card.installed{border-color:rgba(46,204,113,.3);background:rgba(46,204,113,.03)}
+    .bvm-badge{width:40px;height:40px;border-radius:6px;display:flex;align-items:center;
+      justify-content:center;font-family:'Cinzel',serif;font-size:10px;font-weight:700;
+      flex-shrink:0;letter-spacing:.3px}
+    .bvm-badge.has{background:rgba(46,204,113,.12);color:#2ecc71;border:1px solid rgba(46,204,113,.3)}
+    .bvm-badge.no{background:var(--deep);color:var(--dim);border:1px solid var(--border)}
+    .bvm-info{flex:1;min-width:0}
+    .bvm-name{font-size:11px;font-weight:600;color:var(--text)}
+    .bvm-sub{font-size:10px;color:var(--dim)}
+    .bvm-count{font-size:10px;color:#2ecc71;margin-top:1px}
+    .bvm-btn{padding:4px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;
+      transition:all .15s;font-family:inherit;border:1px solid;text-transform:uppercase;
+      letter-spacing:.3px;white-space:nowrap;flex-shrink:0}
+    .bvm-up{background:rgba(201,168,76,.1);border-color:var(--gold-dim);color:var(--gold)}
+    .bvm-up:hover{background:rgba(201,168,76,.2)}
+    .bvm-del{background:rgba(231,76,60,.07);border-color:rgba(192,57,43,.35);color:var(--live)}
+    .bvm-del:hover{background:rgba(231,76,60,.16)}
+    .upload-zone{border:2px dashed var(--border-lit);border-radius:10px;padding:20px 18px;
+      text-align:center;cursor:pointer;transition:all .18s;margin-bottom:14px}
+    .upload-zone:hover,.upload-zone.over{border-color:var(--gold);background:rgba(201,168,76,.04)}
+    .uz-icon{font-size:26px;margin-bottom:6px}
+    .uz-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px}
+    .uz-sub{font-size:10px;color:var(--sub);line-height:1.5}
+    input[type=file]{display:none}
+    .code-box{background:var(--card);border:1px solid var(--border);border-radius:7px;
+      padding:11px 13px;margin-bottom:12px}
+    .code-title{font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;
+      letter-spacing:.8px;margin-bottom:6px}
+    .code-block{background:var(--void);border-radius:4px;padding:8px 10px;
+      font-family:'Courier New',monospace;font-size:10px;color:#7ec8a0;
+      line-height:1.7;overflow-x:auto;white-space:pre}
+    .status-msg{font-size:11px;padding:7px 11px;border-radius:6px;margin-top:9px;line-height:1.5}
+    .dedicated-bible-manager .sidebar{width:100px}
+    .dedicated-bible-manager .sidebar-section.non-bible{display:none!important}
+    .dedicated-bible-manager .sidebar-preview{display:none!important}
+    .dedicated-bible-manager .mod-tabs{display:none!important}
+    .dedicated-bible-manager .bottom-bar .btn-cancel{display:none!important}
+    .dedicated-bible-manager .bottom-bar .version{display:none!important}
+    .dedicated-bible-manager .content-body{padding-top:18px}
+    .msg-ok  {background:rgba(46,204,113,.08);color:#2ecc71;border:1px solid rgba(46,204,113,.2)}
+    .msg-err {background:rgba(231,76,60,.08);color:var(--live);border:1px solid rgba(192,57,43,.25)}
+    .msg-info{background:rgba(201,168,76,.07);color:var(--gold);border:1px solid var(--gold-dim)}
+  </style>
+</head>
+<body style="background:#08101d" style="background:#08101d">
+
+<!-- Window header -->
+<div class="win-header">
+  <button class="btn-cancel" onclick="closeManager()" style="padding:4px 10px;margin-right:6px;font-size:11px" title="Back to app">← Back</button>
+  <span style="font-size:14px;color:var(--gold)">⚙</span>
+  <span class="win-title" id="winTitle">Bible Manager</span>
+  <span class="win-sub" id="winSub">— Manage Bible Versions</span>
+  <div class="win-sp"></div>
+  <button class="btn-save" onclick="closeManager()">Done</button>
+  <button class="btn-cancel" onclick="closeManager()">✕</button>
+</div>
+
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+    <div class="sidebar-section non-bible">
+      <div class="sidebar-hdr">Output</div>
+      <div class="sidebar-item active" data-section="main" onclick="setSection(this,'main')">
+        <span class="sidebar-icon">📺</span> Main Output
+      </div>
+    </div>
+    <div class="sidebar-section non-bible">
+      <div class="sidebar-hdr">Modules</div>
+      <div class="sidebar-item" data-section="song" onclick="setSection(this,'song')">
+        <span class="sidebar-icon">🎵</span> Songs
+      </div>
+      <div class="sidebar-item" data-section="scripture" onclick="setSection(this,'scripture')">
+        <span class="sidebar-icon">📖</span> Scripture
+      </div>
+      <div class="sidebar-item" data-section="pres" onclick="setSection(this,'pres')">
+        <span class="sidebar-icon">📑</span> Presentations
+      </div>
+    </div>
+    <div class="sidebar-section bible-only">
+      <div class="sidebar-hdr">Bible</div>
+      <div class="sidebar-item" data-section="audio" onclick="setSection(this,'audio')">
+        <span class="sidebar-icon">🎙</span> Audio & AI
+      </div>
+      <div class="sidebar-item" data-section="network" onclick="setSection(this,'network')">
+        <span class="sidebar-icon">🌐</span> Network
+      </div>
+      <div class="sidebar-item" data-section="bible" onclick="setSection(this,'bible')">
+        <span class="sidebar-icon">📚</span> Bible Versions
+      </div>
+    </div>
+    <!-- Preview thumbnail -->
+    <div class="sidebar-preview">
+      <div class="preview-thumb" id="sidebarPreview">
+        <div style="font-size:9px;color:var(--dim);text-align:center;padding:8px">Live preview</div>
+      </div>
+      <div class="preview-label" id="versionInfo">AnchorCast v1.1.0</div>
+    </div>
+  </div>
+
+  <!-- ── Content area ── -->
+  <div class="content">
+
+    <!-- Module tabs -->
+    <div class="mod-tabs" id="modTabs">
+      <div class="mod-tab active" data-tab="general">General</div>
+      <!-- Additional tabs shown per section -->
+    </div>
+
+    <div class="content-body" id="contentBody">
+
+      <!-- ════════════════════════════════════════════════
+           MAIN OUTPUT — General
+      ════════════════════════════════════════════════ -->
+      <div class="pane active" id="pane-main-general">
+        <div class="section-title">Display</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Default Bible Translation</label>
+            <select class="form-select" id="translation"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Verse Font Size</label>
+            <select class="form-select" id="fontSize">
+              <option value="small">Small</option>
+              <option value="medium" selected>Medium (Recommended)</option>
+              <option value="large">Large</option>
+              <option value="xlarge">Extra Large</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Display Mode</label>
+          <select class="form-select" id="displayMode">
+            <option value="manual" selected>Manual — you choose what goes live</option>
+            <option value="auto">Auto — high-confidence verses display automatically</option>
+          </select>
+          <div class="form-hint">In Auto mode, clearly detected verses project immediately without confirmation.</div>
+        </div>
+
+        <div class="section-title">External Output (NDI / Web)</div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-name" id="ndiSettLabel">Off</div>
+            <div class="toggle-sub">Broadcast projection to OBS, vMix, or any browser via NDI</div>
+          </div>
+          <div class="toggle" id="ndiSettToggle" onclick="toggleNdiSetting()">
+            <div class="toggle-knob" id="ndiSettKnob"></div>
+          </div>
+        </div>
+        <div class="form-hint">Use <strong>Tools → External Output</strong> for OBS frame path and full NDI setup.</div>
+
+        <div class="section-title">Overlay on Media</div>
+        <label class="check-group">
+          <input type="checkbox" id="overlayTextOnMedia">
+          <div>
+            <div class="check-label">Overlay songs / scripture on projected media</div>
+            <div class="check-sub">Keep the current video or image in the background when sending scripture or songs live.</div>
+          </div>
+        </label>
+        <label class="check-group">
+          <input type="checkbox" id="overlayTextOnMediaSongs">
+          <div>
+            <div class="check-label">Allow song overlay</div>
+            <div class="check-sub">Songs can remain over active image or video backgrounds.</div>
+          </div>
+        </label>
+        <label class="check-group">
+          <input type="checkbox" id="overlayTextOnMediaScripture">
+          <div>
+            <div class="check-label">Allow scripture overlay</div>
+            <div class="check-sub">Scripture can remain over active image or video backgrounds.</div>
+          </div>
+        </label>
+        <label class="check-group">
+          <input type="checkbox" id="overlayTextOnMediaLowerThird">
+          <div>
+            <div class="check-label">Use lower-third mode</div>
+            <div class="check-sub">Place overlay text lower on the screen instead of centered.</div>
+          </div>
+        </label>
+        <div class="form-group">
+          <label class="form-label">Background dim behind overlaid text</label>
+          <input class="form-input" type="range" min="0" max="90" step="5" id="overlayTextOnMediaDim">
+          <div class="form-hint">Controls darkness added over the active background for readability.</div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           SONGS — General
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-song-general">
+        <div class="section-title">Song Layout</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Lyrics Vertical Position</label>
+            <select class="form-select" id="songVerticalAlign">
+              <option value="center" selected>Center</option>
+              <option value="top">Top</option>
+              <option value="bottom">Bottom</option>
+            </select>
+            <div class="form-hint">Where lyrics appear vertically on screen.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Lyrics Capitalisation</label>
+            <select class="form-select" id="songTextTransform">
+              <option value="none" selected>Normal (as written)</option>
+              <option value="uppercase">ALL CAPITALS</option>
+              <option value="capitalize">Title Case</option>
+              <option value="lowercase">all lowercase</option>
+            </select>
+            <div class="form-hint">Applies to song lyrics on preview, Live Display, and projection.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Song Metadata on Screen</label>
+            <select class="form-select" id="showSongMetadata">
+              <option value="false">Hide title / section label</option>
+              <option value="true">Show title / section label</option>
+            </select>
+            <div class="form-hint">Controls whether song title and section labels appear on projection and Live Display.</div>
+          </div>
+        </div>
+
+        <div class="section-title">Copyright Info</div>
+        <label class="check-group">
+          <input type="checkbox" id="showCopyright">
+          <div>
+            <div class="check-label">Display Copyright Information</div>
+            <div class="check-sub">Show CCLI / copyright line on song slides</div>
+          </div>
+        </label>
+        <div class="form-group">
+          <label class="form-label">License / CCLI Number</label>
+          <input class="form-input" id="ccliNumber" placeholder="e.g. CCLI #1234567">
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           SCRIPTURE — General
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-scripture-general">
+        <div class="section-title">Scripture Layout</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Scripture Capitalization</label>
+            <select class="form-select" id="scriptureTextTransform">
+              <option value="none">Original casing</option>
+              <option value="uppercase">UPPERCASE</option>
+              <option value="lowercase">lowercase</option>
+              <option value="capitalize">Title Case</option>
+            </select>
+            <div class="form-hint">Applies to scripture text on preview, Live Display, and projection.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reference Position</label>
+            <select class="form-select" id="scriptureRefPosition">
+              <option value="top" selected>Top — above verse text</option>
+              <option value="bottom">Bottom — below verse text</option>
+              <option value="hidden">Hidden — no reference shown</option>
+            </select>
+            <div class="form-hint">Where John 3:16 · KJV appears on screen.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reference Location</label>
+            <select class="form-select" id="scriptureRefLocation">
+              <option value="each" selected>Before Each Slide</option>
+              <option value="first">First Slide Only</option>
+              <option value="last">Last Slide Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="section-title">Verse Options</div>
+        <label class="check-group">
+          <input type="checkbox" id="showVerseNumbers" checked>
+          <div>
+            <div class="check-label">Show Verse Numbers</div>
+            <div class="check-sub">Display superscript verse numbers inline with text</div>
+          </div>
+        </label>
+        <label class="check-group">
+          <input type="checkbox" id="autoFlowScripture" checked>
+          <div>
+            <div class="check-label">Automatically Flow Scripture on Multiple Slides</div>
+            <div class="check-sub">Long verses are split into Part 1, Part 2 etc.</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           PRESENTATIONS — General
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-pres-general">
+        <div class="section-title">Presentation Display</div>
+        <div class="form-group">
+          <label class="form-label">Default Slide Transition</label>
+          <select class="form-select" id="presTransition">
+            <option value="none" selected>None (instant)</option>
+            <option value="fade">Fade</option>
+            <option value="slide">Slide</option>
+          </select>
+        </div>
+        <label class="check-group">
+          <input type="checkbox" id="presAutoAdvance">
+          <div>
+            <div class="check-label">Auto-advance Slides</div>
+            <div class="check-sub">Automatically move to next slide after a set interval</div>
+          </div>
+        </label>
+        <div class="form-group">
+          <label class="form-label">Auto-advance Interval (seconds)</label>
+          <input class="form-input" id="presAutoInterval" type="number" min="1" max="60" value="5">
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           AUDIO & AI
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-audio-general">
+        <div class="section-title">Microphone Input</div>
+        <div class="form-group">
+          <label class="form-label">Input Device</label>
+          <select class="form-select" id="microphone">
+            <option value="default">System Default</option>
+          </select>
+        </div>
+
+        <div class="section-title">AI & Transcription</div>
+        <div class="form-group">
+          <label class="form-label">Claude API Key <span style="color:var(--dim);font-weight:400">— verse detection</span></label>
+          <input class="form-input" id="apiKey" type="password" placeholder="sk-ant-api03-…">
+          <div class="form-hint">Powers AI verse detection and sermon notes. Get yours at console.anthropic.com</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deepgram API Key <span style="color:var(--dim);font-weight:400">— real-time transcription</span></label>
+          <input class="form-input" id="deepgramKey" type="password" placeholder="…">
+          <div class="form-hint">Best quality + lowest latency (~300ms). ~$0.0043/min. Get free key at <strong>deepgram.com</strong></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">OpenAI API Key <span style="color:var(--dim);font-weight:400">— cloud fallback</span></label>
+          <input class="form-input" id="openAiKey" type="password" placeholder="sk-…">
+          <div class="form-hint">Used if Deepgram is not set. ~$0.006/min via Whisper API.</div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Local Whisper Model</label>
+            <select class="form-select" id="whisperModel">
+              <option value="tiny">Tiny (~39 MB) — fastest</option>
+              <option value="base">Base (~74 MB) — balanced</option>
+              <option value="small" selected>Small (~244 MB) — best accuracy</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Detection Mode</label>
+            <select class="form-select" id="detectionMode">
+              <option value="online">Online (best accuracy)</option>
+              <option value="offline">Offline (no internet)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">AI Confidence Threshold</label>
+          <select class="form-select" id="confidence">
+            <option value="0.6">Low (60%) — show more results</option>
+            <option value="0.75" selected>Medium (75%) — balanced</option>
+            <option value="0.85">High (85%) — precise only</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           NETWORK
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-network-general">
+        <div class="section-title">Remote Control</div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-name" id="remoteStatusLabel">Loading…</div>
+            <div class="toggle-sub" id="remoteUrlLabel">Allow phones/tablets on same WiFi to control AnchorCast</div>
+          </div>
+          <div class="toggle" id="settRemoteToggle" onclick="toggleRemoteServer()">
+            <div class="toggle-knob" id="settRemoteKnob"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Remote Control Port</label>
+            <input class="form-input" id="httpPort" type="number" min="1024" max="65535" value="8080">
+            <div class="form-hint">Default 8080. Restart app after changing.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Network Adapter</label>
+            <select class="form-select" id="networkAdapter" onchange="onAdapterChange(this.value)">
+              <option value="">Auto-detect (recommended)</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Require Remote PIN</label>
+            <select class="form-select" id="remoteRequireAuth">
+              <option value="true">Yes, require authentication</option>
+              <option value="false">No authentication</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Admin Remote PIN</label>
+            <input class="form-input" id="remotePin" type="text" inputmode="numeric" maxlength="8" placeholder="6-digit PIN">
+            <div class="form-hint">Full control of scripture, songs, media, and broadcast actions.</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Scripture-only PIN</label>
+            <input class="form-input" id="remoteScripturePin" type="text" inputmode="numeric" maxlength="8" placeholder="PIN for scripture remote">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Songs-only PIN</label>
+            <input class="form-input" id="remoteSongsPin" type="text" inputmode="numeric" maxlength="8" placeholder="PIN for songs remote">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Media-only PIN</label>
+            <input class="form-input" id="remoteMediaPin" type="text" inputmode="numeric" maxlength="8" placeholder="PIN for media remote">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Monitor-only PIN</label>
+            <input class="form-input" id="remoteMonitorPin" type="text" inputmode="numeric" maxlength="8" placeholder="PIN for read-only monitor remote">
+            <div class="form-hint">Read-only remote for status and current output monitoring.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Role Notes</label>
+            <div class="form-hint" style="margin-top:8px">Scripture PIN: scriptures, translation, next/prev. Songs PIN: song library and song slides. Media PIN: media library. Admin PIN: full control.</div>
+          </div>
+        </div>
+
+        <div id="remoteCodeArea"></div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           BIBLE VERSIONS
+      ════════════════════════════════════════════════ -->
+      <div class="pane" id="pane-bible-general">
+        <div class="section-title">Installed Translations</div>
+        <div class="bvm-grid" id="bvmGrid">
+          <div style="color:var(--dim);font-size:12px;grid-column:1/-1;padding:8px 0">Loading…</div>
+        </div>
+
+        <div class="section-title">Upload New Translation</div>
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+          <div class="uz-icon">📂</div>
+          <div class="uz-title">Click or drag a Bible translation file here</div>
+          <div class="uz-sub">Supported: .json (AnchorCast format) · KJV included built-in</div>
+        </div>
+        <input type="file" id="fileInput" accept=".json" onchange="processFile(this.files[0])">
+        <div id="uploadStatus"></div>
+
+        <div class="section-title">Custom Translation (Advanced)</div>
+        <div class="code-box">
+          <div class="code-title">Custom Abbreviation</div>
+          <input class="form-input" id="customAbbrev" placeholder="e.g. ASV, WEB, YLT" maxlength="10"
+            style="margin-bottom:8px">
+          <div class="code-title">Paste JSON Data</div>
+          <textarea class="form-input" id="customJson" rows="5"
+            placeholder='{"1": {"1": {"1": "In the beginning..."}}}'
+            style="font-family:monospace;font-size:11px;resize:vertical"></textarea>
+          <button onclick="importCustom()"
+            style="margin-top:8px;padding:7px 16px;background:rgba(201,168,76,.1);border:1px solid var(--gold-d);
+              border-radius:var(--r);color:var(--gold);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">
+            Import Translation
+          </button>
+        </div>
+        <div id="customStatus"></div>
+      </div>
+
+    </div><!-- /content-body -->
+  </div><!-- /content -->
+</div><!-- /layout -->
+
+<!-- Bottom bar -->
+<div class="bottom-bar">
+  <div class="version" id="versionInfo">AnchorCast v1.1.0</div>
+  <div class="bottom-sp"></div>
+  <button class="btn-cancel" onclick="closeManager()">Cancel</button>
+  <button class="btn-save" onclick="closeManager()">Done</button>
+</div>
+
+<script>
+// ── Section / tab switching ────────────────────────────────────
+
+const SECTION_TABS = {
+  main:       ['General'],
+  song:       ['General'],
+  scripture:  ['General'],
+  pres:       ['General'],
+  audio:      ['General'],
+  network:    ['General'],
+  bible:      ['General'],
+};
+
+const SECTION_LABELS = {
+  main: 'Main Output', song: 'Songs', scripture: 'Scripture',
+  pres: 'Presentations', audio: 'Audio & AI', network: 'Network', bible: 'Bible Versions',
+};
+
+let activeSection = 'main', activeTab = 'general';
+
+function setSection(el, section) {
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  activeSection = section;
+  activeTab = 'general';
+  renderTabs();
+  showPane();
+  document.getElementById('winSub').textContent = '— ' + (SECTION_LABELS[section] || section);
+  if (section === 'bible') loadBvmGrid();
+  if (section === 'network') loadRemoteStatus();
+}
+
+function renderTabs() {
+  const tabs = SECTION_TABS[activeSection] || ['General'];
+  const bar = document.getElementById('modTabs');
+  bar.innerHTML = tabs.map((t, i) =>
+    `<div class="mod-tab${i===0?' active':''}" onclick="setTab(this,'${t.toLowerCase()}')">${t}</div>`
+  ).join('');
+}
+
+
+function openBibleManagerStandalone() {
+  document.body.classList.add('dedicated-bible-manager');
+  const sidebar = document.querySelector('.sidebar');
+  const winTitle = document.getElementById('winTitle');
+  const winSub = document.getElementById('winSub');
+  const doneButtons = document.querySelectorAll('.btn-save');
+  document.querySelectorAll('.sidebar-item').forEach(item => {
+    const keep = item.getAttribute('data-section') === 'bible';
+    item.style.display = keep ? 'flex' : 'none';
+    if (keep) setSection(item, 'bible');
+  });
+  if (sidebar) sidebar.style.width = '100px';
+  if (winTitle) winTitle.textContent = 'Bible Manager';
+  if (winSub) winSub.textContent = '— Manage Bible Versions';
+  doneButtons.forEach(btn => btn.textContent = 'Done');
+  const body = document.getElementById('contentBody');
+  if (body) body.scrollTop = 0;
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const isDedicatedBibleManager = /bible-manager\.html$/i.test(location.pathname || '');
+  if (isDedicatedBibleManager || (location.hash || '').includes('bible-manager')) {
+    openBibleManagerStandalone();
+  }
+});
+
+function setTab(el, tab) {
+  document.querySelectorAll('.mod-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  activeTab = tab;
+  showPane();
+}
+
+function showPane() {
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  const pane = document.getElementById(`pane-${activeSection}-${activeTab}`);
+  if (pane) pane.classList.add('active');
+}
+
+// ── Translation metadata ───────────────────────────────────────
+const KNOWN_TRANS = [
+  { id:'KJV',  name:'King James Version',         year:'1611', pd:true  },
+  { id:'NKJV', name:'New King James Version',      year:'1982', pd:false },
+  { id:'NIV',  name:'New International Version',   year:'1978', pd:false },
+  { id:'NLT',  name:'New Living Translation',      year:'1996', pd:false },
+  { id:'ESV',  name:'English Standard Version',    year:'2001', pd:false },
+  { id:'NASB', name:'New American Standard Bible', year:'1971', pd:false },
+  { id:'ASV',  name:'American Standard Version',   year:'1901', pd:true  },
+  { id:'YLT',  name:"Young's Literal Translation", year:'1898', pd:true  },
+  { id:'WEB',  name:'World English Bible',         year:'2000', pd:true  },
+  { id:'MSG',  name:'The Message',                 year:'2002', pd:false },
+  { id:'AMP',  name:'Amplified Bible',             year:'1958', pd:false },
+  { id:'CSB',  name:'Christian Standard Bible',    year:'2017', pd:false },
+];
+let installed = {};
+
+async function loadBvmGrid() {
+  if (window.electronAPI?.getInstalledVersions) {
+    try { installed = await window.electronAPI.getInstalledVersions() || {}; }
+    catch(e) { installed = {}; }
+  }
+  renderGrid();
+  populateTranslationDropdown();
+}
+
+function populateTranslationDropdown() {
+  const sel = document.getElementById('translation');
+  if (!sel) return;
+  const currentVal = sel.value;
+  sel.innerHTML = '';
+  const allIds = new Set([...KNOWN_TRANS.map(t => t.id), ...Object.keys(installed)]);
+  allIds.add('KJV');
+  let hasInstalled = false;
+  for (const id of allIds) {
+    if (installed[id] || id === 'KJV') {
+      const meta = KNOWN_TRANS.find(t => t.id === id);
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = meta ? `${id} — ${meta.name}` : id;
+      sel.appendChild(opt);
+      hasInstalled = true;
+    }
+  }
+  if (!hasInstalled) {
+    KNOWN_TRANS.slice(0,6).forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id; opt.textContent = `${t.id} — ${t.name}`;
+      sel.appendChild(opt);
+    });
+  }
+  if (currentVal && sel.querySelector(`option[value="${currentVal}"]`)) sel.value = currentVal;
+}
+
+function renderGrid() {
+  const grid = document.getElementById('bvmGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const shownIds = new Set(KNOWN_TRANS.map(t => t.id));
+  Object.keys(installed).forEach(id => { if (!shownIds.has(id)) shownIds.add(id); });
+  for (const id of shownIds) {
+    const meta = KNOWN_TRANS.find(t => t.id === id);
+    const isIn = !!installed[id];
+    const card = document.createElement('div');
+    card.className = 'bvm-card' + (isIn ? ' installed' : '');
+    card.innerHTML = `
+      <div class="bvm-badge ${isIn?'has':'no'}">${id}</div>
+      <div class="bvm-info">
+        <div class="bvm-name">${meta?.name || id}</div>
+        <div class="bvm-sub">${meta ? meta.year + (meta.pd?' · Public Domain':' · Licensed') : 'Custom'}</div>
+        ${isIn ? `<div class="bvm-count">✓ ${installed[id].toLocaleString()} verses</div>` : ''}
+      </div>
+      ${isIn && id !== 'KJV' ? `<button class="bvm-btn bvm-del" onclick="deleteTrans('${id}')">Remove</button>` : ''}
+      ${!isIn ? `<button class="bvm-btn bvm-up" onclick="promptUpload('${id}')">Upload</button>` : ''}`;
+    grid.appendChild(card);
+  }
+}
+
+function promptUpload(id) {
+  document.getElementById('customAbbrev').value = id;
+  document.getElementById('fileInput').click();
+}
+
+async function processFile(file) {
+  if (!file) return;
+  const status = document.getElementById('uploadStatus');
+  status.innerHTML = '<div class="status-msg msg-info">⏳ Processing…</div>';
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    let abbrev = document.getElementById('customAbbrev')?.value.trim().toUpperCase();
+    if (!abbrev) {
+      abbrev = file.name.replace(/\.json$/i,'').replace(/[^A-Z0-9]/gi,'').toUpperCase().slice(0,8);
+    }
+    if (!abbrev) throw new Error('Could not determine abbreviation');
+    if (window.electronAPI?.importTranslation) {
+      const r = await window.electronAPI.importTranslation({ abbrev, data });
+      if (r?.ok || r?.success) {
+        status.innerHTML = `<div class="status-msg msg-ok">✓ ${abbrev} imported successfully</div>`;
+        await loadBvmGrid();
+      } else throw new Error(r?.error || 'Import failed');
+    }
+  } catch(e) {
+    status.innerHTML = `<div class="status-msg msg-err">⚠ ${e.message}</div>`;
+  }
+}
+
+async function importCustom() {
+  const abbrev = document.getElementById('customAbbrev')?.value.trim().toUpperCase();
+  const raw    = document.getElementById('customJson')?.value.trim();
+  const status = document.getElementById('customStatus');
+  if (!abbrev) { status.innerHTML = '<div class="status-msg msg-err">⚠ Enter an abbreviation first</div>'; return; }
+  if (!raw)    { status.innerHTML = '<div class="status-msg msg-err">⚠ Paste JSON data first</div>'; return; }
+  try {
+    const data = JSON.parse(raw);
+    if (window.electronAPI?.importTranslation) {
+      const r = await window.electronAPI.importTranslation({ abbrev, data });
+      if (r?.ok || r?.success) {
+        status.innerHTML = `<div class="status-msg msg-ok">✓ ${abbrev} imported successfully</div>`;
+        await loadBvmGrid();
+      } else throw new Error(r?.error || 'Import failed');
+    }
+  } catch(e) {
+    status.innerHTML = `<div class="status-msg msg-err">⚠ ${e.message}</div>`;
+  }
+}
+
+async function deleteTrans(id) {
+  if (!confirm(`Remove ${id} translation? This cannot be undone.`)) return;
+  if (window.electronAPI?.deleteTranslation) {
+    await window.electronAPI.deleteTranslation(id);
+    await loadBvmGrid();
+  }
+}
+
+// ── Upload drag-drop ──────────────────────────────────────────
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover',  e => { e.preventDefault(); uploadZone.classList.add('over'); });
+uploadZone.addEventListener('dragleave', ()=> uploadZone.classList.remove('over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+});
+
+
+function escapeHtml(str='') {
+  return String(str).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function makeRemoteRoleCard(role, item, exp) {
+  const safeRole = escapeHtml(role);
+  const safeUrl = escapeHtml(item?.url || '');
+  const qrHtml = item?.qrDataUri
+    ? `<img alt="${safeRole} QR" style="width:140px;height:140px;border-radius:10px;background:#fff;padding:6px;object-fit:contain" src="${item.qrDataUri}" onerror="this.replaceWith((()=>{const d=document.createElement('div');d.style.cssText='width:140px;height:140px;border-radius:10px;background:#fff;color:#111;display:flex;align-items:center;justify-content:center;font-size:12px;padding:8px;text-align:center';d.textContent='Open link below';return d;})())">`
+    : `<div style="width:140px;height:140px;border-radius:10px;background:#fff;color:#111;display:flex;align-items:center;justify-content:center;font-size:12px;padding:8px;text-align:center">Open link below</div>`;
+  return `<div class="settings-card" style="padding:12px">
+    <div style="font-weight:700;text-transform:capitalize;margin-bottom:8px">${safeRole}</div>
+    ${qrHtml}
+    <input class="form-input" readonly value="${safeUrl}" style="margin-top:8px;font-size:11px" onclick="this.select()">
+    <div class="form-hint">Expires: ${escapeHtml(exp)}</div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button type="button" class="secondary-btn" onclick="copyRemoteUrl('${safeRole}')">Copy URL</button>
+      <button type="button" class="secondary-btn" onclick="openRemoteUrl('${safeRole}')">Open</button>
+    </div>
+  </div>`;
+}
+
+async function getRemoteInfoForLinks() {
+  return window.electronAPI.getRemoteStatus ? window.electronAPI.getRemoteStatus() : window.electronAPI.getRemoteInfo();
+}
+
+async function copyRemoteUrl(role) {
+  const s = await getRemoteInfoForLinks();
+  const url = s?.roleLinks?.[role]?.url;
+  if (!url) return;
+  let copied = false;
+  try {
+    if (window.electronAPI?.copyToClipboard) {
+      const r = await window.electronAPI.copyToClipboard(url);
+      copied = !r || r.success !== false;
+    }
+    if (!copied && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+      copied = true;
+    }
+    if (!copied) {
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      copied = document.execCommand('copy');
+      ta.remove();
+    }
+  } catch (e) {
+    console.warn('copyRemoteUrl failed', e);
+  }
+  try { window.prompt(copied ? 'URL copied. You can also copy from here:' : 'Copy this URL:', url); } catch(_) {}
+  if (typeof toast === 'function' && copied) toast('📋 URL copied!');
+}
+async function copyAllRemoteUrls() {
+  const s = await getRemoteInfoForLinks();
+  const roles = ['admin','scripture','songs','media','monitor'];
+  const joined = roles.map(role => s?.roleLinks?.[role]?.url).filter(Boolean).join('\n');
+  if (!joined) return;
+  let copied = false;
+  try {
+    if (window.electronAPI?.copyToClipboard) {
+      const r = await window.electronAPI.copyToClipboard(joined);
+      copied = !r || r.success !== false;
+    }
+    if (!copied && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(joined);
+      copied = true;
+    }
+  } catch (e) {
+    console.warn('copyAllRemoteUrls failed', e);
+  }
+  try { window.prompt(copied ? 'All remote URLs copied. You can also copy from here:' : 'Copy all remote URLs:', joined); } catch(_) {}
+  if (typeof toast === 'function' && copied) toast('📋 All remote URLs copied!');
+}
+
+async function openRemoteUrl(role) {
+  try {
+    const s = await getRemoteInfoForLinks();
+    const url = s?.roleLinks?.[role]?.url;
+    if (!url) return;
+    window.open(url, '_blank');
+  } catch (e) {}
+}
+
+
+// ── Network / Remote ──────────────────────────────────────────
+async function loadRemoteStatus() {
+  if (!window.electronAPI) return;
+  try {
+    const s = await (window.electronAPI.getRemoteStatus ? window.electronAPI.getRemoteStatus() : window.electronAPI.getRemoteInfo());
+    const label = document.getElementById('remoteStatusLabel');
+    const url   = document.getElementById('remoteUrlLabel');
+    const tog   = document.getElementById('settRemoteToggle');
+    const knob  = document.getElementById('settRemoteKnob');
+    if (!label) return;
+    const qrArea = document.getElementById('remoteCodeArea');
+    if (s?.running || s?.enabled) {
+      label.textContent = '🟢 Remote control running';
+      if (url) url.textContent = s.url || (s.ip ? `http://${s.ip}:${s.port || 8080}/remote` : '');
+      if (tog) tog.style.background = '#27ae60';
+      if (knob) knob.style.left = '21px';
+      if (qrArea && s.roleLinks) {
+        const roles = ['admin','scripture','songs','media','monitor'];
+        qrArea.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:18px"><div class="section-title" style="margin:0">Role QR Login Links</div><button type="button" class="secondary-btn" onclick="copyAllRemoteUrls()">Copy all links</button></div><div class="remote-qr-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px"></div>';
+        const grid = qrArea.querySelector('.remote-qr-grid');
+        roles.forEach(role => {
+          const item = s.roleLinks[role];
+          if (!item) return;
+          const exp = new Date(item.expiresAt).toLocaleString();
+          grid.insertAdjacentHTML('beforeend', makeRemoteRoleCard(role, item, exp));
+        });
+      }
+    } else {
+      label.textContent = s?.enabled ? (s?.running ? '🟢 Remote control running' : '🟡 Remote enabled') : 'Remote control off';
+      if (url) url.textContent = s?.url || (s?.ip ? `http://${s.ip}:${s.port || 8080}/remote` : '');
+      if (tog) tog.style.background = s?.enabled ? '#27ae60' : 'var(--border-lit)';
+      if (knob) knob.style.left = s?.enabled ? '21px' : '3px';
+      if (qrArea && s?.roleLinks) {
+        const roles = ['admin','scripture','songs','media','monitor'];
+        qrArea.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:18px"><div class="section-title" style="margin:0">Role QR Login Links</div><button type="button" class="secondary-btn" onclick="copyAllRemoteUrls()">Copy all links</button></div><div class="remote-qr-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px"></div>';
+        const grid = qrArea.querySelector('.remote-qr-grid');
+        roles.forEach(role => {
+          const item = s.roleLinks[role]; if (!item) return;
+          const exp = new Date(item.expiresAt).toLocaleString();
+          grid.insertAdjacentHTML('beforeend', makeRemoteRoleCard(role, item, exp));
+        });
+      } else if (qrArea) qrArea.innerHTML = '';
+    }
+  } catch(e) { const label=document.getElementById('remoteStatusLabel'); if(label) label.textContent='Remote status unavailable'; }
+}
+
+
+async function toggleRemoteServer() {
+  if (!window.electronAPI) return;
+  const info = await window.electronAPI.getRemoteInfo().catch(() => null);
+  const shouldEnable = !(info?.running);
+  if (shouldEnable) {
+    if (window.electronAPI.startRemote) await window.electronAPI.startRemote().catch(()=>{});
+    else await window.electronAPI.toggleRemote?.(true).catch(()=>{});
+  } else {
+    if (window.electronAPI.stopRemote) await window.electronAPI.stopRemote().catch(()=>{});
+    else await window.electronAPI.toggleRemote?.(false).catch(()=>{});
+  }
+  setTimeout(loadRemoteStatus, 350);
+}
+
+function onAdapterChange(val) {}
+
+// ── NDI ───────────────────────────────────────────────────────
+let _ndiEnabled = false;
+function updateNdiSettUI(enabled) {
+  _ndiEnabled = enabled;
+  const toggle = document.getElementById('ndiSettToggle');
+  const knob   = document.getElementById('ndiSettKnob');
+  const label  = document.getElementById('ndiSettLabel');
+  if (!toggle) return;
+  toggle.style.background = enabled ? '#27ae60' : 'var(--border-lit)';
+  if (knob) knob.style.left = enabled ? '21px' : '3px';
+  if (label) label.textContent = enabled ? '🟢 Running' : 'NDI / Web Output — Off';
+}
+
+async function toggleNdiSetting() {
+  if (!window.electronAPI) return;
+  _ndiEnabled = !_ndiEnabled;
+  if (_ndiEnabled) {
+    const r = await window.electronAPI.ndiStart().catch(() => null);
+    updateNdiSettUI(r?.status === 'running' || r?.status === 'fallback');
+  } else {
+    await window.electronAPI.ndiStop().catch(() => null);
+    updateNdiSettUI(false);
+  }
+}
+
+// ── Save ──────────────────────────────────────────────────────
+async function saveAndClose() {
+  if (!window.electronAPI) return;
+  const existing = await window.electronAPI.getSettings().catch(() => ({}));
+  await window.electronAPI.saveSettings({
+    ...existing,
+    apiKey:               document.getElementById('apiKey')?.value || '',
+    deepgramKey:          document.getElementById('deepgramKey')?.value || '',
+    openAiKey:            document.getElementById('openAiKey')?.value || '',
+    whisperModel:         document.getElementById('whisperModel')?.value || 'small',
+    translation:          document.getElementById('translation')?.value || 'KJV',
+    fontSize:             document.getElementById('fontSize')?.value || 'medium',
+    displayMode:          document.getElementById('displayMode')?.value || 'manual',
+    songVerticalAlign:    document.getElementById('songVerticalAlign')?.value || 'center',
+    songTextTransform:    document.getElementById('songTextTransform')?.value || 'none',
+    showSongMetadata:     document.getElementById('showSongMetadata')?.value === 'true',
+    overlayTextOnMedia:   document.getElementById('overlayTextOnMedia')?.checked ?? false,
+    overlayTextOnMediaSongs: document.getElementById('overlayTextOnMediaSongs')?.checked ?? true,
+    overlayTextOnMediaScripture: document.getElementById('overlayTextOnMediaScripture')?.checked ?? true,
+    overlayTextOnMediaLowerThird: document.getElementById('overlayTextOnMediaLowerThird')?.checked ?? false,
+    overlayTextOnMediaDim: parseInt(document.getElementById('overlayTextOnMediaDim')?.value || '35'),
+    scriptureTextTransform: document.getElementById('scriptureTextTransform')?.value || 'none',
+    scriptureRefPosition: document.getElementById('scriptureRefPosition')?.value || 'top',
+    scriptureRefLocation: document.getElementById('scriptureRefLocation')?.value || 'each',
+    showCopyright:        document.getElementById('showCopyright')?.checked ?? false,
+    ccliNumber:           document.getElementById('ccliNumber')?.value || '',
+    presTransition:       document.getElementById('presTransition')?.value || 'none',
+    presAutoAdvance:      document.getElementById('presAutoAdvance')?.checked ?? false,
+    presAutoInterval:     parseInt(document.getElementById('presAutoInterval')?.value || '5'),
+    confidenceThreshold:  parseFloat(document.getElementById('confidence')?.value || '0.75'),
+    microphoneId:         document.getElementById('microphone')?.value || 'default',
+    onlineMode:           (document.getElementById('detectionMode')?.value) === 'online',
+    httpPort:             parseInt(document.getElementById('httpPort')?.value || '8080'),
+    networkAdapter:       document.getElementById('networkAdapter')?.value || null,
+    remoteRequireAuth:    (document.getElementById('remoteRequireAuth')?.value || 'true') === 'true',
+    remotePin:            (document.getElementById('remotePin')?.value || '').replace(/\D/g,'').slice(0,8),
+    remoteAdminPin:       (document.getElementById('remotePin')?.value || '').replace(/\D/g,'').slice(0,8),
+    remoteScripturePin:   (document.getElementById('remoteScripturePin')?.value || '').replace(/\D/g,'').slice(0,8),
+    remoteSongsPin:       (document.getElementById('remoteSongsPin')?.value || '').replace(/\D/g,'').slice(0,8),
+    remoteMediaPin:       (document.getElementById('remoteMediaPin')?.value || '').replace(/\D/g,'').slice(0,8),
+    remoteMonitorPin:     (document.getElementById('remoteMonitorPin')?.value || '').replace(/\D/g,'').slice(0,8),
+    showVerseNumbers:     document.getElementById('showVerseNumbers')?.checked ?? true,
+    autoFlowScripture:    document.getElementById('autoFlowScripture')?.checked ?? true,
+  });
+  toast('✓ Settings saved');
+  setTimeout(() => closeManager(), 500);
+}
+
+function closeManager() {
+  if (window.electronAPI?.isWeb) {
+    if (window.opener) window.close();
+    else window.location.href = '/';
+  } else {
+    window.close();
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────
+async function init() {
+  if (!window.electronAPI) return;
+  const s = await window.electronAPI.getSettings();
+
+  try { installed = await window.electronAPI.getInstalledVersions() || {}; } catch(e) { installed = {}; }
+  populateTranslationDropdown();
+
+  if (s.apiKey)               document.getElementById('apiKey').value = s.apiKey;
+  if (s.deepgramKey)          document.getElementById('deepgramKey').value = s.deepgramKey;
+  if (s.openAiKey)            document.getElementById('openAiKey').value = s.openAiKey;
+  if (s.whisperModel)         document.getElementById('whisperModel').value = s.whisperModel;
+  if (s.translation)          document.getElementById('translation').value = s.translation;
+  if (s.fontSize)             document.getElementById('fontSize').value = s.fontSize;
+  if (s.displayMode)          document.getElementById('displayMode').value = s.displayMode;
+  if (s.songVerticalAlign)    document.getElementById('songVerticalAlign').value = s.songVerticalAlign;
+  if (s.songTextTransform)    document.getElementById('songTextTransform').value = s.songTextTransform;
+  document.getElementById('showSongMetadata').value = String(!!s.showSongMetadata);
+  document.getElementById('overlayTextOnMedia').checked = !!s.overlayTextOnMedia;
+  document.getElementById('overlayTextOnMediaSongs').checked = s.overlayTextOnMediaSongs !== false;
+  document.getElementById('overlayTextOnMediaScripture').checked = s.overlayTextOnMediaScripture !== false;
+  document.getElementById('overlayTextOnMediaLowerThird').checked = !!s.overlayTextOnMediaLowerThird;
+  document.getElementById('overlayTextOnMediaDim').value = String(Number.isFinite(Number(s.overlayTextOnMediaDim)) ? Number(s.overlayTextOnMediaDim) : 35);
+  if (s.scriptureTextTransform) document.getElementById('scriptureTextTransform').value = s.scriptureTextTransform;
+  if (s.scriptureRefPosition) document.getElementById('scriptureRefPosition').value = s.scriptureRefPosition;
+  if (s.scriptureRefLocation) document.getElementById('scriptureRefLocation').value = s.scriptureRefLocation;
+  document.getElementById('showCopyright').checked = !!s.showCopyright;
+  if (s.ccliNumber) document.getElementById('ccliNumber').value = s.ccliNumber;
+  if (s.presTransition) document.getElementById('presTransition').value = s.presTransition;
+  document.getElementById('presAutoAdvance').checked = !!s.presAutoAdvance;
+  if (s.presAutoInterval) document.getElementById('presAutoInterval').value = s.presAutoInterval;
+  if (s.confidenceThreshold)  document.getElementById('confidence').value = s.confidenceThreshold;
+  if (s.httpPort)             document.getElementById('httpPort').value = s.httpPort;
+  document.getElementById('remoteRequireAuth').value = String(s.remoteRequireAuth !== false);
+  if (s.remoteAdminPin || s.remotePin) document.getElementById('remotePin').value = s.remoteAdminPin || s.remotePin;
+  if (s.remoteScripturePin) document.getElementById('remoteScripturePin').value = s.remoteScripturePin;
+  if (s.remoteSongsPin) document.getElementById('remoteSongsPin').value = s.remoteSongsPin;
+  if (s.remoteMediaPin) document.getElementById('remoteMediaPin').value = s.remoteMediaPin;
+  if (s.remoteMonitorPin) document.getElementById('remoteMonitorPin').value = s.remoteMonitorPin;
+  if (s.onlineMode === false) document.getElementById('detectionMode').value = 'offline';
+  if (s.showVerseNumbers === false) document.getElementById('showVerseNumbers').checked = false;
+  if (s.autoFlowScripture === false) document.getElementById('autoFlowScripture').checked = false;
+
+  const info = await window.electronAPI.getAppInfo();
+  const vEls = document.querySelectorAll('#versionInfo');
+  vEls.forEach(el => { el.textContent = `AnchorCast v${info.version} · ${info.platform}`; });
+
+  loadRemoteStatus();
+  setInterval(loadRemoteStatus, 2500);
+
+  if (window.electronAPI?.ndiStatus) {
+    window.electronAPI.ndiStatus().then(info => {
+      if (info) updateNdiSettUI(info.status === 'running' || info.status === 'fallback');
+    }).catch(()=>{});
+  }
+
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const sel = document.getElementById('microphone');
+    devices.filter(d => d.kind === 'audioinput').forEach((m, i) => {
+      const opt = document.createElement('option');
+      opt.value = m.deviceId;
+      opt.textContent = m.label || `Microphone ${i + 1}`;
+      if (m.deviceId === s.microphoneId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
+
+  // Load network adapters
+  try {
+    const adapters = await window.electronAPI.getNetworkAdapters?.() || [];
+    const sel = document.getElementById('networkAdapter');
+    adapters.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.name; opt.textContent = `${a.name} (${a.address})`;
+      if (a.name === s.networkAdapter) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
+}
+
+let _toastT;
+function toast(msg) {
+  let t = document.getElementById('bmToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'bmToast';
+    t.style.cssText = 'position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--card,#1c1c30);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:7px 16px;font-size:12px;color:var(--text,#e8e8f0);z-index:9999;pointer-events:none;transition:opacity .3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(_toastT);
+  _toastT = setTimeout(() => t.style.opacity = '0', 2500);
+}
+
+init();
+</script>
+</body>
+</html>

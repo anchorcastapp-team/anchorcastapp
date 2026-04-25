@@ -1,0 +1,3 @@
+^C:\PROGRAM FILES\NDI\NDI 6 SDK\BIN\X64\PROCESSING.NDI.LIB.X64.DLL
+call mkdir "C:\Coding\Java\AnchorCast\ndi-addon\build\Release\" 2>nul & set ERRORLEVEL=0 & copy /Y "C:\Program Files\NDI\NDI 6 SDK\Bin\x64\Processing.NDI.Lib.x64.dll" "C:\Coding\Java\AnchorCast\ndi-addon\build\Release\Processing.NDI.Lib.x64.dll"
+if %errorlevel% neq 0 exit /b %errorlevel%

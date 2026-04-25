@@ -1,0 +1,2209 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08101d">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;">
+<title>AnchorCast — Help & Documentation</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=DM+Sans:wght@300;400;500;600&family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=DM+Sans:wght@300;400;500;600&family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet"></noscript>
+<style>
+:root{
+  --void:#08080f;--deep:#0c0c17;--panel:#10101c;--card:#16162a;
+  --border:#252540;--border-lit:#343458;
+  --gold:#c9a84c;--gold-b:#e8c870;--gold-d:#6a5220;
+  --text:#ddddf0;--sub:#8888aa;--dim:#4a4a68;
+  --green:#27ae60;--green-b:#2ecc71;
+  --live:#e74c3c;--r:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--void);color:var(--text);display:flex;flex-direction:column}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--border-lit);border-radius:4px}
+
+/* Layout */
+.shell{display:flex;flex:1;min-height:0}
+
+/* Sidebar */
+.sidebar{width:220px;background:var(--deep);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-brand{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
+.sidebar-brand-title{font-family:'Cinzel',serif;font-size:13px;font-weight:600;color:var(--gold-b);letter-spacing:1.5px}
+.sidebar-brand-sub{font-size:9px;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+.sidebar-nav{flex:1;overflow-y:auto;padding:8px 0}
+.nav-section{font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;padding:10px 16px 4px}
+.nav-item{padding:7px 16px;font-size:12px;color:var(--sub);cursor:pointer;transition:all .12s;border-left:2px solid transparent;display:flex;align-items:center;gap:8px}
+.nav-item:hover{background:var(--panel);color:var(--text)}
+.nav-item.active{background:rgba(201,168,76,.07);color:var(--gold);border-left-color:var(--gold)}
+.nav-item .nav-icon{font-size:14px;flex-shrink:0}
+
+/* Content */
+.content{flex:1;overflow-y:auto;padding:32px 40px}
+.section{display:none}
+.section.active{display:block}
+
+h1{font-family:'Cinzel',serif;font-size:22px;font-weight:600;color:var(--gold-b);letter-spacing:1px;margin-bottom:6px}
+h2{font-family:'Cinzel',serif;font-size:15px;font-weight:600;color:var(--gold);letter-spacing:.5px;margin:28px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+h3{font-size:13px;font-weight:700;color:var(--text);margin:18px 0 7px}
+p{font-size:13px;color:var(--sub);line-height:1.8;margin-bottom:10px}
+.lead{font-size:14px;color:var(--text);line-height:1.7;margin-bottom:20px}
+ul,ol{margin:8px 0 12px 20px;font-size:13px;color:var(--sub);line-height:1.9}
+li{margin-bottom:2px}
+strong{color:var(--text);font-weight:600}
+
+/* Cards */
+.card-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
+.card-icon{font-size:22px;margin-bottom:8px}
+.card-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px}
+.card-desc{font-size:11.5px;color:var(--sub);line-height:1.6}
+
+/* Keyboard shortcuts table */
+.shortcut-table{width:100%;border-collapse:collapse;margin:8px 0 18px;font-size:12.5px}
+.shortcut-table th{text-align:left;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--dim);border-bottom:1px solid var(--border)}
+.shortcut-table td{padding:8px 10px;border-bottom:1px solid rgba(37,37,64,.5);color:var(--sub);vertical-align:middle}
+.shortcut-table tr:last-child td{border-bottom:none}
+.shortcut-table td:first-child{color:var(--text);font-weight:500}
+.kbd{display:inline-block;background:var(--card);border:1px solid var(--border-lit);border-radius:4px;padding:2px 7px;font-family:'Courier New',monospace;font-size:10.5px;color:var(--gold-b);white-space:nowrap}
+
+/* Steps */
+.steps{counter-reset:step;margin:12px 0 20px}
+.step{display:flex;gap:14px;margin-bottom:16px;align-items:flex-start}
+.step-num{width:28px;height:28px;border-radius:50%;background:var(--gold-d);border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--gold-b);flex-shrink:0;margin-top:1px}
+.step-body{}
+.step-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+.step-desc{font-size:12.5px;color:var(--sub);line-height:1.7}
+
+/* Tips */
+.tip{background:rgba(201,168,76,.07);border:1px solid var(--gold-d);border-radius:7px;padding:11px 14px;margin:12px 0;display:flex;gap:10px;align-items:flex-start}
+.tip-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.tip-text{font-size:12.5px;color:var(--sub);line-height:1.7}
+.tip-text strong{color:var(--gold)}
+
+.warn{background:rgba(231,76,60,.07);border:1px solid rgba(192,57,43,.3);border-radius:7px;padding:11px 14px;margin:12px 0;display:flex;gap:10px}
+.warn-icon{font-size:15px;flex-shrink:0}
+.warn-text{font-size:12.5px;color:var(--sub);line-height:1.7}
+
+/* Version badge */
+.version-badge{display:inline-block;background:var(--gold-d);color:var(--gold-b);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.5px;margin-left:10px;vertical-align:middle}
+
+/* Interactive help */
+.help-topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.help-search{flex:1;min-width:260px;background:var(--deep);border:1px solid var(--border-lit);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none}
+.help-search:focus{border-color:var(--gold)}
+.help-chipbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.help-chip{padding:6px 10px;border-radius:999px;border:1px solid var(--border-lit);background:var(--card);color:var(--sub);font-size:11px;cursor:pointer}
+.help-chip.active,.help-chip:hover{border-color:var(--gold);color:var(--gold)}
+.quick-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 18px}
+.quick-btn{background:linear-gradient(180deg,rgba(201,168,76,.08),rgba(201,168,76,.03));border:1px solid var(--border-lit);border-radius:9px;padding:12px 14px;cursor:pointer}
+.quick-btn:hover{border-color:var(--gold)}
+.quick-btn-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px}
+.quick-btn-desc{font-size:11px;color:var(--sub);line-height:1.55}
+.section.hidden-by-search{display:none !important}
+mark.help-mark{background:rgba(201,168,76,.18);color:var(--gold-b);padding:0 2px;border-radius:3px}
+.acc{border:1px solid var(--border);border-radius:8px;background:var(--card);margin:10px 0;overflow:hidden}
+.acc-btn{width:100%;text-align:left;background:transparent;border:none;color:var(--text);padding:12px 14px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
+.acc-btn:hover{background:rgba(255,255,255,.02)}
+.acc-panel{display:none;padding:0 14px 14px}
+.acc.open .acc-panel{display:block}
+.acc-caret{color:var(--gold)}
+.help-empty{display:none;border:1px dashed var(--border-lit);border-radius:8px;padding:18px;color:var(--sub);font-size:12px;background:rgba(255,255,255,.02)}
+.tip-box{background:rgba(201,168,76,.07);border:1px solid var(--gold-d);border-radius:7px;padding:11px 14px;margin:12px 0;display:flex;gap:10px;align-items:flex-start}
+.tip-box .tip-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.tip-box .tip-text{font-size:12.5px;color:var(--sub);line-height:1.7}
+.tip-box .tip-text strong{color:var(--gold)}
+.jump-links{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
+.jump-links a{font-size:11px;color:var(--gold);text-decoration:none;border:1px solid var(--gold-d);padding:4px 8px;border-radius:999px;background:rgba(201,168,76,.06)}
+.jump-links a:hover{background:rgba(201,168,76,.12)}
+
+@media (max-width: 980px){
+  .quick-actions{grid-template-columns:1fr}
+  .card-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body style="background:#08101d">
+
+<div class="shell">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-title">✝ AnchorCast</div>
+      <div class="sidebar-brand-sub">Help & Documentation</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">Getting Started</div>
+      <div class="nav-item active" data-section="overview"><span class="nav-icon">🏠</span> Overview</div>
+      <div class="nav-item" data-section="quickstart"><span class="nav-icon">🚀</span> Quick Start</div>
+      <div class="nav-item" data-section="bible-setup"><span class="nav-icon">📖</span> Bible Setup</div>
+
+      <div class="nav-section">Features</div>
+      <div class="nav-item" data-section="transcript"><span class="nav-icon">🎙</span> Live Transcript</div>
+      <div class="nav-item" data-section="ai-detection"><span class="nav-icon">🤖</span> AI Verse Detection</div>
+      <div class="nav-item" data-section="bible-search"><span class="nav-icon">🔍</span> Bible Search</div>
+      <div class="nav-item" data-section="display"><span class="nav-icon">📺</span> Display & Projection</div>
+      <div class="nav-item" data-section="overlay"><span class="nav-icon">🖼</span> Text Overlay on Media</div>
+      <div class="nav-item" data-section="queue"><span class="nav-icon">📋</span> Queue & Schedule</div>
+      <div class="nav-item" data-section="songs"><span class="nav-icon">🎵</span> Song Manager</div>
+      <div class="nav-item" data-section="presentations"><span class="nav-icon">🖼</span> Presentation Editor</div>
+      <div class="nav-item" data-section="themes"><span class="nav-icon">🎨</span> Themes</div>
+      <div class="nav-item" data-section="background"><span class="nav-icon">🌄</span> Background</div>
+      <div class="nav-item" data-section="logo-overlay"><span class="nav-icon">🏷</span> Logo Overlay</div>
+      <div class="nav-item" data-section="presets"><span class="nav-icon">☆</span> Presets</div>
+      <div class="nav-item" data-section="sermon-notes"><span class="nav-icon">📝</span> Sermon Notes</div>
+      <div class="nav-item" data-section="sermon-history"><span class="nav-icon">📜</span> Sermon History</div>
+      <div class="nav-item" data-section="countdown-timer"><span class="nav-icon">⏱</span> Countdown Timer</div>
+      <div class="nav-item" data-section="alerts-panel"><span class="nav-icon">🔔</span> Alerts</div>
+      <div class="nav-item" data-section="remote"><span class="nav-icon">📱</span> Remote Control</div>
+      <div class="nav-item" data-section="ndi"><span class="nav-icon">📡</span> NDI & External Output</div>
+
+      <div class="nav-section">Intelligence</div>
+      <div class="nav-item" data-section="adaptive"><span class="nav-icon">🧠</span> Adaptive Memory</div>
+      <div class="nav-item" data-section="detection-review"><span class="nav-icon">✅</span> Detection Review</div>
+      <div class="nav-item" data-section="sermon-intel"><span class="nav-icon">📊</span> Sermon Intelligence</div>
+      <div class="nav-item" data-section="smart-suggestions"><span class="nav-icon">💡</span> Smart Suggestions</div>
+
+      <div class="nav-section">Service Tools</div>
+      <div class="nav-item" data-section="command-center"><span class="nav-icon">🎛</span> Command Center</div>
+      <div class="nav-item" data-section="post-service"><span class="nav-icon">📝</span> Post-Service Report</div>
+      <div class="nav-item" data-section="replay"><span class="nav-icon">⏱</span> Service Replay</div>
+      <div class="nav-item" data-section="archive"><span class="nav-icon">📚</span> Service Archive</div>
+      <div class="nav-item" data-section="auto-builder"><span class="nav-icon">🗓</span> Auto Service Builder</div>
+      <div class="nav-item" data-section="analytics"><span class="nav-icon">📈</span> Analytics Dashboard</div>
+      <div class="nav-item" data-section="clips"><span class="nav-icon">🎬</span> Clip Generator</div>
+
+      <div class="nav-section">Reference</div>
+      <div class="nav-item" data-section="shortcuts"><span class="nav-icon">⌨</span> Keyboard Shortcuts</div>
+      <div class="nav-item" data-section="settings"><span class="nav-icon">⚙</span> Settings</div>
+      <div class="nav-item" data-section="troubleshoot"><span class="nav-icon">🔧</span> Troubleshooting</div>
+    </nav>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+    <div class="help-topbar">
+      <input id="helpSearch" class="help-search" placeholder="Search help, shortcuts, setup steps, import, themes, live display…">
+      <button class="help-chip" id="clearHelpSearchBtn" type="button">Clear Search</button>
+    </div>
+    <div class="help-chipbar" id="helpChipbar">
+      <button class="help-chip active" data-filter="all" type="button">All</button>
+      <button class="help-chip" data-filter="setup" type="button">Setup</button>
+      <button class="help-chip" data-filter="bible" type="button">Bible</button>
+      <button class="help-chip" data-filter="songs" type="button">Songs</button>
+      <button class="help-chip" data-filter="themes" type="button">Themes</button>
+      <button class="help-chip" data-filter="remote" type="button">Remote</button>
+      <button class="help-chip" data-filter="output" type="button">Output</button>
+      <button class="help-chip" data-filter="intelligence" type="button">Intelligence</button>
+      <button class="help-chip" data-filter="service" type="button">Service Tools</button>
+      <button class="help-chip" data-filter="troubleshoot" type="button">Troubleshooting</button>
+    </div>
+    <div class="quick-actions">
+      <button class="quick-btn" type="button" onclick="showSection('quickstart')">
+        <div class="quick-btn-title">Get started in 2 minutes</div>
+        <div class="quick-btn-desc">Open the fastest setup path for Bible, live display, and transcription.</div>
+      </button>
+      <button class="quick-btn" type="button" onclick="showSection('shortcuts')">
+        <div class="quick-btn-title">View keyboard shortcuts</div>
+        <div class="quick-btn-desc">Jump straight to the control keys used during service.</div>
+      </button>
+      <button class="quick-btn" type="button" onclick="showSection('troubleshoot')">
+        <div class="quick-btn-title">Fix a problem fast</div>
+        <div class="quick-btn-desc">Open the troubleshooting guide for common setup and live-display issues.</div>
+      </button>
+    </div>
+    <div class="help-empty" id="helpEmpty">No help sections matched your search. Try a simpler word like <strong>bible</strong>, <strong>songs</strong>, <strong>theme</strong>, or <strong>backup</strong>.</div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- OVERVIEW -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section active" id="sec-overview" data-topics="setup bible songs themes display remote output intelligence service">
+      <h1>AnchorCast <span class="version-badge">v1.1.0</span></h1>
+      <div class="jump-links"><a href="#" onclick="showSection('quickstart');return false">Quick Start</a><a href="#" onclick="showSection('songs');return false">Songs</a><a href="#" onclick="showSection('presentations');return false">Presentations</a><a href="#" onclick="showSection('sermon-notes');return false">Sermon Notes</a><a href="#" onclick="showSection('countdown-timer');return false">Timer</a><a href="#" onclick="showSection('alerts-panel');return false">Alerts</a><a href="#" onclick="showSection('ndi');return false">NDI Output</a><a href="#" onclick="showSection('adaptive');return false">Adaptive AI</a><a href="#" onclick="showSection('archive');return false">Service Archive</a><a href="#" onclick="showSection('settings');return false">Settings</a><a href="#" onclick="showSection('troubleshoot');return false">Troubleshooting</a></div>
+      <p class="lead">AI-powered worship presentation, live sermon transcription, and Bible verse display for churches. AnchorCast listens to your preacher in real time, automatically detects Bible verses being referenced, and displays them on a projection screen for the congregation.</p>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-icon">🎙</div>
+          <div class="card-title">Live Transcription</div>
+          <div class="card-desc">Real-time speech-to-text from your microphone or audio interface. Works online (cloud) and offline (local Whisper).</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🤖</div>
+          <div class="card-title">AI Verse Detection</div>
+          <div class="card-desc">Claude AI identifies Bible references as the preacher speaks — including paraphrases, partial quotes, and indirect references. Falls back to keyword matching offline.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📺</div>
+          <div class="card-title">Live Projection</div>
+          <div class="card-desc">Push verses, songs, media, and presentations to a second screen or projector instantly.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🎵</div>
+          <div class="card-title">Song Manager</div>
+          <div class="card-desc">Full song library with lyrics editor, auto-slide formatting, Genius lyrics search, and import/export.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📡</div>
+          <div class="card-title">NDI & External Output</div>
+          <div class="card-desc">Broadcast to OBS, vMix, or Wirecast via NDI. MJPEG stream fallback when NDI is not available.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📱</div>
+          <div class="card-title">Phone Remote</div>
+          <div class="card-desc">Control the entire service from any phone or tablet on the same WiFi network — no app needed.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🎨</div>
+          <div class="card-title">Theme Designer</div>
+          <div class="card-desc">Custom visual themes with backgrounds, fonts, colours, and image/video backgrounds. Separate themes for Scripture, Songs, and Presentations.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🧠</div>
+          <div class="card-title">Adaptive Intelligence</div>
+          <div class="card-desc">Learns speaker vocabulary, accents, and correction patterns over time. Improves transcription and detection with every service.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📖</div>
+          <div class="card-title">Full Bible Database</div>
+          <div class="card-desc">KJV bundled. Supports NKJV, NIV, NLT, ESV, NASB, ASV, and any custom translation you upload.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🖼</div>
+          <div class="card-title">Presentation Editor</div>
+          <div class="card-desc">Canvas-based slide designer for announcements, worship slides, and custom content with text, images, and shapes.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📚</div>
+          <div class="card-title">Service Archive</div>
+          <div class="card-desc">Save, search, and browse past services. Replay timelines, view transcripts, and analyse sermon history.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📈</div>
+          <div class="card-title">Analytics Dashboard</div>
+          <div class="card-desc">Historical stats across services: most-used books, quoted verses, speaker patterns, and keyword trends.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📝</div>
+          <div class="card-title">Sermon Notes</div>
+          <div class="card-desc">AI-generated sermon notes from live transcripts. Export, import, and create slide presentations from notes with one click.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">⏱</div>
+          <div class="card-title">Countdown Timer</div>
+          <div class="card-desc">Display countdown or count-up timers on the projection screen. Configurable position, label, and automatic warning indicator.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔔</div>
+          <div class="card-title">Alerts</div>
+          <div class="card-desc">Send nursery notifications and scrolling message alerts to the projection screen. Accessible from the control bar, menu, or phone remote.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📋</div>
+          <div class="card-title">Queue & Schedule</div>
+          <div class="card-desc">Build a full service order in advance with verses, songs, media, and presentations. Save and reload schedules for recurring services.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- QUICK START -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-quickstart" data-topics="setup bible display transcript">
+      <h1>Quick Start</h1>
+      <p class="lead">Get AnchorCast running in under 5 minutes.</p>
+
+      <h2>First-Time Setup</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Upload the Bible database</div>
+            <div class="step-desc">Go to <strong>Settings → Bible Versions</strong>. Download <code>kjv.json</code> from the link shown, then click <strong>Upload</strong> next to KJV. This loads all 31,102 verses. You can also run <code>data/download-bible.bat</code> (Windows) or <code>./data/download-bible.sh</code> (Mac/Linux).</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Add your Claude API key (for AI detection)</div>
+            <div class="step-desc">Go to <strong>Settings → Audio & AI → General</strong> and paste your Claude API key. Get one free at <strong>console.anthropic.com</strong>. Without a key, AnchorCast uses keyword matching instead of AI.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Open the projection window</div>
+            <div class="step-desc">Click <strong>Projection</strong> in the top bar, or press <span class="kbd">Ctrl+P</span>. Drag the projection window to your second screen or projector and make it fullscreen.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Start the transcript</div>
+            <div class="step-desc">Click <strong>Start Transcript</strong> at the bottom of the Live Transcript panel. Allow microphone access when prompted. The app will begin transcribing and detecting verses automatically.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <div class="step-title">Go Live and present verses</div>
+            <div class="step-desc">Click <strong>Go Live</strong> in the top-right corner. When a verse appears in AI Detections, click <strong>Present</strong>. It instantly appears on the projection screen.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Manual mode tip:</strong> In Manual mode, clicking a verse in Bible Search shows it in Program Preview first. Double-click (or press Enter) to push it live. This lets you verify the verse before the congregation sees it.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- BIBLE SETUP -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-bible-setup" data-topics="setup bible">
+      <h1>Bible Setup</h1>
+      <p class="lead">AnchorCast comes with 223 built-in key verses but requires a full Bible JSON file for complete access to all 31,102 verses.</p>
+
+      <h2>Installing a Translation</h2>
+      <ol>
+        <li>Open <strong>Settings → Bible Versions</strong></li>
+        <li>Click <strong>Upload</strong> next to any translation (e.g. KJV)</li>
+        <li>Select the JSON file from your computer</li>
+        <li>Restart AnchorCast — the translation loads automatically</li>
+      </ol>
+
+      <h2>Downloading Free Bible Data</h2>
+      <p>Run the one-click script in the <code>anchorcast/data/</code> folder:</p>
+      <ul>
+        <li><strong>Windows:</strong> Double-click <code>download-bible.bat</code></li>
+        <li><strong>Mac/Linux:</strong> Run <code>./download-bible.sh</code> in Terminal</li>
+      </ul>
+      <p>Or download manually from <strong>github.com/scrollmapper/bible_databases</strong></p>
+
+      <h2>Supported Translations</h2>
+      <p>AnchorCast accepts <strong>any translation</strong> — not just the ones listed. To upload a custom translation:</p>
+      <ol>
+        <li>Name your file after the translation abbreviation: <code>asv.json</code>, <code>gnt.json</code>, etc.</li>
+        <li>Or just drag any <code>.json</code> file onto the upload zone — AnchorCast will ask you to type the abbreviation</li>
+      </ol>
+
+      <h2>JSON Format</h2>
+      <p>Bible JSON files must be an array of verse objects:</p>
+      <pre style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:'Courier New',monospace;font-size:11px;color:#7ec8a0;overflow-x:auto;margin:8px 0">[
+  {"b": 1, "c": 1, "v": 1, "t": "In the beginning God created..."},
+  {"b": 1, "c": 1, "v": 2, "t": "And the earth was without form..."}
+]</pre>
+      <p>Where: <strong>b</strong> = book (1–66) · <strong>c</strong> = chapter · <strong>v</strong> = verse · <strong>t</strong> = text</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- LIVE TRANSCRIPT -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-transcript" data-topics="setup transcript intelligence">
+      <h1>Live Transcript</h1>
+      <p class="lead">The Live Transcript panel shows real-time speech-to-text from your microphone. As the preacher speaks, AnchorCast transcribes every word and passes it to the AI for verse detection.</p>
+
+      <h2>Starting Transcription</h2>
+      <p>Click <strong>Start Transcript</strong>. If a microphone is not found, AnchorCast enters <strong>Demo Mode</strong> — it plays a pre-recorded sample sermon so you can see how the app works.</p>
+
+      <h2>Audio Sources</h2>
+      <p>Toggle between three source modes in the transcript panel header:</p>
+      <ul>
+        <li><strong>LIVE</strong> — Browser microphone (Web Speech API)</li>
+        <li><strong>LOCAL</strong> — Local Whisper AI transcription (desktop only, requires Python)</li>
+        <li><strong>CLOUD</strong> — Cloud-based transcription service</li>
+      </ul>
+
+      <h2>Audio Setup Tips</h2>
+      <ul>
+        <li>For best results, connect a <strong>USB audio interface</strong> to the mixing board's aux/monitor output</li>
+        <li>Select your audio device in <strong>Settings → Audio & AI → General</strong></li>
+        <li>The mic level bars in the panel header animate when audio is being received</li>
+      </ul>
+
+      <h2>Online vs Offline Mode</h2>
+      <p>Toggle <strong>Online / Offline</strong> in the titlebar:</p>
+      <ul>
+        <li><strong>Online:</strong> Uses Claude AI for best verse detection accuracy (requires API key + internet)</li>
+        <li><strong>Offline:</strong> Uses fast local keyword matching — no internet needed, works anywhere</li>
+      </ul>
+
+      <h2>Saving Transcripts</h2>
+      <p>When you stop transcription, the session is automatically saved to <strong>History</strong>. You can browse, export, and search past sermons there.</p>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Export:</strong> Click the export button in the transcript footer to save the current transcript as a text file.</div>
+      </div>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Sermon Notes:</strong> Once transcription is running, use <a href="#" onclick="showSection('sermon-notes');return false" style="color:var(--gold)">Sermon Notes</a> (<span class="kbd">Ctrl+Shift+N</span>) to generate AI-powered structured notes from the live transcript.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- AI DETECTION -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-ai-detection" data-topics="transcript intelligence troubleshoot">
+      <h1>AI Verse Detection</h1>
+      <p class="lead">As the preacher speaks, AnchorCast's AI engine identifies Bible verses being referenced — including paraphrases, partial quotes, and indirect references.</p>
+
+      <h2>How It Works</h2>
+      <ol>
+        <li>Speech is transcribed in real time</li>
+        <li>The transcript is sent to Claude AI (or local keyword matching in offline mode)</li>
+        <li>Detected verses appear in the <strong>AI Detections</strong> panel with a confidence score</li>
+        <li>Click <strong>Present</strong> to show the verse, or <strong>+ Queue</strong> to stage it for later</li>
+      </ol>
+
+      <h2>Detection Methods</h2>
+      <h3>Online mode (API key + internet)</h3>
+      <ul>
+        <li><strong>Direct regex</strong> — Exact citations like "John 3:16" (always active)</li>
+        <li><strong>Learned phrases</strong> — User-curated phrase-to-verse mappings (always active)</li>
+        <li><strong>Claude AI</strong> — Understands paraphrases, quotes, and contextual references</li>
+      </ul>
+      <h3>Offline mode (no API key or no internet)</h3>
+      <ul>
+        <li><strong>Direct regex</strong> + <strong>Learned phrases</strong> (same as online)</li>
+        <li><strong>Verbal cues</strong> — Recognises spoken patterns like "turn to", "the bible says in", "as David said"</li>
+        <li><strong>Keyword signatures</strong> — ~80 regex patterns for famous verse phrases</li>
+        <li><strong>Content search</strong> — Fuzzy n-gram matching against the Bible database</li>
+      </ul>
+
+      <h2>Confidence Scores</h2>
+      <ul>
+        <li><strong style="color:#2ecc71">85%+</strong> — High confidence (green dot) — direct quote or very clear reference</li>
+        <li><strong style="color:#f39c12">65–84%</strong> — Medium confidence (yellow dot) — likely reference</li>
+        <li><strong style="color:#e74c3c">Below 65%</strong> — Low confidence (red dot) — possible reference</li>
+      </ul>
+
+      <h2>Present from Detections</h2>
+      <p>When you click <strong>Present</strong> on a detected verse:</p>
+      <ul>
+        <li>The verse is shown in <strong>Program Preview</strong></li>
+        <li>If <strong>Go Live</strong> is ON, it also appears on the projection screen immediately</li>
+        <li>The <strong>Bible Search</strong> panel automatically navigates to that book and chapter so you can see the surrounding context</li>
+      </ul>
+
+      <h2>Auto Mode</h2>
+      <p>Switch to <strong>Auto mode</strong> (click the <strong>Manual</strong> badge) to automatically present high-confidence verses (85%+) without any clicks.</p>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Confidence threshold:</strong> Adjust in <strong>Settings → Audio & AI → General → Confidence Threshold</strong>. Higher = fewer results but more accurate. Lower = more results but some may be wrong.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- BIBLE SEARCH -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-bible-search" data-topics="bible">
+      <h1>Bible Search</h1>
+      <p class="lead">The Bible Search panel lets you manually find and present any verse from any installed translation.</p>
+
+      <h2>Book Search</h2>
+      <p>Type in the search box:</p>
+      <ul>
+        <li><strong>Book name only</strong> — e.g. <code>John</code> → shows John chapter 1</li>
+        <li><strong>Book + chapter</strong> — e.g. <code>John 3</code> → shows all verses in John 3</li>
+        <li><strong>Full reference</strong> — e.g. <code>John 3:16</code> → shows the chapter with verse 16 highlighted</li>
+        <li><strong>Abbreviations</strong> — e.g. <code>Rom 8</code>, <code>Ps 23</code>, <code>Isa 40:31</code></li>
+      </ul>
+
+      <h2>Context Search</h2>
+      <p>Click the <strong>Context Search</strong> tab and type a topic or phrase (e.g. "strength", "God's love", "salvation"). If an API key is set, Claude finds the most relevant verses. Otherwise, local keyword matching is used.</p>
+
+      <h2>Presenting Verses</h2>
+      <ul>
+        <li><strong>Single click</strong> a verse row → shows it in Program Preview</li>
+        <li><strong>Double click</strong> → sends directly to Live Display</li>
+        <li><strong>Present button</strong> → Preview only</li>
+        <li><strong>+ button</strong> → Adds to Queue</li>
+      </ul>
+
+      <h2>Keyboard Navigation</h2>
+      <ul>
+        <li><span class="kbd">↓</span> or <span class="kbd">→</span> — Next verse in search results</li>
+        <li><span class="kbd">↑</span> or <span class="kbd">←</span> — Previous verse</li>
+        <li><span class="kbd">Enter</span> — Push current preview verse to Live</li>
+        <li><span class="kbd">Tab</span> — Toggle between Book Search / Context Search</li>
+      </ul>
+
+      <h2>Chapter Navigation</h2>
+      <p>Use the <strong>‹ ›</strong> buttons to move to the previous or next chapter. The chapter/book cycles through the entire Bible.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- DISPLAY & PROJECTION -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-display" data-topics="display themes output">
+      <h1>Display & Projection</h1>
+      <p class="lead">AnchorCast drives two display areas: Program Preview (what you see) and Live Display (what the congregation sees).</p>
+
+      <h2>Program Preview</h2>
+      <p>Shows what verse, song, or media is staged and ready. The congregation does NOT see this. Use it to check content before pushing it live. Switch between <strong>List</strong> view and <strong>Slides</strong> view using the toggle.</p>
+
+      <h2>Live Display</h2>
+      <p>The content currently showing to the congregation. When <strong>Go Live</strong> is ON:</p>
+      <ul>
+        <li>Clicking any verse in Bible Search immediately pushes it to Live Display</li>
+        <li>The projection screen updates instantly</li>
+      </ul>
+
+      <h2>Go Live Toggle</h2>
+      <ul>
+        <li><strong>OFF (Go Live)</strong> — You can stage content in Preview without affecting the projection screen</li>
+        <li><strong>ON (On Air)</strong> — Every selection goes straight to the projection screen. A red <strong>ON AIR</strong> tag appears on the Live Display.</li>
+        <li>Pressing <strong>Go Live → OFF</strong> blanks the projection screen immediately</li>
+      </ul>
+
+      <h2>Projection Window</h2>
+      <p>Click <strong>Projection</strong> or press <span class="kbd">Ctrl+P</span> to open the projection window. Drag it to your second screen and press <span class="kbd">F11</span> (Windows/Linux) to make it fullscreen.</p>
+
+      <h2>Content Types</h2>
+      <p>The projection screen can display:</p>
+      <ul>
+        <li><strong>Scripture</strong> — Bible verses with translation reference</li>
+        <li><strong>Songs</strong> — Lyrics slides with slide-by-slide navigation</li>
+        <li><strong>Media</strong> — Images and video backgrounds</li>
+        <li><strong>Presentations</strong> — Custom slides from the Presentation Editor</li>
+      </ul>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Translation change:</strong> Changing the translation dropdown while ON AIR immediately re-renders the current verse in the new translation on the projection screen.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TEXT OVERLAY ON MEDIA -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-overlay" data-topics="songs bible output themes">
+      <h1>Overlaying Songs & Scripture on Media</h1>
+      <p class="lead">AnchorCast can overlay song lyrics or Bible verses on top of a background video or image — perfect for worship backgrounds with lyrics, or displaying scripture over scenic footage.</p>
+
+      <h2>How It Works</h2>
+      <p>When a background media (video or image) is playing on the projection screen, you can layer song lyrics or scripture text on top of it. The background dims slightly so the text remains readable, and the congregation sees both the visual media and the text together.</p>
+
+      <h2>Setting Up a Media Overlay</h2>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Add a background video or image</div><div class="step-desc">Go to the <strong>Media</strong> tab in the bottom panel. Click a video or image to load it into Program Preview, then present it live. This becomes your background.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Enable text overlay</div><div class="step-desc">Click the <strong>🖼+T</strong> button in the Program Preview toolbar. When active, it shows <strong>🖼+T On</strong>. This is the master toggle for all text overlays on media.</div></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Choose what to overlay</div><div class="step-desc">Use the individual toggle buttons next to the master toggle:<br>
+          &bull; <strong>🎵+</strong> — Enable <strong>song lyrics</strong> overlay on media<br>
+          &bull; <strong>✝+</strong> — Enable <strong>scripture</strong> overlay on media<br>
+          You can enable one or both at the same time.</div></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">Present your song or verse</div><div class="step-desc">Now select a song from the <strong>Songs</strong> tab or a Bible verse from <strong>Bible</strong> search and present it. The text appears overlaid on the media background instead of a plain background.</div></div></div>
+      </div>
+
+      <h2>Toolbar Quick-Toggle Buttons</h2>
+      <p>The Program Preview toolbar provides four overlay buttons for quick access during a live service:</p>
+      <ul>
+        <li><strong>🖼+T (Master toggle)</strong> — Turns text-on-media overlay on or off. When off, songs and verses display on their own themed background as usual.</li>
+        <li><strong>🎵+ (Song toggle)</strong> — Controls whether song lyrics appear over the background media. Must be enabled along with the master toggle.</li>
+        <li><strong>✝+ (Scripture toggle)</strong> — Controls whether Bible verses appear over the background media. Must be enabled along with the master toggle.</li>
+        <li><strong>▁T (Lower-third mode)</strong> — When enabled, text appears as a lower-third bar at the bottom of the screen instead of centered. Great for keeping the background media visible while showing smaller text at the bottom.</li>
+      </ul>
+
+      <h2>Settings Panel (Settings → Main Output)</h2>
+      <p>For persistent configuration, open <strong>Settings → Main Output</strong> and scroll to the <strong>Overlay on Media</strong> section. This is where you configure overlay behaviour that persists across sessions:</p>
+      <ul>
+        <li><strong>Overlay songs / scripture on projected media</strong> — Master switch. When enabled, text is kept on the current video or image in the background when sending scripture or songs live.</li>
+        <li><strong>Allow song overlay</strong> — Songs can remain over active image or video backgrounds.</li>
+        <li><strong>Allow scripture overlay</strong> — Scripture can remain over active image or video backgrounds.</li>
+        <li><strong>Use lower-third mode</strong> — Place overlay text lower on the screen instead of centered.</li>
+      </ul>
+
+      <h2>Background Dim Behind Overlaid Text</h2>
+      <p>Below the overlay checkboxes in <strong>Settings → Main Output</strong>, a <strong>Background Dim</strong> slider controls the darkness added over the active background for readability. The default is 35%. Drag it higher to darken the background more for better text contrast, or lower to keep the background brighter. This setting is saved automatically.</p>
+
+      <h2>Example: Worship Song Over a Video</h2>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Present a worship background video</div><div class="step-desc">From the <strong>Media</strong> tab, click a looping worship video (e.g. clouds, water, abstract visuals) and present it live.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Turn on overlay</div><div class="step-desc">Click <strong>🖼+T</strong> to enable overlay, then click <strong>🎵+</strong> to enable song overlays.</div></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Present a song</div><div class="step-desc">Switch to the <strong>Songs</strong> tab, select your worship song, and present it. The lyrics appear on top of the video background.</div></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">Navigate slides</div><div class="step-desc">Use <span class="kbd">→</span> / <span class="kbd">←</span> arrow keys to move through song slides. Each slide overlays on the same background video.</div></div></div>
+      </div>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Mix and match:</strong> You can overlay scripture on media during the sermon (enable ✝+), then switch to song overlays (enable 🎵+) during worship — all on the same background video. The toggles are independent so you can switch without interrupting the media.</div>
+      </div>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Lower-third for sermons:</strong> During scripture reading, enable <strong>▁T lower-third</strong> mode so the verse appears in a bar at the bottom of the screen, keeping the main visual area unobstructed. This works well when showing a speaker camera feed or scenic background.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- QUEUE & SCHEDULE -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-queue" data-topics="songs bible display service">
+      <h1>Queue & Schedule</h1>
+      <p class="lead">The Schedule panel (middle column) lets you build a service order and stage multiple items in advance — verses, songs, media, and presentations.</p>
+
+      <h2>Adding to the Schedule</h2>
+      <p>There are several ways to add items to the schedule:</p>
+      <ul>
+        <li>Click the <strong>+</strong> button on any verse in Bible Search or AI Detections</li>
+        <li>Click <strong>+📋</strong> on any song in the Songs tab to add it to the schedule</li>
+        <li>Click <strong>+</strong> on any media item in the Media tab</li>
+        <li>Click <strong>+ Schedule</strong> on any presentation in the Presentations tab</li>
+      </ul>
+
+      <h2>Drag & Drop</h2>
+      <p>You can drag content directly from the content panels into the schedule:</p>
+      <ul>
+        <li><strong>Bible verses</strong> — Drag any verse row from the Bible Search results and drop it onto the schedule</li>
+        <li><strong>Songs</strong> — Drag a song from the Songs tab into the schedule</li>
+        <li><strong>Media</strong> — Drag images, videos, or audio from the Media tab into the schedule</li>
+      </ul>
+      <p>When you drop an item onto an existing schedule item or section header, the new item is inserted directly below the drop target. If you drop onto the empty area at the bottom of the schedule, the item is appended to the end.</p>
+      <p>A gold highlight indicator shows where the item will be placed as you drag over the schedule.</p>
+
+      <h2>Reordering Items</h2>
+      <p>Items already in the schedule can be rearranged by dragging:</p>
+      <ul>
+        <li>Grab the dotted drag handle on the left edge of any schedule item</li>
+        <li>Drag it up or down to a new position</li>
+        <li>Release to drop it in place — the currently active item index is tracked automatically</li>
+      </ul>
+
+      <h2>Section Headers</h2>
+      <p>Organise your service order with section dividers:</p>
+      <ul>
+        <li>Click the <strong>§</strong> button in the Schedule panel header to add a section divider</li>
+        <li>Type a label (e.g. "Worship", "Sermon", "Announcements") directly into the section header</li>
+        <li>Section headers are visual dividers — they are skipped when navigating with arrow keys</li>
+        <li>You can drag and drop content onto a section header to insert it below that section</li>
+      </ul>
+
+      <h2>Deleting Items</h2>
+      <ul>
+        <li>Click the <strong>✕</strong> button on any schedule item to remove it</li>
+        <li>Songs and media can also be deleted from their library tabs using the <strong>🗑</strong> button — a confirmation dialog will appear before deletion</li>
+      </ul>
+
+      <h2>Schedule Item Types</h2>
+      <p>The schedule supports a mix of content types:</p>
+      <ul>
+        <li><strong>Scripture</strong> — Bible verses with translation and reference</li>
+        <li><strong>Songs</strong> — Full songs with slide-by-slide navigation</li>
+        <li><strong>Media</strong> — Images and videos for worship backgrounds or announcements</li>
+        <li><strong>Presentations</strong> — Custom slide decks from the Presentation Editor</li>
+      </ul>
+
+      <h2>Auto-Play</h2>
+      <p>The <strong>Auto</strong> button in the Schedule panel header lets you auto-play through all schedule items hands-free:</p>
+      <ul>
+        <li>Click <strong>▶ Auto</strong> to start — the button turns red and shows <strong>⏹ Stop</strong></li>
+        <li>Each item type has a different hold time:
+          <ul>
+            <li><strong>Images</strong> — 5 seconds</li>
+            <li><strong>Bible verses</strong> — 8 seconds</li>
+            <li><strong>Songs</strong> — 10 seconds per slide</li>
+            <li><strong>Videos / Audio</strong> — Waits for the media to finish playing</li>
+          </ul>
+        </li>
+        <li>Click <strong>⏹ Stop</strong> at any time to halt auto-play</li>
+        <li>A toast notification appears when auto-play finishes the last item</li>
+      </ul>
+
+      <h2>Presenting from Schedule</h2>
+      <ul>
+        <li>Click any schedule item to present it in Program Preview</li>
+        <li>Press <span class="kbd">→</span> / <span class="kbd">↓</span> to go to the next item</li>
+        <li>Press <span class="kbd">←</span> / <span class="kbd">↑</span> to go to the previous item</li>
+        <li>Press <span class="kbd">Enter</span> to push the current preview to Live</li>
+      </ul>
+
+      <h2>Saving & Loading Schedules</h2>
+      <p>Schedules can be saved for reuse — ideal for recurring services or pre-planned worship sets:</p>
+      <ul>
+        <li><strong>Save</strong> — <span class="kbd">Ctrl+S</span> or <strong>File → Save Schedule</strong></li>
+        <li><strong>Save As</strong> — <span class="kbd">Ctrl+Shift+S</span> or <strong>File → Save Schedule As</strong></li>
+        <li><strong>Open</strong> — <span class="kbd">Ctrl+O</span> or <strong>File → Open Schedule</strong></li>
+        <li><strong>New</strong> — <span class="kbd">Ctrl+N</span> or <strong>File → New Schedule</strong> to start a fresh service order</li>
+      </ul>
+      <p>Schedule files are saved as <code>.json</code> files and can be shared between AnchorCast installations.</p>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Keyboard flow:</strong> Arrow keys first navigate within Bible Search results. If no search results are active, they navigate the Schedule instead — allowing completely hands-free operation.</div>
+      </div>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Auto Service Builder:</strong> Use <a href="#" onclick="showSection('auto-builder');return false" style="color:var(--gold)">Auto Service Builder</a> to automatically generate a schedule based on your church's service history and patterns.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SONG MANAGER -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-songs" data-topics="songs display">
+      <h1>Song Manager</h1>
+      <p class="lead">Manage your church's full song library — create, edit, import, and search songs with automatic slide formatting.</p>
+
+      <h2>Opening the Song Manager</h2>
+      <p>Open from <strong>Tools → Song Manager</strong> (<span class="kbd">Ctrl+M</span>) or click the Songs button in the titlebar.</p>
+
+      <h2>Creating a Song</h2>
+      <ol>
+        <li>Click <strong>+ New Song</strong></li>
+        <li>Enter the song title, artist, and key</li>
+        <li>Type or paste lyrics in the editor</li>
+        <li>Use blank lines between sections to create separate slides (2 lines = 1 slide)</li>
+        <li>Click <strong>Save</strong></li>
+      </ol>
+
+      <h2>Slide Formatting</h2>
+      <p>AnchorCast automatically splits lyrics into slides. Each pair of lines becomes one slide. To control slide breaks:</p>
+      <ul>
+        <li>Leave a blank line between sections (Verse 1, Chorus, etc.)</li>
+        <li>Add section labels like <code>[Verse 1]</code>, <code>[Chorus]</code>, <code>[Bridge]</code></li>
+        <li>The rich text editor supports <strong>bold</strong>, <em>italics</em>, and lists for individual slides</li>
+      </ul>
+
+      <h2>Genius Lyrics Search</h2>
+      <p>Click <strong>Search Lyrics</strong> in the Song Manager header to open the lyrics search overlay:</p>
+      <ol>
+        <li>Type a song name or artist</li>
+        <li>Results appear from Genius with song title, artist, and album art</li>
+        <li>Click a result to preview the lyrics</li>
+        <li>Click <strong>Add to Library</strong> to import with auto-parsed slides</li>
+      </ol>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Genius API key:</strong> Lyrics search requires a Genius API key. Get one free at <strong>genius.com/api-clients</strong> and add it in your environment variables or settings.</div>
+      </div>
+
+      <h2>Importing & Exporting</h2>
+      <ul>
+        <li><strong>Import JSON</strong> — Import songs from AnchorCast JSON format</li>
+        <li><strong>Import TXT</strong> — Import plain text lyrics files</li>
+        <li><strong>Export JSON</strong> — Export your entire song library</li>
+      </ul>
+
+      <h2>Importing from Other Worship Software</h2>
+      <p>AnchorCast can import songs from <strong>EasyWorship</strong>, <strong>ProPresenter</strong> (all versions including 7), plain text files, and SQLite databases. Go to <strong>Settings → Songs → General → Song Library Management → Import from other app</strong>.</p>
+      <p>For full step-by-step instructions, supported file types, and tips, see <a href="#" onclick="showSection('settings');return false" style="color:var(--gold)">Settings → Importing Songs from Other Worship Software</a>.</p>
+
+      <h2>Presenting Songs</h2>
+      <p>From the main dashboard, use the <strong>Songs</strong> tab in the bottom panel to browse your library. Click a song to load it into the Preview, then use <strong>Go Live</strong> or the Present button. Navigate slides with arrow keys.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- PRESENTATION EDITOR -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-presentations" data-topics="display themes">
+      <h1>Presentation Editor</h1>
+      <p class="lead">Create custom announcement slides, worship backgrounds, and visual content with the built-in canvas editor.</p>
+
+      <h2>Opening the Editor</h2>
+      <p>Open from <strong>Tools → Presentation Editor</strong> (<span class="kbd">Ctrl+E</span>) or from the Presentations tab in the bottom panel.</p>
+
+      <h2>Canvas Tools</h2>
+      <p>The editor provides a 1920x1080 canvas with these tools:</p>
+      <ul>
+        <li><strong>Text</strong> — Add titles and body text with font, size, and colour controls</li>
+        <li><strong>Images</strong> — Insert photos, logos, and graphics</li>
+        <li><strong>Shapes</strong> — Banners, speech bubbles, crosses, and basic shapes</li>
+        <li><strong>Background</strong> — Set a solid colour or image background for each slide</li>
+      </ul>
+
+      <h2>Managing Slides</h2>
+      <ul>
+        <li>The sidebar shows all slides in order</li>
+        <li>Drag slides to reorder them</li>
+        <li>Click <strong>+</strong> to add a new slide</li>
+        <li>Right-click a slide for duplicate/delete options</li>
+      </ul>
+
+      <h2>Saving & Presenting</h2>
+      <p>Click <strong>Save</strong> to save the presentation. It appears in the Presentations tab on the main dashboard. Click it to load into Preview, then present with Go Live.</p>
+
+      <h2>Import & Export</h2>
+      <ul>
+        <li><strong>Export</strong> — Save as AnchorCast presentation JSON</li>
+        <li><strong>Import</strong> — Load from JSON file</li>
+        <li><strong>PPTX Import</strong> — Import PowerPoint files (desktop only, requires Python)</li>
+      </ul>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- THEMES -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-themes" data-topics="themes bible songs display">
+      <h1>Theme Designer</h1>
+      <p class="lead">Customise how content looks on the projection screen with built-in themes or your own designs.</p>
+
+      <h2>Theme Categories</h2>
+      <p>AnchorCast supports separate themes for different content types:</p>
+      <ul>
+        <li><strong>Scripture</strong> — How Bible verses appear on screen</li>
+        <li><strong>Songs</strong> — How song lyrics appear</li>
+        <li><strong>Presentations</strong> — Backgrounds for presentation slides</li>
+      </ul>
+
+      <h2>Built-in Themes</h2>
+      <ul>
+        <li><strong>Sanctuary</strong> — Deep purple/gold gradient, classic church look</li>
+        <li><strong>Dawn</strong> — Warm brown tones</li>
+        <li><strong>Deep Water</strong> — Cool blue tones</li>
+        <li><strong>Minimal</strong> — Pure black background, white text</li>
+      </ul>
+
+      <h2>Creating a Custom Theme</h2>
+      <ol>
+        <li>Open <strong>Themes</strong> from the titlebar (<span class="kbd">Ctrl+T</span>)</li>
+        <li>Click <strong>+ New</strong> — a copy of the current theme is created</li>
+        <li>Type a name in the rename field that appears in the sidebar</li>
+        <li>Adjust Text, Background, and Layout settings in the properties panel</li>
+        <li>Click <strong>Save</strong> to save your theme</li>
+      </ol>
+
+      <h2>Theme Properties</h2>
+      <ul>
+        <li><strong>Font</strong> — Choose from Cinzel, DM Sans, Crimson Pro, and more</li>
+        <li><strong>Text size, alignment, and shadow</strong></li>
+        <li><strong>Background colour</strong> — Solid or gradient</li>
+        <li><strong>Background image</strong> — Upload a custom image</li>
+        <li><strong>Background video</strong> — Use a looping video behind text</li>
+        <li><strong>Overlay</strong> — Add a colour overlay on top of background media</li>
+      </ul>
+
+      <h2>Quick Theme Switching</h2>
+      <p>Use the theme swatches in the titlebar to instantly switch between saved themes during a live service — no need to open the Theme Designer.</p>
+
+      <h2>Deleting a Theme</h2>
+      <p>Select a custom theme in the sidebar. A delete button appears next to the rename field. Click it and confirm to delete. Built-in themes cannot be deleted.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- BACKGROUND -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-background" data-topics="display themes output">
+      <h1>Background</h1>
+      <p class="lead">Set a persistent background image or video that appears behind all projected content — scripture, songs, and presentations.</p>
+
+      <h2>Setting a Background</h2>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Open the Live Display panel</div><div class="step-desc">The Live Display panel is on the right side of the main window. Look for the <strong>BG</strong> button in the panel header.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Click BG</div><div class="step-desc">Click the <strong>BG</strong> button to open a file picker. Select an image or video from your media library to use as the persistent background.</div></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Background appears on projection</div><div class="step-desc">Once set, the background appears behind all content on the projection screen. Scripture and song text will display on top of this background.</div></div></div>
+      </div>
+
+      <h2>Clearing the Background</h2>
+      <p>Click the <strong>BG</strong> button again and choose to clear/remove the background, or select a different image or video to replace it.</p>
+
+      <h2>Background vs Media</h2>
+      <p>There is an important distinction between a <strong>background</strong> and <strong>presenting media</strong>:</p>
+      <ul>
+        <li><strong>Background</strong> — Persists behind all content. Scripture and songs overlay on top of it. It stays until you explicitly clear it.</li>
+        <li><strong>Presenting media</strong> — A one-time display of an image or video. When you present a different item, the media changes.</li>
+      </ul>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Save with Presets:</strong> Your background setting is saved as part of <a href="#" onclick="showSection('presets');return false" style="color:var(--gold)">Presets</a>, so you can quickly switch between different service looks including their backgrounds.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- LOGO OVERLAY -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-logo-overlay" data-topics="display output themes">
+      <h1>Logo Overlay</h1>
+      <p class="lead">Add your church's logo as a persistent overlay on the projection screen — it appears on top of all content including backgrounds, scripture, songs, and media.</p>
+
+      <h2>Adding a Logo</h2>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Click LOGO in the Live Display panel</div><div class="step-desc">Look for the <strong>LOGO</strong> button in the Live Display panel header (top-right area). Click it to open the logo settings.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Upload your logo image</div><div class="step-desc">Click <strong>Choose Logo</strong> to select a PNG or image file from your computer. Transparent PNG files work best — the transparent areas will show the content behind them.</div></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Position your logo</div><div class="step-desc">Choose from preset positions: <strong>Top-Left</strong>, <strong>Top-Right</strong>, <strong>Bottom-Left</strong>, <strong>Bottom-Right</strong>, <strong>Center</strong>, or <strong>Drag</strong> for custom placement.</div></div></div>
+      </div>
+
+      <h2>Logo Controls</h2>
+      <ul>
+        <li><strong>Position</strong> — Choose a corner, center, or drag freely to any position on the projection screen</li>
+        <li><strong>Size</strong> — Adjust the logo size using the size slider</li>
+        <li><strong>Opacity</strong> — Control the logo's transparency with the opacity slider — useful for a subtle watermark effect</li>
+        <li><strong>Show / Hide</strong> — Toggle the logo visibility on or off without removing it</li>
+      </ul>
+
+      <h2>Custom Drag Positioning</h2>
+      <p>When the position is set to <strong>Drag</strong>, you can freely move and resize the logo on the projection window:</p>
+      <ul>
+        <li>Click and drag the logo to reposition it anywhere on the screen</li>
+        <li>Use the corner handle to resize the logo</li>
+        <li>The position and size are saved and sync back to the controller</li>
+      </ul>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Save with Presets:</strong> Logo settings (image, position, size, opacity, visibility) are all saved as part of <a href="#" onclick="showSection('presets');return false" style="color:var(--gold)">Presets</a>. Switch between different logo configurations for different services or events.</div>
+      </div>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Best format:</strong> Use a <strong>transparent PNG</strong> for your logo so it blends seamlessly over any background or content.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- PRESETS -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-presets" data-topics="display themes output service">
+      <h1>Presets</h1>
+      <p class="lead">Save and load named configurations of your entire service look — background, logo, themes, schedule, and settings — so you can switch between different setups instantly.</p>
+
+      <h2>What a Preset Saves</h2>
+      <p>Each preset captures:</p>
+      <ul>
+        <li><strong>Background</strong> — The current background image or video</li>
+        <li><strong>Logo Overlay</strong> — Logo image, position, size, opacity, and visibility</li>
+        <li><strong>Themes</strong> — Scripture theme, song theme, and presentation theme selections</li>
+        <li><strong>Schedule</strong> — The entire service order including all items and the schedule name</li>
+        <li><strong>Settings</strong> — All application preferences (API keys are excluded for security)</li>
+      </ul>
+
+      <h2>Saving a Preset</h2>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Set up your service look</div><div class="step-desc">Configure your background, logo, themes, and schedule the way you want them.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Click the star button</div><div class="step-desc">Click the <strong>☆</strong> button in the Live Display panel header. A preset popup appears.</div></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Click Save Current</div><div class="step-desc">Click <strong>Save Current</strong> in the preset popup. Enter a name for your preset (e.g. "Sunday Morning", "Youth Night", "Christmas Service").</div></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">Confirm the save</div><div class="step-desc">Click <strong>Save</strong> to store the preset. It will now appear in your preset list.</div></div></div>
+      </div>
+
+      <h2>Loading a Preset</h2>
+      <ul>
+        <li>Click the <strong>☆</strong> button to open the preset popup</li>
+        <li>Click any preset name to load it immediately</li>
+        <li>All saved settings — background, logo, themes, schedule, and preferences — are restored</li>
+      </ul>
+
+      <h2>Managing Presets</h2>
+      <p>Open <strong>File → Manage Presets</strong> or click <strong>Manage</strong> in the preset popup to open the Manage Presets window:</p>
+      <ul>
+        <li><strong>Load</strong> — Click the load button to apply a preset</li>
+        <li><strong>Delete</strong> — Click the delete button, then confirm to permanently remove the preset</li>
+      </ul>
+
+      <h2>Accessing Presets from the Menu</h2>
+      <p>Presets are also available from the <strong>File</strong> menu:</p>
+      <ul>
+        <li><strong>File → Save Preset</strong> — Save the current configuration as a new preset</li>
+        <li><strong>File → Load Preset</strong> — Choose from your saved presets to load</li>
+        <li><strong>File → Manage Presets</strong> — Open the full preset manager</li>
+      </ul>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Ideal for recurring services:</strong> Save a preset for each type of service your church runs — Sunday morning, evening service, youth night, holiday events. Before each service, load the appropriate preset and everything is configured instantly.</div>
+      </div>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Security note:</strong> API keys are never stored in presets. When you load a preset, your current API key and sensitive credentials are preserved.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- REMOTE CONTROL -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-remote" data-topics="remote display">
+      <h1>Remote Control</h1>
+      <p class="lead">Control AnchorCast from any phone or tablet on the same WiFi network — no app installation required.</p>
+
+      <h2>Setup</h2>
+      <ol>
+        <li>Make sure the remote server is <strong>ON</strong> (green) in the <strong>Remote</strong> button popover</li>
+        <li>On your phone, open a browser and go to the URL shown — e.g. <code>http://192.168.1.5:8080/remote</code></li>
+        <li>The mobile remote page loads in the browser — no app install needed</li>
+      </ol>
+
+      <h2>Remote Features</h2>
+      <ul>
+        <li>Live projection screen preview on the phone</li>
+        <li>Mode tabs for <strong>Scripture</strong>, <strong>Songs</strong>, and <strong>Media</strong></li>
+        <li>Search and quick-verse lookup</li>
+        <li>Song and media library browsing</li>
+        <li>Prev/Next/Clear/Go Live controls</li>
+      </ul>
+
+      <h2>Remote Actions</h2>
+      <ul>
+        <li><strong>Go Live / Off Air</strong> — Toggle the projection on/off</li>
+        <li><strong>Next / Previous</strong> — Navigate the queue</li>
+        <li><strong>Clear</strong> — Blank the projection screen</li>
+        <li><strong>Present</strong> — Send selected content to projection</li>
+      </ul>
+
+      <h2>Authentication (Desktop)</h2>
+      <p>In Electron desktop mode, the remote control uses PIN-based authentication with role-based access:</p>
+      <ul>
+        <li><strong>Admin</strong> — Full control over all features</li>
+        <li><strong>Scripture</strong> — Can present Bible verses only</li>
+        <li><strong>Songs</strong> — Can present songs only</li>
+        <li><strong>Media</strong> — Can present media only</li>
+        <li><strong>Monitor</strong> — View-only access (can see the projection but not control it)</li>
+      </ul>
+
+      <h2>Enabling / Disabling</h2>
+      <p>Click <strong>Remote</strong> in the titlebar to open the remote popover. Use the toggle switch to enable or disable the server. You can also toggle it in <a href="#" onclick="showSection('settings');return false" style="color:var(--gold)">Settings → Network</a>.</p>
+
+      <div class="warn">
+        <div class="warn-icon">⚠️</div>
+        <div class="warn-text">The remote control server is accessible to anyone on your WiFi network. Disable it when not in use if you're on a public or shared network.</div>
+      </div>
+
+      <h2>Wrong IP Address?</h2>
+      <p>If the IP shown is incorrect (e.g. a VPN address), check that your device is connected to the correct WiFi network. AnchorCast automatically picks the best available network adapter, preferring real Ethernet/WiFi over VPN or virtual adapters.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- NDI & EXTERNAL OUTPUT -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-ndi" data-topics="output display setup">
+      <h1>NDI & External Output</h1>
+      <p class="lead">Send AnchorCast's projection output directly to OBS, vMix, Wirecast, or any NDI-capable software on the same network. Desktop only.</p>
+
+      <h2>How NDI Works</h2>
+      <p>When NDI is active, AnchorCast appears as an NDI source called <strong>"AnchorCast"</strong> on your network. In OBS, simply add an NDI Source and select AnchorCast. No URL configuration needed — it's automatic network discovery.</p>
+
+      <h2>Setting Up NDI</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Install the NDI SDK</div>
+            <div class="step-desc"><strong>Windows:</strong> NDI 6 SDK from ndi.video → installs to <code>C:\Program Files\NDI\NDI 6 SDK</code>. <strong>macOS:</strong> NDI SDK for Apple → installs to <code>/Library/NDI SDK for Apple/</code>.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Build the NDI addon</div>
+            <div class="step-desc"><strong>Windows:</strong> Run <code>ndi-addon\build-ndi.bat</code> (requires Visual Studio Build Tools). <strong>macOS:</strong> Run <code>bash ndi-addon/build-ndi.sh</code> (requires Xcode Command Line Tools).</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Start NDI output</div>
+            <div class="step-desc">In AnchorCast, go to the External Output panel (from the menu or popover). Click <strong>Start</strong>. When NDI is ready, the status shows "NDI active".</div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Using in OBS</h2>
+      <ul>
+        <li>Add Source → <strong>NDI Source</strong> → select <strong>AnchorCast</strong></li>
+        <li>The feed shows whatever is on the projection screen in real time</li>
+        <li>Works across machines on the same network</li>
+      </ul>
+
+      <h2>Using in vMix</h2>
+      <ul>
+        <li>Add Input → <strong>NDI / Desktop Capture</strong> → select <strong>AnchorCast</strong></li>
+      </ul>
+
+      <h2>MJPEG Fallback</h2>
+      <p>If the NDI addon is not built, AnchorCast falls back to an MJPEG HTTP stream:</p>
+      <ul>
+        <li><strong>OBS:</strong> Add Source → Browser Source → <code>http://localhost:49876/stream</code></li>
+        <li><strong>vMix:</strong> Add Input → Web Browser → <code>http://[PC-IP]:49876/stream</code></li>
+      </ul>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Automated build:</strong> When running <code>npm run build:win</code> or <code>npm run build:mac</code>, the pre-build script automatically attempts to compile the NDI addon. Set <code>SKIP_NDI_BUILD=1</code> to skip.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SERMON NOTES -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-sermon-notes" data-topics="service transcript intelligence songs">
+      <h1>Sermon Notes</h1>
+      <p class="lead">AI-powered sermon note generation from your live transcript — with export, import, and one-click presentation creation.</p>
+
+      <h2>Opening Sermon Notes</h2>
+      <p>Open from <strong>Tools → Generate Sermon Notes</strong> (<span class="kbd">Ctrl+Shift+N</span>) in the menu bar. The Sermon Notes modal appears over the main window.</p>
+
+      <h2>Generating Notes</h2>
+      <ol>
+        <li>Start a live transcription session so there is sermon text to work with</li>
+        <li>Open the Sermon Notes modal</li>
+        <li>Click <strong>Generate Notes from Transcript</strong></li>
+        <li>The AI analyses the transcript and produces structured notes including title, topic, summary, main points with scripture references, key verses, practical applications, and a closing thought</li>
+      </ol>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Requires Claude API key:</strong> Note generation uses AI and requires a Claude API key configured in <strong>Settings → Audio & AI</strong>.</div>
+      </div>
+
+      <h2>Working with Notes</h2>
+      <p>Once notes are generated (or imported), you have several options available in the modal footer:</p>
+      <ul>
+        <li><strong>Copy to Clipboard</strong> — Copy the formatted notes text for pasting into other applications</li>
+        <li><strong>Import Notes</strong> — Load previously exported notes from a <code>.json</code>, <code>.txt</code>, or <code>.md</code> file. JSON files exported from AnchorCast restore the full structured format.</li>
+        <li><strong>Export Notes</strong> — Save notes as a structured JSON file. This format preserves all sections and can be re-imported later.</li>
+        <li><strong>Generate Presentation</strong> — Automatically create a slide presentation from the notes and add it to your presentation library</li>
+      </ul>
+
+      <h2>Generate Presentation from Notes</h2>
+      <p>Click the <strong>Generate Presentation</strong> button to create a full slide deck from your sermon notes. The presentation includes:</p>
+      <ul>
+        <li><strong>Title slide</strong> — Sermon title and topic</li>
+        <li><strong>Summary slide</strong> — Overview of the sermon</li>
+        <li><strong>Main point slides</strong> — One slide per main point, with scripture references</li>
+        <li><strong>Key verses slide</strong> — All key scripture references</li>
+        <li><strong>Practical applications slide</strong> — Actionable takeaways</li>
+        <li><strong>Closing thought slide</strong> — Final reflection</li>
+      </ul>
+      <p>The presentation is saved to your library automatically and opens in the Presentation tab, ready to present.</p>
+
+      <h2>Notes Format</h2>
+      <p>Exported notes use a structured JSON format with these fields:</p>
+      <ul>
+        <li><code>title</code> — Sermon title</li>
+        <li><code>topic</code> — Main topic or theme</li>
+        <li><code>summary</code> — Brief overview</li>
+        <li><code>mainPoints[]</code> — Array of points, each with heading, content, and scriptures</li>
+        <li><code>keyVerses[]</code> — Array of reference/text pairs</li>
+        <li><code>practicalApplications[]</code> — Actionable items</li>
+        <li><code>closingThought</code> — Final summary</li>
+      </ul>
+      <p>You can also import plain text notes — the importer parses labelled sections (TITLE:, SUMMARY:, MAIN POINTS:, etc.) automatically.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SERMON HISTORY -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-sermon-history" data-topics="service transcript intelligence">
+      <h1>Sermon History</h1>
+      <p class="lead">Browse, search, and revisit all your past transcription sessions and sermon records.</p>
+
+      <h2>Opening Sermon History</h2>
+      <p>Open from <strong>Tools → Sermon History</strong> (<span class="kbd">Ctrl+H</span>) in the menu bar.</p>
+
+      <h2>What It Shows</h2>
+      <ul>
+        <li><strong>Session list</strong> — All past transcription sessions with date, duration, and line count</li>
+        <li><strong>Full transcript</strong> — View the complete text of any past session</li>
+        <li><strong>Detected verses</strong> — All Bible references identified during each session</li>
+        <li><strong>Session metadata</strong> — Start/end time, total lines, detection count</li>
+      </ul>
+
+      <h2>Using Sermon History</h2>
+      <ul>
+        <li>Click any session to view its full transcript and detections</li>
+        <li>Use the search feature to find specific words or phrases across all sessions</li>
+        <li>Export individual sessions for record-keeping</li>
+        <li>Reference past sermons when preparing new services</li>
+      </ul>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Auto-save:</strong> Transcription sessions are saved automatically when you stop the transcript. You can also manually save during a session.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- COUNTDOWN TIMER -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-countdown-timer" data-topics="service display output">
+      <h1>Countdown Timer</h1>
+      <p class="lead">Display a countdown or count-up timer on the projection screen — perfect for pre-service countdowns, sermon timing, or break timers.</p>
+
+      <h2>Opening the Timer</h2>
+      <p>There are two ways to access the timer:</p>
+      <ul>
+        <li><strong>Control bar</strong> — Click the clock icon in the live display control bar for a quick inline timer panel</li>
+        <li><strong>Tools menu</strong> — Go to <strong>Tools → Countdown Timer</strong> to open the full timer modal window</li>
+      </ul>
+
+      <h2>Timer Settings</h2>
+      <ul>
+        <li><strong>Mode</strong> — Choose between <em>Countdown</em> (counts down to zero) or <em>Count Up</em> (counts up from zero)</li>
+        <li><strong>Duration</strong> — Set the timer in minutes using the input field or the +/− buttons</li>
+        <li><strong>Label</strong> — Custom text displayed above the timer (e.g. "SERVICE STARTS", "BREAK", "SERMON TIME")</li>
+        <li><strong>Position</strong> — Where the timer appears on the projection screen:
+          <ul>
+            <li><em>Centre</em> — Large, centred display (best for pre-service countdowns)</li>
+            <li><em>Top</em> — Smaller display at the top of the screen (good during service)</li>
+            <li><em>Edge</em> — Compact display in the top-right corner (minimal distraction)</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h2>Timer Controls</h2>
+      <ul>
+        <li><strong>Start</strong> — Begin the timer and display it on the projection screen</li>
+        <li><strong>Stop</strong> — Stop the timer and remove it from the projection</li>
+        <li><strong>Scale +/−</strong> — Increase or decrease the timer text size on the projection</li>
+      </ul>
+
+      <h2>Warning Indicator</h2>
+      <p>When the countdown reaches the final 10% of the original duration (minimum 1 minute for timers 5 minutes or shorter), the timer text turns red to warn that time is almost up.</p>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Overlay mode:</strong> The timer overlays on top of whatever content is currently on the projection screen — verses, songs, media, or presentations. It does not interrupt your current display.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ALERTS -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-alerts-panel" data-topics="service display output">
+      <h1>Alerts</h1>
+      <p class="lead">Send nursery notifications and scrolling message alerts to the projection screen during a service.</p>
+
+      <h2>Opening Alerts</h2>
+      <p>There are two ways to access alerts:</p>
+      <ul>
+        <li><strong>Control bar</strong> — Click the bell icon (🔔) in the live display control bar for the quick inline panel</li>
+        <li><strong>Tools menu</strong> — Go to <strong>Tools → Alerts</strong> to open the full alerts modal window</li>
+      </ul>
+
+      <h2>Nursery Alert</h2>
+      <p>A static notification overlay displayed prominently on the projection screen. Used to notify parents that their child needs attention.</p>
+      <ul>
+        <li>Type a message (e.g. "Room 3, Child #42") and click <strong>Send</strong></li>
+        <li>The alert appears on the projection screen immediately</li>
+        <li>Click <strong>Hide</strong> to remove it</li>
+        <li>Customise appearance (position, size, colours, duration) in <a href="#" onclick="showSection('settings');return false" style="color:var(--gold)">Settings → Alerts</a></li>
+      </ul>
+
+      <h2>Message Alert</h2>
+      <p>A scrolling text banner that moves across the projection screen. Used for announcements, birthday greetings, or other messages.</p>
+      <ul>
+        <li>Type a message (e.g. "Happy Birthday John!") and click <strong>Send</strong></li>
+        <li>The message scrolls across the screen</li>
+        <li>Multiple messages are queued and displayed one after another</li>
+        <li>Click <strong>Hide</strong> to clear the current message</li>
+        <li>Customise scroll speed, position, font, colours, and background in <a href="#" onclick="showSection('settings');return false" style="color:var(--gold)">Settings → Alerts</a></li>
+      </ul>
+
+      <h2>Sending from Remote</h2>
+      <p>Alerts can also be sent from the phone/tablet remote control. This allows someone in the nursery or another room to send alerts without being at the main computer.</p>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Non-interrupting:</strong> Alerts overlay on top of the current projection content. They do not replace what's on screen — they appear alongside it.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ADAPTIVE MEMORY -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-adaptive" data-topics="intelligence transcript">
+      <h1>Adaptive Memory</h1>
+      <p class="lead">AnchorCast learns from each service to improve transcription accuracy and verse detection over time.</p>
+
+      <h2>What It Learns</h2>
+      <ul>
+        <li><strong>Speaker Profiles</strong> — Vocabulary and pronunciation patterns for each speaker</li>
+        <li><strong>Custom Vocabulary</strong> — Church-specific terms, names, and recurring phrases</li>
+        <li><strong>Correction Rules</strong> — Direct text replacement rules (e.g. "holly spirit" → "Holy Spirit")</li>
+        <li><strong>Biblical Word Fixes</strong> — Common Whisper mishearings like "resolutions" → "Revelation"</li>
+      </ul>
+
+      <h2>Learning Suggestions</h2>
+      <p>After each service, AnchorCast suggests corrections based on patterns it observed. You can review and approve these in the Adaptive Management window — only approved suggestions become active rules.</p>
+
+      <h2>Adaptive Management Window</h2>
+      <p>Open from <strong>Settings → Audio & AI → Learning</strong> and click <strong>Open Adaptive Management Window</strong>. From here you can:</p>
+      <ul>
+        <li>View and edit speaker profiles</li>
+        <li>Manage correction rules and vocabulary</li>
+        <li>Review and approve learning suggestions</li>
+        <li>Import/export adaptive data to share between installations</li>
+      </ul>
+
+      <h2>Data Storage</h2>
+      <p>Adaptive data is stored locally as portable JSON files:</p>
+      <ul>
+        <li><code>Data/adaptive/adaptive_memory.json</code></li>
+        <li><code>Data/adaptive/exports/*.json</code></li>
+        <li><code>Data/detection_review/learned_phrases.json</code></li>
+      </ul>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Inline suggestions:</strong> During transcription, AnchorCast can show inline correction suggestions in the transcript panel. These help you spot and fix recognition errors in real time.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- DETECTION REVIEW -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-detection-review" data-topics="intelligence transcript bible">
+      <h1>Verse Detection Review</h1>
+      <p class="lead">Review and improve verse detections to teach AnchorCast what your preacher's speaking patterns mean.</p>
+
+      <h2>Review Actions</h2>
+      <p>When a verse is detected, you can take these actions from the AI Detections panel:</p>
+      <ul>
+        <li><strong>Approve</strong> — Confirm the detection was correct. This teaches the system to be more confident about similar detections.</li>
+        <li><strong>Reject</strong> — Mark it as a false positive. Helps the system avoid similar mistakes.</li>
+        <li><strong>Replace</strong> — The detection was close but the wrong verse — select the correct one. Teaches the system the right mapping.</li>
+        <li><strong>Teach</strong> — Save the source phrase so AnchorCast recognises it next time (adds to learned phrases).</li>
+      </ul>
+
+      <h2>Learned Trigger Phrases</h2>
+      <p>When you teach a phrase, AnchorCast saves the mapping (e.g. "the Lord is my shepherd" → Psalm 23:1). Next time the preacher says it, the verse is detected instantly without needing AI — even in offline mode. This is one of the most powerful features for building accuracy over time.</p>
+
+      <h2>Managing Learned Data</h2>
+      <p>View and manage all learned phrases and review history in the <a href="#" onclick="showSection('adaptive');return false" style="color:var(--gold)">Adaptive Memory</a> management window. You can edit, delete, or export learned phrases from there.</p>
+
+      <h2>Data Storage</h2>
+      <p>Review events and learned phrases are stored as portable JSON files:</p>
+      <ul>
+        <li><code>Data/detection_review/learned_phrases.json</code> — All taught phrase-to-verse mappings</li>
+        <li><code>Data/detection_review/review_events.json</code> — History of approve/reject/replace actions</li>
+      </ul>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Review regularly:</strong> Spending a few minutes reviewing detections after each service significantly improves accuracy. The system learns fastest from consistent feedback.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SERMON INTELLIGENCE -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-sermon-intel" data-topics="intelligence transcript service">
+      <h1>Sermon Intelligence</h1>
+      <p class="lead">AI-powered analysis of the current sermon, generating insights and structure in real time.</p>
+
+      <h2>Accessing Sermon Intelligence</h2>
+      <p>Open from <strong>Tools → Sermon Intelligence</strong> during or after a service. The analysis updates automatically as the transcript progresses.</p>
+
+      <h2>What It Generates</h2>
+      <ul>
+        <li><strong>Title Suggestions</strong> — AI-suggested sermon titles based on transcript content</li>
+        <li><strong>Top Keywords</strong> — Most frequently used terms and themes</li>
+        <li><strong>Recurring Verses</strong> — Scriptures referenced multiple times during the service</li>
+        <li><strong>Key Sermon Points</strong> — Main arguments and themes extracted from the transcript</li>
+        <li><strong>Sermon Structure</strong> — Introduction, body, and closing sections identified automatically</li>
+        <li><strong>Archive Theme Links</strong> — Connections to past sermons with similar topics from the <a href="#" onclick="showSection('archive');return false" style="color:var(--gold)">Service Archive</a></li>
+      </ul>
+
+      <h2>Related Features</h2>
+      <ul>
+        <li><a href="#" onclick="showSection('sermon-notes');return false" style="color:var(--gold)">Sermon Notes</a> — Generate structured notes from the transcript for sharing or presentation</li>
+        <li><a href="#" onclick="showSection('smart-suggestions');return false" style="color:var(--gold)">Smart Suggestions</a> — Real-time verse and song suggestions based on the sermon content</li>
+        <li><a href="#" onclick="showSection('analytics');return false" style="color:var(--gold)">Analytics Dashboard</a> — Long-term trends across all services</li>
+      </ul>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SMART SUGGESTIONS -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-smart-suggestions" data-topics="intelligence transcript bible songs">
+      <h1>Live Smart Suggestions</h1>
+      <p class="lead">Real-time suggestions during service based on what the preacher is currently saying.</p>
+
+      <h2>Suggestion Types</h2>
+      <ul>
+        <li><strong>Scripture Suggestions</strong> — Verses related to the current transcript context</li>
+        <li><strong>Song Suggestions</strong> — Songs from your library that match the current theme</li>
+        <li><strong>Service Moment Suggestions</strong> — Based on patterns from archived past services</li>
+      </ul>
+
+      <h2>How It Works</h2>
+      <p>The suggestion engine combines:</p>
+      <ul>
+        <li>Current transcript content as a seed</li>
+        <li>Service archive history for pattern matching</li>
+        <li>Speaker and Bible book weighting</li>
+      </ul>
+
+      <h2>One-Click Apply</h2>
+      <p>Click any scripture suggestion to immediately load it into Program Preview. If Go Live is active, it goes straight to the projection screen.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- OPERATOR COMMAND CENTER -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-command-center" data-topics="service display remote">
+      <h1>Operator Command Center</h1>
+      <p class="lead">A compact real-time control panel for managing the live service with minimal screen space.</p>
+
+      <h2>Opening the Command Center</h2>
+      <p>Open from <strong>View → Operator Command Center</strong> (<span class="kbd">Ctrl+Shift+O</span>) in the menu bar.</p>
+
+      <h2>What It Shows</h2>
+      <ul>
+        <li><strong>Live Item Status</strong> — What's currently on screen (verse, song, media, or presentation slide)</li>
+        <li><strong>Next Queue Item</strong> — What's coming up next in the schedule</li>
+        <li><strong>Transcript State</strong> — Whether transcription is active, current line count, and recording status</li>
+        <li><strong>Detection Activity</strong> — Recent verse detections with confidence levels and timestamps</li>
+        <li><strong>Remote Connection Status</strong> — How many remote devices are connected and their roles</li>
+        <li><strong>Timer Status</strong> — Active countdown/count-up timer info if running</li>
+      </ul>
+
+      <h2>Quick Actions</h2>
+      <ul>
+        <li><strong>Go Live / Stop Live</strong> — Toggle the projection output on/off</li>
+        <li><strong>Next / Previous</strong> — Navigate through the current queue or presentation</li>
+        <li><strong>Clear Display</strong> — Remove all content from the projection screen</li>
+        <li><strong>Clear Detections</strong> — Clear the verse detection queue</li>
+      </ul>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Compact view:</strong> The Command Center is designed to be kept open alongside other work. It gives you a full overview of the service state without needing to look at the main window.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- POST-SERVICE REPORT -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-post-service" data-topics="service transcript intelligence">
+      <h1>Post-Service Report</h1>
+      <p class="lead">Automatically generated summary after each service with key stats and insights.</p>
+
+      <h2>When It Appears</h2>
+      <p>The report is generated automatically when you stop the transcript at the end of a service. It can also be opened manually from the Service Tools section.</p>
+
+      <h2>Report Contents</h2>
+      <ul>
+        <li><strong>Service duration</strong> — How long the service ran</li>
+        <li><strong>Total transcript lines</strong> — How much was spoken during the session</li>
+        <li><strong>Corrected lines</strong> — Lines where the adaptive system made corrections</li>
+        <li><strong>Detection summary</strong> — Total verses detected, approved, and rejected</li>
+        <li><strong>Verse list</strong> — Complete list of all scriptures identified during the service with timestamps</li>
+        <li><strong>Songs presented</strong> — Which songs were used during the service</li>
+        <li><strong>Adaptive insights</strong> — Corrections learned and new vocabulary suggestions</li>
+      </ul>
+
+      <h2>Using the Report</h2>
+      <ul>
+        <li>Review detection accuracy to improve future services</li>
+        <li>Share the report with your pastor or worship team</li>
+        <li>Save the service to the archive for long-term record-keeping</li>
+        <li>Use insights to adjust detection settings or speaker profiles</li>
+      </ul>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SERVICE REPLAY -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-replay" data-topics="service transcript">
+      <h1>Service Replay Timeline</h1>
+      <p class="lead">Replay any past service event by event — see what was said, what was detected, and what was presented.</p>
+
+      <h2>Opening Replay</h2>
+      <p>Open from the <a href="#" onclick="showSection('archive');return false" style="color:var(--gold)">Service Archive</a> by selecting an archived service and clicking <strong>Replay</strong>. You can also access it from <strong>Tools → Service Replay</strong>.</p>
+
+      <h2>Timeline Events</h2>
+      <p>The replay timeline records every significant moment from the service:</p>
+      <ul>
+        <li><strong>Transcript lines</strong> — Each line of speech as it was transcribed, with timestamps</li>
+        <li><strong>Verse detections</strong> — When each verse was identified, with confidence score</li>
+        <li><strong>Present events</strong> — When content was sent to the projection screen</li>
+        <li><strong>Song changes</strong> — When songs were loaded and slide transitions</li>
+        <li><strong>Mode changes</strong> — Go Live toggling, manual/auto switching</li>
+      </ul>
+
+      <h2>Replay Controls</h2>
+      <ul>
+        <li><strong>Timeline scrubber</strong> — Drag to jump to any point in the service</li>
+        <li><strong>Next/Previous</strong> — Step through events one at a time</li>
+        <li><strong>Autoplay</strong> — Replay the service in real time</li>
+        <li><strong>Speed control</strong> — Adjust playback speed (1x, 2x, 4x)</li>
+        <li><strong>Event list</strong> — Scrollable list of all events with timestamps</li>
+      </ul>
+
+      <p>Each event shows a snapshot of the transcript and live content at that moment — useful for reviewing how the service flowed and identifying areas for improvement.</p>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Training tool:</strong> Service Replay is ideal for training new operators. They can see exactly how an experienced operator managed a live service.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SERVICE ARCHIVE -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-archive" data-topics="service transcript intelligence">
+      <h1>Service Archive</h1>
+      <p class="lead">Save, search, and browse all your past services in one place.</p>
+
+      <h2>Saving a Service</h2>
+      <p>After a service, click <strong>Save to Archive</strong> in the <a href="#" onclick="showSection('post-service');return false" style="color:var(--gold)">Post-Service Report</a> to preserve the full record — transcript, detections, timeline, and metadata.</p>
+
+      <h2>Searching the Archive</h2>
+      <p>Search by:</p>
+      <ul>
+        <li><strong>Title</strong> — Service or sermon title</li>
+        <li><strong>Speaker</strong> — Who preached</li>
+        <li><strong>Date range</strong> — Find services from a specific period</li>
+        <li><strong>Phrases</strong> — Specific words or phrases from the transcript</li>
+        <li><strong>Verses</strong> — Find services that referenced specific scriptures</li>
+        <li><strong>Transcript content</strong> — Full-text search across all transcripts</li>
+      </ul>
+
+      <h2>What You Can Do</h2>
+      <ul>
+        <li>Preview archived transcripts and detected verses</li>
+        <li>Open any service in the <a href="#" onclick="showSection('replay');return false" style="color:var(--gold)">Service Replay Timeline</a> to step through events</li>
+        <li>Compare services over time to spot patterns</li>
+        <li>Feed data into the <a href="#" onclick="showSection('analytics');return false" style="color:var(--gold)">Analytics Dashboard</a> for trends and statistics</li>
+        <li>Use archived data to power the <a href="#" onclick="showSection('auto-builder');return false" style="color:var(--gold)">Auto Service Builder</a></li>
+      </ul>
+
+      <h2>Data Storage</h2>
+      <ul>
+        <li><code>Data/service_archive/index.json</code> — Archive index with summary metadata</li>
+        <li><code>Data/service_archive/&lt;service_id&gt;.json</code> — Individual service records with full transcript and detection data</li>
+      </ul>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Backup:</strong> Archive data is included in a full AnchorCast backup. You can create one from <a href="#" onclick="showSection('settings');return false" style="color:var(--gold)">Settings → Songs → General → Song Library Management → Full AnchorCast Backup</a>.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- AUTO SERVICE BUILDER -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-auto-builder" data-topics="service songs bible intelligence">
+      <h1>Auto Service Builder</h1>
+      <p class="lead">Automatically generate a service plan based on your church's history and patterns.</p>
+
+      <h2>What It Suggests</h2>
+      <ul>
+        <li><strong>Opening song suggestions</strong> — Based on past service patterns</li>
+        <li><strong>Scripture suggestions</strong> — Verses that complement the service theme</li>
+        <li><strong>Service moment suggestions</strong> — Likely flow based on archived services</li>
+      </ul>
+
+      <h2>How It Works</h2>
+      <p>The builder analyses:</p>
+      <ul>
+        <li>Service archive history</li>
+        <li>Speaker hint weighting</li>
+        <li>Replay timeline summaries</li>
+        <li>Detected scripture frequency across past services</li>
+      </ul>
+
+      <h2>One-Click Build</h2>
+      <p>Click <strong>Auto-Build Schedule</strong> to generate a complete service order. Review and adjust before the service begins.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ANALYTICS DASHBOARD -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-analytics" data-topics="intelligence service">
+      <h1>Analytics Dashboard</h1>
+      <p class="lead">Historical statistics across all your archived services.</p>
+
+      <h2>Opening Analytics</h2>
+      <p>Open from <strong>Tools → Analytics Dashboard</strong> in the menu bar. The dashboard requires at least one archived service to show meaningful data.</p>
+
+      <h2>Available Analytics</h2>
+      <ul>
+        <li><strong>Most Used Bible Books</strong> — Which books are referenced most often across all services</li>
+        <li><strong>Most Quoted Verses</strong> — Individual verses that come up repeatedly</li>
+        <li><strong>Most Used Songs</strong> — Songs played most frequently in services</li>
+        <li><strong>Speaker Patterns</strong> — Which speakers reference which books/themes</li>
+        <li><strong>Keyword Frequency</strong> — Common words and phrases across sermons</li>
+        <li><strong>Service Length Trends</strong> — How long recent services have been</li>
+        <li><strong>Detection Accuracy</strong> — Approval/rejection rates over time to track AI improvement</li>
+      </ul>
+
+      <h2>Data Sources</h2>
+      <p>Analytics are built from <a href="#" onclick="showSection('archive');return false" style="color:var(--gold)">archived services</a> — transcripts, detection records, and replay timeline summaries. The more services you archive, the more useful the analytics become.</p>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Archive consistently:</strong> Make a habit of saving every service to the archive after the <a href="#" onclick="showSection('post-service');return false" style="color:var(--gold)">Post-Service Report</a>. This ensures your analytics data is comprehensive and trends are accurate.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- CLIP GENERATOR -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-clips" data-topics="service transcript">
+      <h1>Clip Generator</h1>
+      <p class="lead">Create shareable clip packages from sermon highlights for social media, websites, and ministry outreach.</p>
+
+      <h2>Opening the Clip Generator</h2>
+      <p>Open from <strong>Tools → Clip Generator</strong> after a service, or from the <a href="#" onclick="showSection('archive');return false" style="color:var(--gold)">Service Archive</a> by selecting an archived service.</p>
+
+      <h2>Building Clips</h2>
+      <p>Clip candidates are automatically identified from:</p>
+      <ul>
+        <li><strong>Detected verses</strong> — Scripture moments from the service with surrounding transcript context</li>
+        <li><strong>Transcript snippets</strong> — Key quotes, impactful statements, and sermon highlights</li>
+        <li><strong>Replay events</strong> — Significant moments from the <a href="#" onclick="showSection('replay');return false" style="color:var(--gold)">Service Replay</a> timeline</li>
+      </ul>
+
+      <h2>Clip Workflow</h2>
+      <ol>
+        <li>After a service, open the Clip Generator</li>
+        <li>Browse clip candidates — each shows the transcript text, detected verse, and timestamp</li>
+        <li>Select and preview clip content</li>
+        <li>Edit clip titles and descriptions</li>
+        <li>Save clip packages as JSON for downstream media/social workflows</li>
+      </ol>
+
+      <h2>Data Storage</h2>
+      <p>Clip packages are saved to <code>Data/clip_exports/&lt;clip_title&gt;.json</code></p>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Social media:</strong> Clip packages include structured metadata (title, quote text, verse reference, timestamp) ready for use in social media templates, graphic design tools, or church website CMS.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- KEYBOARD SHORTCUTS -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-shortcuts" data-topics="troubleshoot setup">
+      <h1>Keyboard Shortcuts</h1>
+      <p class="lead">Master these shortcuts for fast, smooth operation during live services.</p>
+
+      <h2>Presentation Control</h2>
+      <table class="shortcut-table">
+        <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
+        <tbody>
+          <tr><td>Toggle Go Live / Off Air</td><td><span class="kbd">Ctrl+L</span></td></tr>
+          <tr><td>Send Preview → Live</td><td><span class="kbd">Enter</span></td></tr>
+          <tr><td>Next verse (queue or search)</td><td><span class="kbd">↓</span> or <span class="kbd">→</span></td></tr>
+          <tr><td>Previous verse (queue or search)</td><td><span class="kbd">↑</span> or <span class="kbd">←</span></td></tr>
+          <tr><td>Clear Live Display</td><td><span class="kbd">Ctrl+Backspace</span></td></tr>
+        </tbody>
+      </table>
+
+      <h2>Search & Navigation</h2>
+      <table class="shortcut-table">
+        <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
+        <tbody>
+          <tr><td>Toggle Bible / Context Search</td><td><span class="kbd">Tab</span></td></tr>
+          <tr><td>Close overlay / modal</td><td><span class="kbd">Esc</span></td></tr>
+          <tr><td>Search in Help</td><td><span class="kbd">Ctrl+F</span></td></tr>
+        </tbody>
+      </table>
+
+      <h2>Windows & Tools</h2>
+      <table class="shortcut-table">
+        <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
+        <tbody>
+          <tr><td>Open Projection window</td><td><span class="kbd">Ctrl+P</span></td></tr>
+          <tr><td>Open Song Manager</td><td><span class="kbd">Ctrl+M</span></td></tr>
+          <tr><td>Open Bible Manager</td><td><span class="kbd">Ctrl+B</span></td></tr>
+          <tr><td>Open Theme Designer</td><td><span class="kbd">Ctrl+T</span></td></tr>
+          <tr><td>Open Presentation Editor</td><td><span class="kbd">Ctrl+E</span></td></tr>
+          <tr><td>Open Sermon History</td><td><span class="kbd">Ctrl+H</span></td></tr>
+          <tr><td>Generate Sermon Notes</td><td><span class="kbd">Ctrl+Shift+N</span></td></tr>
+          <tr><td>Operator Command Center</td><td><span class="kbd">Ctrl+Shift+O</span></td></tr>
+          <tr><td>Open Settings</td><td><span class="kbd">Ctrl+,</span></td></tr>
+          <tr><td>Open Help</td><td><span class="kbd">F1</span></td></tr>
+          <tr><td>Toggle Fullscreen</td><td><span class="kbd">F11</span></td></tr>
+        </tbody>
+      </table>
+
+      <h2>Schedule & File</h2>
+      <table class="shortcut-table">
+        <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
+        <tbody>
+          <tr><td>New Schedule</td><td><span class="kbd">Ctrl+N</span></td></tr>
+          <tr><td>Save Schedule</td><td><span class="kbd">Ctrl+S</span></td></tr>
+          <tr><td>Save Schedule As</td><td><span class="kbd">Ctrl+Shift+S</span></td></tr>
+          <tr><td>Open Schedule</td><td><span class="kbd">Ctrl+O</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text">Arrow key navigation is <strong>smart</strong> — if the search panel has results, arrows move through them. Once you reach the end or there are no results, arrows fall back to navigating the Queue/Schedule.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SETTINGS -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-settings" data-topics="setup bible songs themes remote output intelligence">
+      <h1>Settings</h1>
+      <p class="lead">Open settings with <span class="kbd">Ctrl+,</span> or from the menu bar via <strong>Settings → Preferences</strong>. The Settings window has a sidebar on the left with eight sections. Each section may have multiple tabs at the top for sub-categories.</p>
+
+      <!-- ── MAIN OUTPUT ──────────────────────────────────────────────── -->
+      <h2>Main Output</h2>
+      <p>Controls the overall projection display behaviour and external output options.</p>
+
+      <h3>Display</h3>
+      <ul>
+        <li><strong>Default Bible Translation</strong> — Which translation loads by default when displaying verses (e.g. KJV, NIV, ESV). You can add more in Bible Versions.</li>
+        <li><strong>Verse Font Size</strong> — Base size of verse text on the projection screen. Slides auto-scale, but this sets the starting point.</li>
+        <li><strong>Display Mode</strong> — <em>Manual</em> (you choose what goes live) or <em>Auto</em> (high-confidence AI detections display automatically).</li>
+      </ul>
+
+      <h3>External Output (NDI / Web)</h3>
+      <ul>
+        <li><strong>NDI Output</strong> — Enable NewTek NDI video output so your projection can be received by OBS, vMix, or other video production tools on your network.</li>
+        <li><strong>Web Output URL</strong> — A browser-accessible URL for viewing the live projection on any device on the same network.</li>
+      </ul>
+
+      <!-- ── SONGS ────────────────────────────────────────────────────── -->
+      <h2>Songs</h2>
+      <p>Fine-tune how song lyrics appear on the projection. This section has four tabs: <strong>General</strong>, <strong>Font</strong>, <strong>Labels</strong>, and <strong>Format</strong>.</p>
+
+      <h3>Songs → General</h3>
+      <ul>
+        <li><strong>Overlay on Media</strong> — Show song text over background media/images instead of a solid colour.</li>
+        <li><strong>Copyright Info</strong> — Toggle copyright display and enter your church's CCLI licence number.</li>
+      </ul>
+
+      <h3>Songs → General → Song Library Management</h3>
+      <ul>
+        <li><strong>Export Library</strong> — Download your entire song library as a JSON file for backup or transfer.</li>
+        <li><strong>Import Library</strong> — Import songs from a JSON backup file.</li>
+        <li><strong>Import from other app</strong> — Import songs from EasyWorship, ProPresenter, or other worship software. See <a href="#" onclick="showSection('songs');return false" style="color:var(--gold)">Song Manager → Importing from Other Worship Software</a> for full details.</li>
+        <li><strong>Song Library Backups</strong> — Create manual backups and restore from previous ones.</li>
+        <li><strong>Automatic Sunday Backup</strong> — When enabled, AnchorCast automatically backs up your song library every Sunday.</li>
+        <li><strong>Full AnchorCast Backup</strong> — Back up all AnchorCast data (songs, settings, presentations, adaptive data) in one file.</li>
+        <li><strong>Restore Backup</strong> — Restore from a full AnchorCast backup.</li>
+      </ul>
+
+      <h3>Songs → Font</h3>
+      <ul>
+        <li><strong>Font Name</strong> — Choose the typeface for song lyrics (e.g. Inter, Arial, Georgia).</li>
+        <li><strong>Size</strong> — Base font size in pixels.</li>
+        <li><strong>Color</strong> — Text colour for lyrics.</li>
+        <li><strong>Style</strong> — Bold, italic, or both.</li>
+        <li><strong>Drop Shadow</strong> — Toggle and customise the text shadow behind lyrics for readability.</li>
+        <li><strong>Opacity</strong> — Text opacity percentage.</li>
+        <li><strong>Alignment</strong> — Horizontal (left, centre, right) and vertical (top, middle, bottom) text alignment.</li>
+        <li><strong>Line Spacing</strong> — Space between lines of lyrics text.</li>
+        <li><strong>Outline</strong> — Add a text outline with custom style (miter, bevel, round), colour, join, and size for better visibility on varied backgrounds.</li>
+        <li><strong>Shadow</strong> — Configure shadow colour, blur radius, X/Y offset, and opacity.</li>
+        <li><strong>Margins</strong> — Set left, top, right, and bottom margins for the text safe area.</li>
+      </ul>
+
+      <h3>Songs → Labels</h3>
+      <ul>
+        <li><strong>Section Labels</strong> — Define labels for song sections (Verse, Chorus, Bridge, etc.) used during import and colour coding.</li>
+      </ul>
+
+      <h3>Songs → Format</h3>
+      <ul>
+        <li><strong>Auto Sizing</strong> — Control whether lyrics auto-shrink to fit the screen, and set the minimum font size before text overflows to a new slide.</li>
+        <li><strong>Formatting</strong> — Toggle uppercase lyrics, show/hide section labels on projection.</li>
+        <li><strong>Lyrics Capitalisation</strong> — Options for capitalising the first letter of each line, first word of each section, or specific words.</li>
+        <li><strong>Auto-Capitalize Words</strong> — A custom list of words that should always be capitalised (e.g. God, Jesus, Lord).</li>
+      </ul>
+
+      <!-- ── SCRIPTURE ────────────────────────────────────────────────── -->
+      <h2>Scripture</h2>
+      <p>Controls how Bible verses appear on the projection. Has three tabs: <strong>General</strong>, <strong>Font</strong>, and <strong>Format</strong>.</p>
+
+      <h3>Scripture → General</h3>
+      <ul>
+        <li><strong>Reference Position</strong> — Where the book/chapter/verse reference appears (top or bottom of the slide).</li>
+        <li><strong>Reference Location</strong> — Show reference on same slide as text, on a separate line, or hidden.</li>
+        <li><strong>Reference Style</strong> — Formatting for the reference text (bold, italic, size, colour, opacity).</li>
+        <li><strong>Display Options</strong> — Toggle translation name display, verse numbers within text, two-verse mode (show 2 verses per slide), and more.</li>
+        <li><strong>Flow</strong> — Set minimum font size before breaking to a new slide.</li>
+      </ul>
+
+      <h3>Scripture → Font</h3>
+      <ul>
+        <li>Same options as Songs → Font: font name, size, colour, style, drop shadow, opacity, alignment, line spacing, outline, shadow, and margins — all independent from song settings.</li>
+      </ul>
+
+      <h3>Scripture → Format</h3>
+      <ul>
+        <li><strong>Auto Sizing</strong> — Scripture-specific auto-shrink settings.</li>
+        <li><strong>Formatting</strong> — Toggle uppercase scripture, show/hide verse numbers.</li>
+        <li><strong>Scripture Capitalisation</strong> — Same capitalisation controls as songs, applied to scripture text independently.</li>
+        <li><strong>Auto-Capitalize Words</strong> — Custom word list for scripture capitalisation.</li>
+      </ul>
+
+      <!-- ── PRESENTATIONS ────────────────────────────────────────────── -->
+      <h2>Presentations</h2>
+      <p>Settings for custom slide presentations created in the Presentation Editor.</p>
+      <ul>
+        <li><strong>Presentation Display</strong> — Controls how presentation slides render on the projection output.</li>
+      </ul>
+
+      <!-- ── AUDIO & AI ───────────────────────────────────────────────── -->
+      <h2>Audio & AI</h2>
+      <p>Microphone setup, AI configuration, and adaptive intelligence. Has two tabs: <strong>General</strong> and <strong>Learning</strong>.</p>
+
+      <h3>Audio & AI → General</h3>
+      <ul>
+        <li><strong>Microphone Input</strong> — Select your audio input device from the dropdown. Click <em>Refresh</em> to rescan for new devices. Use <em>Test</em> to check the microphone is working.</li>
+        <li><strong>AI & Transcription</strong> — Choose between online transcription (cloud) or offline (local Whisper). Select the Whisper model size for offline mode (tiny = fastest, small = most accurate).</li>
+        <li><strong>Claude API Key</strong> — Required for AI verse detection and sermon note generation. Get one free at <strong>console.anthropic.com</strong>.</li>
+        <li><strong>Detection Mode</strong> — <em>Online</em> uses Claude AI to identify Bible references from speech. <em>Offline</em> uses keyword matching (no API key needed, but less accurate).</li>
+        <li><strong>Confidence Threshold</strong> — How certain the AI must be before showing a detection. Higher = fewer but more accurate results.</li>
+      </ul>
+
+      <h3>Audio & AI → Learning</h3>
+      <p>The Adaptive Intelligence system learns from your services over time to improve accuracy.</p>
+      <ul>
+        <li><strong>Adaptive Corrections</strong> — Review and manage corrections the system has learned from your usage.</li>
+        <li><strong>Speaker Profiles</strong> — Create profiles for different speakers/preachers. The system adapts to each speaker's speaking style, vocabulary, and favourite passages.</li>
+        <li><strong>Custom Vocabulary</strong> — Add words or names the system should recognise (e.g. your pastor's name, local place names, theological terms).</li>
+        <li><strong>Correction Rules</strong> — Define specific corrections (e.g. always replace "profits" with "prophets" in a sermon context).</li>
+        <li><strong>Learning Suggestions</strong> — Review suggestions the system has generated and approve or dismiss them.</li>
+      </ul>
+
+      <!-- ── NETWORK ──────────────────────────────────────────────────── -->
+      <h2>Network</h2>
+      <p>Remote control and network settings.</p>
+      <ul>
+        <li><strong>Remote Control Server</strong> — Enable or disable the phone/tablet remote control server. When enabled, anyone on the same Wi-Fi network can control the presentation from their device.</li>
+        <li><strong>Remote Control Port</strong> — The port number for the remote server (default 8080). A restart is required after changing.</li>
+        <li><strong>IP Address</strong> — Shows your computer's local IP address so you know what URL to type on the remote device.</li>
+        <li><strong>QR Code Login</strong> — Scan QR codes from your phone to instantly connect to the remote control with the correct URL and role.</li>
+      </ul>
+
+      <!-- ── BIBLE VERSIONS ───────────────────────────────────────────── -->
+      <h2>Bible Versions</h2>
+      <p>Manage which Bible translations are available in AnchorCast.</p>
+      <ul>
+        <li><strong>Installed Translations</strong> — Shows all translations with their installed/not-installed status. KJV is bundled by default.</li>
+        <li><strong>Upload New Translation</strong> — Upload any Bible JSON file. Standard translations (NIV, ESV, NASB, etc.) or custom ones are accepted. Any abbreviation works.</li>
+        <li><strong>Custom Translation (Advanced)</strong> — Create your own Bible translation JSON file for specialised needs (e.g. a local language translation).</li>
+      </ul>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Free Bible data:</strong> You can download free public-domain translations using the scripts in the <code>data/</code> folder: <code>download-bible.bat</code> (Windows) or <code>download-bible.sh</code> (Mac/Linux).</div>
+      </div>
+
+      <!-- ── ALERTS ───────────────────────────────────────────────────── -->
+      <h2>Alerts</h2>
+      <p>Configure how nursery and message alerts appear on the projection screen.</p>
+      <ul>
+        <li><strong>Nursery Alert Options</strong> — Customise the appearance, position, size, colours, and duration of nursery/childcare alert overlays. These are static notifications that appear on screen.</li>
+        <li><strong>Message Alert Options</strong> — Customise scrolling text messages that appear on the projection (e.g. "Happy Birthday John", announcements). Configure scroll speed, position, font, colours, and background.</li>
+      </ul>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>Sending alerts:</strong> You can send alerts from the bell icon (🔔) in the control bar, from <strong>Tools → Alerts</strong> in the menu, or from the phone remote control.</div>
+      </div>
+
+      <!-- ── IMPORTING FROM OTHER SOFTWARE ────────────────────────────── -->
+      <h2>Importing Songs from Other Worship Software</h2>
+      <p>AnchorCast can import your existing song library from other popular worship presentation software. Go to <strong>Settings → Songs → General → Song Library Management</strong> and click <strong>Import from other app</strong>.</p>
+
+      <h3>Supported Sources</h3>
+      <ul>
+        <li><strong>EasyWorship</strong> — Select the EasyWorship <code>DATA</code> folder (contains <code>Songs.DB</code> and <code>Songs.MB</code>). Use <strong>"Choose Folder"</strong> and navigate to the EasyWorship data directory (typically <code>C:\Users\Public\Documents\Softouch\EasyWorship\Default\Databases\Data</code>).</li>
+        <li><strong>ProPresenter</strong> — Select individual <code>.pro</code>, <code>.pro4</code>, <code>.pro5</code>, <code>.pro6</code>, or <code>.proPresenter</code> song files. Use <strong>"Choose File"</strong> and select one or more ProPresenter song files.</li>
+        <li><strong>Plain Text / RTF</strong> — Any <code>.txt</code> or <code>.rtf</code> lyrics files with one song per file.</li>
+        <li><strong>SQLite Databases</strong> — Song databases from other applications (<code>.db</code>, <code>.sqlite</code>, <code>.sqlite3</code>).</li>
+      </ul>
+
+      <h3>How to Import</h3>
+      <ol>
+        <li>Open <strong>Settings</strong> (<span class="kbd">Ctrl+,</span>)</li>
+        <li>Go to <strong>Songs</strong> in the sidebar</li>
+        <li>Under the <strong>General</strong> tab, scroll to <strong>Song Library Management</strong></li>
+        <li>Click <strong>Import from other app</strong></li>
+        <li>Choose <strong>"Choose File"</strong> for individual song files (ProPresenter, TXT, JSON) or <strong>"Choose Folder"</strong> for an entire library folder (EasyWorship DATA folder)</li>
+        <li>Select your files or folder — songs are imported and merged into your library</li>
+      </ol>
+
+      <h3>Import Modes</h3>
+      <ul>
+        <li><strong>Merge</strong> — Adds new songs alongside your existing library. Duplicates are detected and skipped.</li>
+        <li><strong>Replace</strong> — Replaces your entire song library with the imported songs. Use with caution.</li>
+      </ul>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>ProPresenter tip:</strong> Song files are typically in <code>~/Documents/ProPresenter/Libraries/</code> (macOS) or <code>C:\Users\[username]\Documents\ProPresenter\Libraries\</code> (Windows). You can select multiple files at once.</div>
+      </div>
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>EasyWorship tip:</strong> Select the <strong>DATA folder</strong> itself, not individual files. The importer needs both <code>Songs.DB</code> and <code>Songs.MB</code> to extract full lyrics.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TROUBLESHOOTING -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-troubleshoot" data-topics="troubleshoot bible songs themes remote transcript output">
+      <h1>Troubleshooting</h1>
+
+      <div class="acc open">
+        <button class="acc-btn" type="button">Most common live-service problems <span class="acc-caret">▾</span></button>
+        <div class="acc-panel">
+          <ul>
+            <li>No Bible text on screen — check Bible Versions and confirm KJV or your chosen translation is loaded.</li>
+            <li>Nothing appears on projection — confirm content is previewed first and Go Live is enabled.</li>
+            <li>Song import looks wrong — use the dedicated import flow for song files.</li>
+            <li>Remote control fails — confirm phone and PC are on the same network.</li>
+            <li>NDI not appearing in OBS — check that the NDI addon is built and the NDI Runtime is installed.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>Verses show placeholder text instead of Bible text</h2>
+      <p>The full Bible database has not been loaded. Go to <strong>Settings → Bible Versions</strong> and upload a <code>kjv.json</code> file. See <a href="#" onclick="showSection('bible-setup');return false" style="color:var(--gold)">Bible Setup</a> for instructions.</p>
+
+      <h2>Transcription not working / no microphone</h2>
+      <ul>
+        <li>Check that your microphone is connected and selected in <strong>Settings → Audio & AI → General</strong></li>
+        <li>Allow microphone permissions when the browser security prompt appears</li>
+        <li>If no microphone is found, AnchorCast runs in Demo Mode with a simulated sermon</li>
+        <li>On Windows, check that microphone privacy settings allow desktop apps</li>
+      </ul>
+
+      <h2>AI detection not working</h2>
+      <ul>
+        <li>Check your Claude API key in <strong>Settings → Audio & AI → General</strong></li>
+        <li>Make sure <strong>Online</strong> mode is selected in the titlebar</li>
+        <li>If the API key is valid but detection is slow, switch to <strong>Offline</strong> mode for faster local keyword matching</li>
+      </ul>
+
+      <h2>Projection window shows blank screen after Go Live</h2>
+      <p>Make sure a verse is loaded in <strong>Program Preview</strong> before turning Go Live ON. The projection only clears when Go Live is turned OFF — this is intentional to blank the screen cleanly.</p>
+
+      <h2>NDI not working</h2>
+      <ul>
+        <li>Make sure the NDI 6 SDK is installed (Windows: <code>C:\Program Files\NDI\NDI 6 SDK</code>, macOS: <code>/Library/NDI SDK for Apple/</code>)</li>
+        <li>Build the addon: run <code>build-ndi.bat</code> (Windows) or <code>bash build-ndi.sh</code> (macOS) in the ndi-addon folder</li>
+        <li>Check that the NDI Runtime is installed on the receiving machine (OBS/vMix PC)</li>
+        <li>Both machines must be on the same network</li>
+        <li>If NDI fails, AnchorCast automatically falls back to MJPEG streaming</li>
+      </ul>
+
+      <h2>Genius lyrics search not finding results</h2>
+      <ul>
+        <li>A Genius API key is required — get one free at <strong>genius.com/api-clients</strong></li>
+        <li>Make sure the key is set in your environment variables</li>
+        <li>Try searching with just the song title or just the artist name</li>
+      </ul>
+
+      <h2>Remote control shows wrong IP address</h2>
+      <ul>
+        <li>Ensure your PC is connected to the same WiFi network as the phone</li>
+        <li>If you have a VPN active, disable it — AnchorCast prefers real network adapters but a VPN can interfere</li>
+        <li>Check the IP shown in <strong>Remote</strong> popover matches your machine's actual LAN IP</li>
+      </ul>
+
+      <h2>Settings window won't open</h2>
+      <p>Try pressing <span class="kbd">Ctrl+,</span> or use <strong>Settings → Preferences</strong> from the top menu bar.</p>
+
+      <h2>App freezes or crashes</h2>
+      <ul>
+        <li>Restart the app — transcript history is auto-saved</li>
+        <li>Check that <code>node_modules</code> folder exists. If not, run <code>npm install</code> in the AnchorCast folder</li>
+        <li>Make sure Electron version is compatible: run <code>npx electron --version</code></li>
+      </ul>
+
+      <h2>Songs not displaying correctly</h2>
+      <ul>
+        <li>Check slide formatting — use blank lines between sections for slide breaks</li>
+        <li>Long lines may wrap differently on the projection screen depending on the theme's font size</li>
+        <li>Try switching to Slides view in Program Preview to check the layout before presenting</li>
+        <li>Check font and sizing settings in <a href="#" onclick="showSection('settings');return false" style="color:var(--gold)">Settings → Songs → Font</a></li>
+      </ul>
+
+      <h2>Timer not showing on projection</h2>
+      <ul>
+        <li>Make sure <strong>Go Live</strong> is enabled before starting the timer</li>
+        <li>Check that the projection window is open (<span class="kbd">Ctrl+P</span>)</li>
+        <li>Try changing the timer position (Centre, Top, or Edge) to confirm it's not hidden behind other content</li>
+      </ul>
+
+      <h2>Alerts not appearing on projection</h2>
+      <ul>
+        <li>Ensure <strong>Go Live</strong> is active and the projection window is open</li>
+        <li>Check alert settings in <a href="#" onclick="showSection('settings');return false" style="color:var(--gold)">Settings → Alerts</a> — the alert may be configured with a very short duration or small size</li>
+        <li>Try sending from the Tools menu (<strong>Tools → Alerts</strong>) instead of the inline control bar panel</li>
+      </ul>
+
+      <h2>Sermon notes generation fails</h2>
+      <ul>
+        <li>A Claude API key is required — check it's configured in <strong>Settings → Audio & AI → General</strong></li>
+        <li>Make sure there is transcript text available — start a transcription session first</li>
+        <li>If the service was short, the AI may not have enough content to generate structured notes</li>
+      </ul>
+
+      <h2>ProPresenter song import not working</h2>
+      <ul>
+        <li>Ensure you're selecting the correct file types: <code>.pro</code>, <code>.pro4</code>, <code>.pro5</code>, <code>.pro6</code>, or <code>.propresenter</code></li>
+        <li>ProPresenter 7 files use a different format — AnchorCast supports both XML-based and newer formats</li>
+        <li>Try importing one file at a time to identify problematic files</li>
+        <li>See <a href="#" onclick="showSection('settings');return false" style="color:var(--gold)">Settings → Importing Songs from Other Worship Software</a> for full details</li>
+      </ul>
+
+      <h2>Schedule not saving</h2>
+      <ul>
+        <li>Use <span class="kbd">Ctrl+S</span> or <strong>File → Save Schedule</strong> to save</li>
+        <li>Check that the save location has write permissions</li>
+        <li>Try <strong>File → Save Schedule As</strong> to save to a different location</li>
+      </ul>
+
+      <h2>Adaptive learning not improving</h2>
+      <ul>
+        <li>Learning suggestions must be manually approved — open <strong>Settings → Audio & AI → Learning</strong> and review pending suggestions</li>
+        <li>More services means more data to learn from — the system improves over time</li>
+        <li>Check that adaptive data files exist in <code>Data/adaptive/</code></li>
+      </ul>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /shell -->
+
+<script>
+const navItems = Array.from(document.querySelectorAll('.nav-item'));
+const sections = Array.from(document.querySelectorAll('.section'));
+const contentEl = document.querySelector('.content');
+const searchInput = document.getElementById('helpSearch');
+const clearSearchBtn = document.getElementById('clearHelpSearchBtn');
+const emptyState = document.getElementById('helpEmpty');
+const chips = Array.from(document.querySelectorAll('#helpChipbar .help-chip'));
+
+function escapeRegExp(v){ return String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+function clearMarks(root){
+  root.querySelectorAll('mark.help-mark').forEach(mark => {
+    const text = document.createTextNode(mark.textContent);
+    mark.replaceWith(text);
+  });
+}
+
+function applyMarks(root, query){
+  clearMarks(root);
+  const q = String(query || '').trim();
+  if (!q) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node){
+      const parent = node.parentElement;
+      if (!parent) return NodeFilter.FILTER_REJECT;
+      if (['SCRIPT','STYLE'].includes(parent.tagName)) return NodeFilter.FILTER_REJECT;
+      if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  const rx = new RegExp('(' + escapeRegExp(q) + ')', 'ig');
+  nodes.forEach(node => {
+    if (!rx.test(node.nodeValue)) return;
+    const span = document.createElement('span');
+    span.innerHTML = node.nodeValue.replace(rx, '<mark class="help-mark">$1</mark>');
+    node.replaceWith(...Array.from(span.childNodes));
+  });
+}
+
+function showSection(id){
+  const target = document.getElementById('sec-' + id);
+  if (target && target.classList.contains('hidden-by-search')) {
+    if (searchInput) searchInput.value = '';
+    chips.forEach(ch => ch.classList.toggle('active', ch.dataset.filter === 'all'));
+    sections.forEach(s => { clearMarks(s); s.classList.remove('hidden-by-search'); });
+    if (emptyState) emptyState.style.display = 'none';
+  }
+  navItems.forEach(n => n.classList.toggle('active', n.dataset.section === id));
+  sections.forEach(s => s.classList.toggle('active', s.id === 'sec-' + id));
+  if (contentEl) contentEl.scrollTop = 0;
+}
+
+function setChipFilter(filter){
+  chips.forEach(ch => ch.classList.toggle('active', ch.dataset.filter === filter));
+  const query = (searchInput?.value || '').trim().toLowerCase();
+  let visibleCount = 0;
+  const visibleSectionIds = new Set();
+  sections.forEach(section => {
+    clearMarks(section);
+    const text = section.innerText.toLowerCase();
+    const topics = String(section.dataset.topics || '');
+    const topicPass = filter === 'all' || topics.includes(filter);
+    const queryPass = !query || text.includes(query);
+    const visible = topicPass && queryPass;
+    section.classList.toggle('hidden-by-search', !visible);
+    if (visible) {
+      visibleCount += 1;
+      visibleSectionIds.add(section.id.replace(/^sec-/, ''));
+      if (query) applyMarks(section, query);
+    }
+  });
+  navItems.forEach(nav => {
+    const sectionId = nav.dataset.section;
+    const match = visibleSectionIds.has(sectionId);
+    nav.style.display = match ? '' : 'none';
+  });
+  document.querySelectorAll('.nav-section').forEach(heading => {
+    let sibling = heading.nextElementSibling;
+    let anyVisible = false;
+    while (sibling && !sibling.classList.contains('nav-section')) {
+      if (sibling.classList.contains('nav-item') && sibling.style.display !== 'none') anyVisible = true;
+      sibling = sibling.nextElementSibling;
+    }
+    heading.style.display = anyVisible ? '' : 'none';
+  });
+  if (emptyState) emptyState.style.display = visibleCount ? 'none' : 'block';
+
+  const activeVisible = document.querySelector('.section.active:not(.hidden-by-search)');
+  if (!activeVisible) {
+    const firstVisible = document.querySelector('.section:not(.hidden-by-search)');
+    if (firstVisible) {
+      const id = firstVisible.id.replace(/^sec-/, '');
+      showSection(id);
+    }
+  }
+}
+
+navItems.forEach(item => {
+  item.addEventListener('click', () => showSection(item.dataset.section));
+});
+
+chips.forEach(chip => {
+  chip.addEventListener('click', () => setChipFilter(chip.dataset.filter));
+});
+
+clearSearchBtn?.addEventListener('click', () => {
+  if (searchInput) searchInput.value = '';
+  setChipFilter(document.querySelector('#helpChipbar .help-chip.active')?.dataset.filter || 'all');
+  searchInput?.focus();
+});
+
+searchInput?.addEventListener('input', () => {
+  setChipFilter(document.querySelector('#helpChipbar .help-chip.active')?.dataset.filter || 'all');
+});
+
+document.querySelectorAll('.acc').forEach(acc => {
+  const btn = acc.querySelector('.acc-btn');
+  btn?.addEventListener('click', () => {
+    acc.classList.toggle('open');
+    const caret = acc.querySelector('.acc-caret');
+    if (caret) caret.textContent = acc.classList.contains('open') ? '▾' : '▸';
+  });
+});
+
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+    e.preventDefault();
+    searchInput?.focus();
+    searchInput?.select();
+  }
+  if (e.key === 'Escape' && document.activeElement === searchInput) {
+    searchInput.value = '';
+    setChipFilter(document.querySelector('#helpChipbar .help-chip.active')?.dataset.filter || 'all');
+  }
+});
+
+showSection('overview');
+setChipFilter('all');
+</script>
+</body>
+</html>
