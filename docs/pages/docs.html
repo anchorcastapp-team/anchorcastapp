@@ -1008,6 +1008,10 @@ footer{
   .logo-mark{width:30px;height:30px;font-size:14px}
 }
 
+
+/* ── MENU OPEN BODY LOCK ── */
+body.menu-open{overflow:hidden;height:100vh}
+
 </style>
 </head>
 <body>
@@ -1349,27 +1353,96 @@ footer{
 </footer>
 
 <script>
-const nav=document.getElementById('nav');
-window.addEventListener('scroll',()=>{nav.classList.toggle('scrolled',scrollY>50);const p=document.getElementById('scrollProg');if(p){p.style.width=(scrollY/(document.documentElement.scrollHeight-innerHeight)*100)+'%'}},{passive:true});
-const mobBtn=document.getElementById('mobMenuBtn');
-const mobMenu=document.getElementById('mobMenu');
-if(mobBtn&&mobMenu){
-  mobBtn.addEventListener('click',()=>{
-    mobMenu.classList.toggle('open');
-    mobBtn.textContent=mobMenu.classList.contains('open')?'✕':'☰';
-  });
-  mobMenu.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{
-    mobMenu.classList.remove('open');mobBtn.textContent='☰';
-  }));
-}
-const ro=new IntersectionObserver(es=>es.forEach(e=>{
-  if(e.isIntersecting){e.target.classList.add('in');ro.unobserve(e.target)}
-}),{threshold:.06,rootMargin:'0px 0px -32px 0px'});
-document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
-</script>
-<script>
+// ── Scroll progress bar ──
+const scrollProg = document.getElementById('scrollProg');
+window.addEventListener('scroll', () => {
+  if(scrollProg){
+    const pct = (scrollY / (document.documentElement.scrollHeight - innerHeight)) * 100;
+    scrollProg.style.width = pct + '%';
+  }
+}, {passive:true});
 
-// Docs sidebar mobile toggle
+// ── Nav scroll class ──
+const navEl = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  if(navEl) navEl.classList.toggle('scrolled', scrollY > 40);
+}, {passive:true});
+
+// ── Mobile menu ──
+const mobBtn = document.getElementById('mobMenuBtn') || document.getElementById('mobBtn');
+const mobMenu = document.getElementById('mobMenu');
+if(mobBtn && mobMenu){
+  mobBtn.addEventListener('click', () => {
+    const isOpen = mobMenu.classList.toggle('open');
+    mobBtn.textContent = isOpen ? '✕' : '☰';
+    document.body.classList.toggle('menu-open', isOpen);
+  });
+  mobMenu.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      mobMenu.classList.remove('open');
+      mobBtn.textContent = '☰';
+      document.body.classList.remove('menu-open');
+    });
+  });
+  document.addEventListener('click', e => {
+    if(!mobBtn.contains(e.target) && !mobMenu.contains(e.target)){
+      mobMenu.classList.remove('open');
+      mobBtn.textContent = '☰';
+      document.body.classList.remove('menu-open');
+    }
+  });
+}
+
+// ── Scroll reveal ──
+const ro = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){ e.target.classList.add('in'); ro.unobserve(e.target); }
+  });
+}, {threshold: 0.06, rootMargin: '0px 0px -24px 0px'});
+document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
+
+// ── GitHub stats (index only) ──
+async function loadGitHubStats(){
+  try {
+    const repo = await fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp').then(r => r.json());
+    const stars = repo.stargazers_count ?? 0;
+    ['starCount','ghStars'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.textContent = stars.toLocaleString();
+    });
+    const releases = await fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp/releases').then(r => r.json());
+    let totalDl = 0, latestVer = 'v1.2.0';
+    if(Array.isArray(releases) && releases.length > 0){
+      latestVer = releases[0].tag_name || 'v1.2.0';
+      releases.forEach(r => {
+        (r.assets || []).forEach(a => {
+          if(a.name && (a.name.endsWith('.exe') || a.name.endsWith('.zip')))
+            totalDl += a.download_count || 0;
+        });
+      });
+    }
+    ['releaseVer','relTag'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.textContent = latestVer;
+    });
+    const dlEls = ['dlCount','statDl'];
+    if(totalDl > 0){
+      const dur = 1400, start = performance.now();
+      const tick = now => {
+        const p = Math.min((now - start) / dur, 1);
+        const ease = 1 - Math.pow(1 - p, 3);
+        const val = Math.round(ease * totalDl).toLocaleString();
+        dlEls.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = val; });
+        if(p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    } else {
+      dlEls.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '0'; });
+    }
+  } catch(err) { console.log('GitHub stats:', err.message); }
+}
+loadGitHubStats();
+
+// ── Docs sidebar toggle (docs page only) ──
 function toggleSidebar(){
   const sidebar = document.getElementById('docsSidebar');
   if(sidebar) sidebar.classList.toggle('expanded');
@@ -1378,34 +1451,155 @@ function initSidebarToggle(){
   const toggle = document.getElementById('sidebarToggle');
   const sidebar = document.getElementById('docsSidebar');
   if(!toggle || !sidebar) return;
-  const show = () => {
-    if(window.innerWidth <= 800){
-      toggle.style.display = 'flex';
-    } else {
-      toggle.style.display = 'none';
-      sidebar.classList.remove('expanded');
-    }
+  const update = () => {
+    toggle.style.display = window.innerWidth <= 800 ? 'flex' : 'none';
+    if(window.innerWidth > 800) sidebar.classList.remove('expanded');
   };
-  show();
-  window.addEventListener('resize', show);
-  // Close sidebar when a link is clicked on mobile
+  update();
+  window.addEventListener('resize', update);
   sidebar.querySelectorAll('.sidebar-link').forEach(link => {
     link.addEventListener('click', () => {
-      if(window.innerWidth <= 800){
-        sidebar.classList.remove('expanded');
-      }
+      if(window.innerWidth <= 800) sidebar.classList.remove('expanded');
     });
   });
 }
 initSidebarToggle();
 
-// Docs sidebar scrollspy
+// ── Docs scrollspy ──
 const sidebarLinks = document.querySelectorAll('.sidebar-link[href^="#"]');
 if(sidebarLinks.length){
   const headings = Array.from(document.querySelectorAll('.docs-content h2, .docs-content h1'));
   const updateActive = () => {
-    let current = 'overview';
-    headings.forEach(h => { if(h.id && scrollY >= h.offsetTop - 90) current = h.id; });
+    let current = headings[0] ? headings[0].id : '';
+    headings.forEach(h => { if(h.id && scrollY >= h.offsetTop - 100) current = h.id; });
+    sidebarLinks.forEach(l => {
+      l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+    });
+  };
+  window.addEventListener('scroll', updateActive, {passive:true});
+  updateActive();
+}
+</script>
+<script>
+// ── Scroll progress bar ──
+const scrollProg = document.getElementById('scrollProg');
+window.addEventListener('scroll', () => {
+  if(scrollProg){
+    const pct = (scrollY / (document.documentElement.scrollHeight - innerHeight)) * 100;
+    scrollProg.style.width = pct + '%';
+  }
+}, {passive:true});
+
+// ── Nav scroll class ──
+const navEl = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  if(navEl) navEl.classList.toggle('scrolled', scrollY > 40);
+}, {passive:true});
+
+// ── Mobile menu ──
+const mobBtn = document.getElementById('mobMenuBtn') || document.getElementById('mobBtn');
+const mobMenu = document.getElementById('mobMenu');
+if(mobBtn && mobMenu){
+  mobBtn.addEventListener('click', () => {
+    const isOpen = mobMenu.classList.toggle('open');
+    mobBtn.textContent = isOpen ? '✕' : '☰';
+    document.body.classList.toggle('menu-open', isOpen);
+  });
+  mobMenu.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      mobMenu.classList.remove('open');
+      mobBtn.textContent = '☰';
+      document.body.classList.remove('menu-open');
+    });
+  });
+  document.addEventListener('click', e => {
+    if(!mobBtn.contains(e.target) && !mobMenu.contains(e.target)){
+      mobMenu.classList.remove('open');
+      mobBtn.textContent = '☰';
+      document.body.classList.remove('menu-open');
+    }
+  });
+}
+
+// ── Scroll reveal ──
+const ro = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){ e.target.classList.add('in'); ro.unobserve(e.target); }
+  });
+}, {threshold: 0.06, rootMargin: '0px 0px -24px 0px'});
+document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
+
+// ── GitHub stats (index only) ──
+async function loadGitHubStats(){
+  try {
+    const repo = await fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp').then(r => r.json());
+    const stars = repo.stargazers_count ?? 0;
+    ['starCount','ghStars'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.textContent = stars.toLocaleString();
+    });
+    const releases = await fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp/releases').then(r => r.json());
+    let totalDl = 0, latestVer = 'v1.2.0';
+    if(Array.isArray(releases) && releases.length > 0){
+      latestVer = releases[0].tag_name || 'v1.2.0';
+      releases.forEach(r => {
+        (r.assets || []).forEach(a => {
+          if(a.name && (a.name.endsWith('.exe') || a.name.endsWith('.zip')))
+            totalDl += a.download_count || 0;
+        });
+      });
+    }
+    ['releaseVer','relTag'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.textContent = latestVer;
+    });
+    const dlEls = ['dlCount','statDl'];
+    if(totalDl > 0){
+      const dur = 1400, start = performance.now();
+      const tick = now => {
+        const p = Math.min((now - start) / dur, 1);
+        const ease = 1 - Math.pow(1 - p, 3);
+        const val = Math.round(ease * totalDl).toLocaleString();
+        dlEls.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = val; });
+        if(p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    } else {
+      dlEls.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '0'; });
+    }
+  } catch(err) { console.log('GitHub stats:', err.message); }
+}
+loadGitHubStats();
+
+// ── Docs sidebar toggle (docs page only) ──
+function toggleSidebar(){
+  const sidebar = document.getElementById('docsSidebar');
+  if(sidebar) sidebar.classList.toggle('expanded');
+}
+function initSidebarToggle(){
+  const toggle = document.getElementById('sidebarToggle');
+  const sidebar = document.getElementById('docsSidebar');
+  if(!toggle || !sidebar) return;
+  const update = () => {
+    toggle.style.display = window.innerWidth <= 800 ? 'flex' : 'none';
+    if(window.innerWidth > 800) sidebar.classList.remove('expanded');
+  };
+  update();
+  window.addEventListener('resize', update);
+  sidebar.querySelectorAll('.sidebar-link').forEach(link => {
+    link.addEventListener('click', () => {
+      if(window.innerWidth <= 800) sidebar.classList.remove('expanded');
+    });
+  });
+}
+initSidebarToggle();
+
+// ── Docs scrollspy ──
+const sidebarLinks = document.querySelectorAll('.sidebar-link[href^="#"]');
+if(sidebarLinks.length){
+  const headings = Array.from(document.querySelectorAll('.docs-content h2, .docs-content h1'));
+  const updateActive = () => {
+    let current = headings[0] ? headings[0].id : '';
+    headings.forEach(h => { if(h.id && scrollY >= h.offsetTop - 100) current = h.id; });
     sidebarLinks.forEach(l => {
       l.classList.toggle('active', l.getAttribute('href') === '#' + current);
     });
