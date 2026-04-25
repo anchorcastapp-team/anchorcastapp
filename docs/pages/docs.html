@@ -947,70 +947,245 @@ footer{
 }
 
 
-/* ── FOOTER MOBILE ── */
-@media(max-width:768px){
-  .footer-top{grid-template-columns:1fr 1fr;gap:28px;padding:40px 5% 32px}
-  .footer-logo{font-size:17px}
-  .footer-tagline{font-size:13px;max-width:100%}
-  .footer-col h4{font-size:10px;margin-bottom:12px}
-  .footer-col ul li a{font-size:13px}
+
+/* ════════════════════════════════════════════════════════
+   ANCHORCAST — MOBILE OPTIMISATION  (single clean block)
+   Breakpoints: 1024 | 768 | 560 | 420
+════════════════════════════════════════════════════════ */
+
+/* ── Body scroll-lock when menu is open ── */
+body.menu-open{overflow:hidden;position:fixed;width:100%;top:0}
+
+/* ── Nav & hamburger button ── */
+.mob-menu-btn{
+  display:none;background:none;border:none;
+  color:var(--text,#eaecff);font-size:28px;line-height:1;
+  cursor:pointer;padding:6px 8px;border-radius:8px;
+  transition:background .2s;flex-shrink:0;
 }
-@media(max-width:480px){
-  .footer-top{grid-template-columns:1fr;gap:24px;padding:32px 5% 24px}
-  .footer-brand{margin-bottom:4px}
-  .footer-social a{width:32px;height:32px;font-size:14px}
-  .footer-bottom{padding:14px 5%;gap:10px}
-  .footer-copy{font-size:11px}
-  .footer-badges{gap:6px}
-  .footer-badge{font-size:10px;padding:3px 9px}
+.mob-menu-btn:hover{background:rgba(255,255,255,.08)}
+
+/* ── Full-screen mobile menu overlay ── */
+.mob-menu{
+  display:none;
+  position:fixed;
+  inset:0;                          /* top/right/bottom/left: 0 */
+  background:#06080f;
+  flex-direction:column;
+  z-index:9500;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding-top:0;
+}
+.mob-menu.open{display:flex}
+
+/* Sticky header inside overlay */
+.mob-menu-header{
+  position:sticky;top:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 5%;height:60px;
+  background:#06080f;
+  border-bottom:1px solid rgba(201,168,76,.2);
+  flex-shrink:0;
+  z-index:1;
+}
+.mob-menu-logo{
+  font-family:'Cinzel Decorative',serif;
+  font-size:15px;font-weight:900;
+  color:var(--gold,#c9a84c);
+  display:flex;align-items:center;gap:9px;
+  text-decoration:none;
+}
+.mob-menu-logo-mark{
+  width:30px;height:30px;border-radius:7px;
+  background:linear-gradient(135deg,var(--gold,#c9a84c),var(--gold-dk,#8a6a20));
+  display:grid;place-items:center;font-size:14px;
+}
+.mob-menu-close{
+  background:none;border:none;
+  color:var(--text,#eaecff);font-size:30px;line-height:1;
+  cursor:pointer;padding:6px 8px;border-radius:8px;
+  transition:background .2s;
+}
+.mob-menu-close:hover{background:rgba(255,255,255,.08)}
+
+/* Nav links inside overlay */
+.mob-menu a{
+  display:block;
+  padding:18px 6%;
+  font-size:17px;font-weight:500;
+  color:#b4bad6;
+  text-decoration:none;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  transition:color .2s,background .2s;
+  -webkit-text-fill-color:#b4bad6;
+}
+.mob-menu a:hover{color:#f0f2ff;background:rgba(255,255,255,.04);-webkit-text-fill-color:#f0f2ff}
+.mob-menu .mob-dl,.mob-menu .mob-dl-item{
+  margin:20px 6% 10px!important;
+  background:linear-gradient(135deg,var(--gold,#c9a84c),var(--gold-dk,#8a6a20))!important;
+  color:#000!important;
+  -webkit-text-fill-color:#000!important;
+  font-weight:700!important;font-size:16px!important;
+  text-align:center!important;border-radius:12px!important;
+  padding:18px 5%!important;border-bottom:none!important;
+  display:block!important;
 }
 
-
-/* ── MOB-MENU FULL FIXES ── */
+/* ── 1024px — Tablet/mobile switch ── */
 @media(max-width:1024px){
-  .mob-menu.open{display:flex}
-  .mob-menu{
-    max-height:calc(100vh - 58px);
-    overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
-  }
-  .mob-menu a{
-    font-size:16px;
-    padding:16px 6%;
-    border-bottom:1px solid rgba(255,255,255,.05);
-    color:var(--text-2,#b4bad6);
-  }
-}
-
-
-/* ── MOBILE NAV POLISH ── */
-@media(max-width:1024px){
+  .nav-links{display:none!important}
+  .mob-menu-btn{display:flex;align-items:center;justify-content:center}
   nav{height:58px;padding:0 4%}
-  .mob-menu a{
-    font-size:16px;
-    padding:18px 6%;
-    color:#b4bad6;
-    letter-spacing:.01em;
-    border-bottom:1px solid rgba(255,255,255,.05);
-  }
-  .mob-menu a:hover{color:#f0f2ff;background:rgba(255,255,255,.04)}
-  .mob-dl{
-    margin:12px 6% 8px!important;
-    border-radius:10px!important;
-    text-align:center!important;
-    padding:16px!important;
-    font-size:15px!important;
-    border-bottom:none!important;
-  }
+  .hero{padding:calc(58px + 60px) 5% 56px}
+  .section{padding:64px 5%}
+  .page-hero{margin-top:58px;padding:44px 5% 36px}
+  .footer-top{grid-template-columns:1.2fr 1fr 1fr 1fr;gap:32px}
 }
-@media(max-width:480px){
+
+/* ── 768px — Mobile landscape / small tablet ── */
+@media(max-width:768px){
+  /* Nav */
+  nav{padding:0 4%;height:56px}
   .logo-name{font-size:15px}
-  .logo-mark{width:30px;height:30px;font-size:14px}
+
+  /* Hero */
+  .hero{padding:calc(56px + 48px) 4% 48px}
+  .hero h1{font-size:clamp(36px,9vw,58px)!important}
+  .hero-eye{font-size:15px}
+  .hero-sub{font-size:15px;line-height:1.75}
+  .hero-free-banner{font-size:12px;padding:8px 16px}
+  .hfb-text{font-size:12px}
+  .pill{font-size:10px;padding:5px 14px}
+  .hero-frame{border-radius:10px}
+
+  /* Download counter - horizontal → vertical */
+  .dl-counter-inner{flex-direction:column;max-width:280px;margin:0 auto}
+  .dl-counter-divider{width:100%;height:1px;margin:0}
+  .dl-counter-block{width:100%;padding:14px 24px}
+  .dl-counter-num{font-size:26px}
+
+  /* Quick strip: 4→2 columns */
+  .quick-strip{grid-template-columns:1fr 1fr!important}
+
+  /* Home nav cards: 3→2 columns */
+  .home-nav-grid{grid-template-columns:1fr 1fr!important;gap:14px}
+
+  /* Demo strip */
+  .demo-strip{grid-template-columns:1fr!important;gap:16px}
+
+  /* Features/screenshots grids */
+  .feat-grid{grid-template-columns:1fr 1fr!important}
+  .showcase{grid-template-columns:1fr!important;gap:20px}
+  .ss-mobile-inner{grid-template-columns:1fr!important}
+  .ss-mobile-img{border-right:none;border-bottom:1px solid rgba(255,255,255,.04)}
+
+  /* Stats */
+  .stats,.stat-grid{grid-template-columns:1fr 1fr!important}
+  .stat{padding:24px 16px}
+  .stat-n{font-size:32px}
+
+  /* Comparison */
+  .cmp-grid{grid-template-columns:1fr!important}
+  .cmp-card.us{margin-top:8px!important}
+
+  /* How-it-works, GH grid */
+  .how-grid,.gh-grid{grid-template-columns:1fr!important;gap:32px}
+  .hl-row{grid-template-columns:1fr!important;gap:24px}
+  .hl-row.rev{direction:ltr!important}
+
+  /* Docs */
+  .docs-wrap{grid-template-columns:1fr;margin-top:56px}
+  .docs-sidebar{
+    position:relative;top:0;height:auto;
+    max-height:52px;overflow:hidden;
+    transition:max-height .3s ease;
+    border-right:none;
+    border-bottom:1px solid rgba(201,168,76,.15);
+    padding:0;
+  }
+  .docs-sidebar.expanded{max-height:600px;overflow-y:auto}
+  .docs-sidebar-toggle{display:flex!important}
+  .docs-content{padding:32px 5%}
+
+  /* Footer */
+  .footer-top{grid-template-columns:1fr 1fr!important;gap:28px;padding:40px 5% 32px}
 }
 
+/* ── 560px — Mobile portrait ── */
+@media(max-width:560px){
+  /* Hero */
+  .hero{padding:calc(56px + 36px) 4% 40px}
+  .hero h1{font-size:clamp(30px,10vw,48px)!important}
+  .hero-sub{font-size:14.5px}
+  .hero-free-banner{flex-wrap:wrap;justify-content:center;text-align:center;padding:8px 14px}
 
-/* ── MENU OPEN BODY LOCK ── */
-body.menu-open{overflow:hidden;height:100vh}
+  /* CTAs full-width */
+  .hero-cta,.dl-btns{flex-direction:column;align-items:stretch;width:100%;gap:10px}
+  .btn-gold,.btn-ghost{
+    width:100%;justify-content:center;
+    font-size:14px;padding:14px 18px;
+    -webkit-text-fill-color:#000;
+  }
+  .btn-ghost{-webkit-text-fill-color:var(--text,#eaecff)}
+
+  /* Quick strip: 2→1 column */
+  .quick-strip{grid-template-columns:1fr!important}
+  .quick-item{flex-direction:row}
+
+  /* Home nav cards: 2→1 column */
+  .home-nav-grid{grid-template-columns:1fr!important;gap:12px}
+
+  /* Sections */
+  .section{padding:48px 4%!important}
+  h2{font-size:clamp(22px,7vw,34px)!important}
+  .sec-sub{font-size:14.5px!important}
+  .page-hero h1{font-size:clamp(24px,8vw,38px)!important}
+  .page-hero-sub{font-size:14px}
+
+  /* Features grid: 2→1 */
+  .feat-grid{grid-template-columns:1fr!important}
+  .feat-card{padding:22px 18px}
+
+  /* Stats: 2→1 */
+  .stats,.stat-grid{grid-template-columns:1fr!important}
+
+  /* Footer: 2→1 column */
+  .footer-top{grid-template-columns:1fr!important;gap:20px;padding:32px 4% 24px}
+  .footer-bottom{flex-direction:column;align-items:flex-start;gap:12px;padding:16px 4%}
+  .footer-badges{flex-wrap:wrap;gap:6px}
+  .footer-badge{font-size:10px;padding:3px 10px}
+
+  /* Docs content */
+  .docs-content{padding:24px 4%}
+  .docs-content h2{font-size:18px;padding-top:28px;margin-top:28px}
+  .docs-panel-grid{grid-template-columns:1fr!important}
+  .docs-shortcut-grid{grid-template-columns:1fr!important}
+  .docs-table{font-size:12px}
+  .docs-table th,.docs-table td{padding:8px 10px}
+  .key{font-size:10px;padding:2px 7px}
+
+  /* GH clone box */
+  .gh-clone{flex-direction:column;align-items:flex-start;gap:8px}
+  .gh-clone .copy-btn{width:100%;text-align:center}
+
+  /* Download page */
+  .dl-os-cards{grid-template-columns:1fr!important}
+  .release-asset{flex-direction:column;align-items:flex-start;gap:10px}
+  .release-asset .btn-sm-dl{width:100%;text-align:center;justify-content:center}
+}
+
+/* ── 420px — Very small phones ── */
+@media(max-width:420px){
+  .logo-mark{width:28px;height:28px;font-size:13px}
+  .logo-name{font-size:13px}
+  .hero h1{font-size:clamp(26px,10vw,38px)!important}
+  .pill{font-size:9.5px;padding:4px 12px;letter-spacing:.08em}
+  .dl-counter-num{font-size:22px}
+  .footer-logo{font-size:16px}
+  .footer-social a{width:32px;height:32px;font-size:14px}
+}
+/* ════════════════ END MOBILE ════════════════ */
 
 </style>
 </head>
@@ -1024,7 +1199,7 @@ body.menu-open{overflow:hidden;height:100vh}
   <ul class="nav-links">
     <li><a href="../index.html">Home</a></li>
     <li><a href="features.html">Features</a></li>
-    <li><a href="screenshots.html">Screenshots</a></li>
+    <li><a href="demo.html">Demo</a></li>
     <li><a href="docs.html">Docs</a></li>
     <li><a href="open-source.html">Open Source</a></li>
     <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/wiki" target="_blank" rel="noopener">Wiki</a></li>
@@ -1034,7 +1209,7 @@ body.menu-open{overflow:hidden;height:100vh}
   <div class="mob-menu" id="mobMenu">
     <a href="../index.html">Home</a>
     <a href="features.html">Features</a>
-    <a href="screenshots.html">Screenshots</a>
+    <a href="demo.html">Demo</a>
     <a href="docs.html">Docs</a>
     <a href="open-source.html">Open Source</a>
     <a href="https://github.com/anchorcastapp-team/anchorcastapp/wiki" target="_blank">Wiki</a>
@@ -1311,7 +1486,7 @@ body.menu-open{overflow:hidden;height:100vh}
       <h4>Product</h4>
       <ul>
         <li><a href="../pages/features.html">Features</a></li>
-        <li><a href="../pages/screenshots.html">Screenshots</a></li>
+        <li><a href="../pages/demo.html">Demo</a></li>
         <li><a href="../pages/download.html">⬇ Download Free</a></li>
         <li><a href="../pages/docs.html">Documentation</a></li>
         <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/wiki" target="_blank">Wiki ↗</a></li>
@@ -1353,260 +1528,270 @@ body.menu-open{overflow:hidden;height:100vh}
 </footer>
 
 <script>
-// ── Scroll progress bar ──
-const scrollProg = document.getElementById('scrollProg');
-window.addEventListener('scroll', () => {
-  if(scrollProg){
-    const pct = (scrollY / (document.documentElement.scrollHeight - innerHeight)) * 100;
-    scrollProg.style.width = pct + '%';
+(function(){
+  /* ── Scroll progress bar ── */
+  const bar = document.getElementById('scrollProg');
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', function(){
+    if(bar){
+      var pct = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+      bar.style.width = pct + '%';
+    }
+    if(nav) nav.classList.toggle('scrolled', window.scrollY > 40);
+  }, {passive:true});
+
+  /* ── Mobile menu ── */
+  var mobBtn   = document.getElementById('mobMenuBtn') || document.getElementById('mobBtn');
+  var mobMenu  = document.getElementById('mobMenu');
+  var closeBtn = document.getElementById('mobMenuClose');
+
+  function openMenu(){
+    if(!mobMenu) return;
+    mobMenu.classList.add('open');
+    if(mobBtn) mobBtn.textContent = '✕';
+    document.body.classList.add('menu-open');
+    document.body.style.top = '-' + window.scrollY + 'px';
   }
-}, {passive:true});
+  function closeMenu(){
+    if(!mobMenu) return;
+    var scrollY = parseInt(document.body.style.top || '0') * -1;
+    mobMenu.classList.remove('open');
+    if(mobBtn) mobBtn.textContent = '☰';
+    document.body.classList.remove('menu-open');
+    document.body.style.top = '';
+    window.scrollTo(0, scrollY);
+  }
 
-// ── Nav scroll class ──
-const navEl = document.getElementById('nav');
-window.addEventListener('scroll', () => {
-  if(navEl) navEl.classList.toggle('scrolled', scrollY > 40);
-}, {passive:true});
-
-// ── Mobile menu ──
-const mobBtn = document.getElementById('mobMenuBtn') || document.getElementById('mobBtn');
-const mobMenu = document.getElementById('mobMenu');
-if(mobBtn && mobMenu){
-  mobBtn.addEventListener('click', () => {
-    const isOpen = mobMenu.classList.toggle('open');
-    mobBtn.textContent = isOpen ? '✕' : '☰';
-    document.body.classList.toggle('menu-open', isOpen);
+  if(mobBtn) mobBtn.addEventListener('click', function(){
+    mobMenu && mobMenu.classList.contains('open') ? closeMenu() : openMenu();
   });
-  mobMenu.querySelectorAll('a').forEach(a => {
-    a.addEventListener('click', () => {
-      mobMenu.classList.remove('open');
-      mobBtn.textContent = '☰';
-      document.body.classList.remove('menu-open');
-    });
+  if(closeBtn) closeBtn.addEventListener('click', closeMenu);
+  if(mobMenu) mobMenu.querySelectorAll('a').forEach(function(a){
+    a.addEventListener('click', closeMenu);
   });
-  document.addEventListener('click', e => {
-    if(!mobBtn.contains(e.target) && !mobMenu.contains(e.target)){
-      mobMenu.classList.remove('open');
-      mobBtn.textContent = '☰';
-      document.body.classList.remove('menu-open');
+  document.addEventListener('click', function(e){
+    if(mobMenu && mobMenu.classList.contains('open')){
+      if(mobBtn && !mobBtn.contains(e.target) && !mobMenu.contains(e.target)) closeMenu();
     }
   });
-}
 
-// ── Scroll reveal ──
-const ro = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if(e.isIntersecting){ e.target.classList.add('in'); ro.unobserve(e.target); }
-  });
-}, {threshold: 0.06, rootMargin: '0px 0px -24px 0px'});
-document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
-
-// ── GitHub stats (index only) ──
-async function loadGitHubStats(){
-  try {
-    const repo = await fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp').then(r => r.json());
-    const stars = repo.stargazers_count ?? 0;
-    ['starCount','ghStars'].forEach(id => {
-      const el = document.getElementById(id);
-      if(el) el.textContent = stars.toLocaleString();
-    });
-    const releases = await fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp/releases').then(r => r.json());
-    let totalDl = 0, latestVer = 'v1.2.0';
-    if(Array.isArray(releases) && releases.length > 0){
-      latestVer = releases[0].tag_name || 'v1.2.0';
-      releases.forEach(r => {
-        (r.assets || []).forEach(a => {
-          if(a.name && (a.name.endsWith('.exe') || a.name.endsWith('.zip')))
-            totalDl += a.download_count || 0;
-        });
+  /* ── Scroll reveal ── */
+  if('IntersectionObserver' in window){
+    var ro = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ e.target.classList.add('in'); ro.unobserve(e.target); }
       });
-    }
-    ['releaseVer','relTag'].forEach(id => {
-      const el = document.getElementById(id); if(el) el.textContent = latestVer;
-    });
-    const dlEls = ['dlCount','statDl'];
-    if(totalDl > 0){
-      const dur = 1400, start = performance.now();
-      const tick = now => {
-        const p = Math.min((now - start) / dur, 1);
-        const ease = 1 - Math.pow(1 - p, 3);
-        const val = Math.round(ease * totalDl).toLocaleString();
-        dlEls.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = val; });
-        if(p < 1) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-    } else {
-      dlEls.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '0'; });
-    }
-  } catch(err) { console.log('GitHub stats:', err.message); }
-}
-loadGitHubStats();
+    }, {threshold:0.05, rootMargin:'0px 0px -20px 0px'});
+    document.querySelectorAll('.reveal').forEach(function(el){ ro.observe(el); });
+  } else {
+    // Fallback for older browsers
+    document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
+  }
 
-// ── Docs sidebar toggle (docs page only) ──
-function toggleSidebar(){
-  const sidebar = document.getElementById('docsSidebar');
-  if(sidebar) sidebar.classList.toggle('expanded');
-}
-function initSidebarToggle(){
-  const toggle = document.getElementById('sidebarToggle');
-  const sidebar = document.getElementById('docsSidebar');
-  if(!toggle || !sidebar) return;
-  const update = () => {
-    toggle.style.display = window.innerWidth <= 800 ? 'flex' : 'none';
-    if(window.innerWidth > 800) sidebar.classList.remove('expanded');
-  };
-  update();
-  window.addEventListener('resize', update);
-  sidebar.querySelectorAll('.sidebar-link').forEach(link => {
-    link.addEventListener('click', () => {
-      if(window.innerWidth <= 800) sidebar.classList.remove('expanded');
-    });
-  });
-}
-initSidebarToggle();
+  /* ── GitHub stats (index only) ── */
+  function loadGitHubStats(){
+    fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp')
+      .then(function(r){ return r.json(); })
+      .then(function(repo){
+        var stars = repo.stargazers_count || 0;
+        ['starCount','ghStars','starCountHero'].forEach(function(id){
+          var el = document.getElementById(id); if(el) el.textContent = stars.toLocaleString();
+        });
+      }).catch(function(){});
 
-// ── Docs scrollspy ──
-const sidebarLinks = document.querySelectorAll('.sidebar-link[href^="#"]');
-if(sidebarLinks.length){
-  const headings = Array.from(document.querySelectorAll('.docs-content h2, .docs-content h1'));
-  const updateActive = () => {
-    let current = headings[0] ? headings[0].id : '';
-    headings.forEach(h => { if(h.id && scrollY >= h.offsetTop - 100) current = h.id; });
-    sidebarLinks.forEach(l => {
-      l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+    fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp/releases')
+      .then(function(r){ return r.json(); })
+      .then(function(releases){
+        if(!Array.isArray(releases) || !releases.length) return;
+        var ver = releases[0].tag_name || 'v1.2.0';
+        var dl = 0;
+        releases.forEach(function(r){
+          (r.assets||[]).forEach(function(a){
+            if(a.name && (a.name.endsWith('.exe')||a.name.endsWith('.zip'))) dl += (a.download_count||0);
+          });
+        });
+        ['releaseVer','relTag'].forEach(function(id){
+          var el = document.getElementById(id); if(el) el.textContent = ver;
+        });
+        if(dl > 0){
+          var dur=1400, start=performance.now();
+          (function tick(now){
+            var p=Math.min((now-start)/dur,1), ease=1-Math.pow(1-p,3), val=Math.round(ease*dl).toLocaleString();
+            ['dlCount','statDl'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=val; });
+            if(p<1) requestAnimationFrame(tick);
+          })(performance.now());
+        }
+      }).catch(function(){});
+  }
+  loadGitHubStats();
+
+  /* ── Docs sidebar toggle & scrollspy ── */
+  function initDocs(){
+    var toggle  = document.getElementById('sidebarToggle');
+    var sidebar = document.getElementById('docsSidebar');
+    if(!sidebar) return;
+
+    function updateToggle(){
+      if(toggle) toggle.style.display = window.innerWidth <= 800 ? 'flex' : 'none';
+      if(window.innerWidth > 800 && sidebar) sidebar.classList.remove('expanded');
+    }
+    updateToggle();
+    window.addEventListener('resize', updateToggle);
+
+    if(sidebar) sidebar.querySelectorAll('.sidebar-link').forEach(function(l){
+      l.addEventListener('click', function(){
+        if(window.innerWidth <= 800 && sidebar) sidebar.classList.remove('expanded');
+      });
     });
-  };
-  window.addEventListener('scroll', updateActive, {passive:true});
-  updateActive();
-}
+
+    /* Scrollspy */
+    var links = Array.from(document.querySelectorAll('.sidebar-link[href^="#"]'));
+    var heads = Array.from(document.querySelectorAll('.docs-content h1, .docs-content h2'));
+    if(!links.length || !heads.length) return;
+    function updateSpy(){
+      var cur = heads[0] ? heads[0].id : '';
+      heads.forEach(function(h){ if(h.id && window.scrollY >= h.offsetTop - 100) cur = h.id; });
+      links.forEach(function(l){ l.classList.toggle('active', l.getAttribute('href') === '#'+cur); });
+    }
+    window.addEventListener('scroll', updateSpy, {passive:true});
+    updateSpy();
+  }
+  initDocs();
+
+})();
 </script>
 <script>
-// ── Scroll progress bar ──
-const scrollProg = document.getElementById('scrollProg');
-window.addEventListener('scroll', () => {
-  if(scrollProg){
-    const pct = (scrollY / (document.documentElement.scrollHeight - innerHeight)) * 100;
-    scrollProg.style.width = pct + '%';
+(function(){
+  /* ── Scroll progress bar ── */
+  const bar = document.getElementById('scrollProg');
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', function(){
+    if(bar){
+      var pct = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+      bar.style.width = pct + '%';
+    }
+    if(nav) nav.classList.toggle('scrolled', window.scrollY > 40);
+  }, {passive:true});
+
+  /* ── Mobile menu ── */
+  var mobBtn   = document.getElementById('mobMenuBtn') || document.getElementById('mobBtn');
+  var mobMenu  = document.getElementById('mobMenu');
+  var closeBtn = document.getElementById('mobMenuClose');
+
+  function openMenu(){
+    if(!mobMenu) return;
+    mobMenu.classList.add('open');
+    if(mobBtn) mobBtn.textContent = '✕';
+    document.body.classList.add('menu-open');
+    document.body.style.top = '-' + window.scrollY + 'px';
   }
-}, {passive:true});
+  function closeMenu(){
+    if(!mobMenu) return;
+    var scrollY = parseInt(document.body.style.top || '0') * -1;
+    mobMenu.classList.remove('open');
+    if(mobBtn) mobBtn.textContent = '☰';
+    document.body.classList.remove('menu-open');
+    document.body.style.top = '';
+    window.scrollTo(0, scrollY);
+  }
 
-// ── Nav scroll class ──
-const navEl = document.getElementById('nav');
-window.addEventListener('scroll', () => {
-  if(navEl) navEl.classList.toggle('scrolled', scrollY > 40);
-}, {passive:true});
-
-// ── Mobile menu ──
-const mobBtn = document.getElementById('mobMenuBtn') || document.getElementById('mobBtn');
-const mobMenu = document.getElementById('mobMenu');
-if(mobBtn && mobMenu){
-  mobBtn.addEventListener('click', () => {
-    const isOpen = mobMenu.classList.toggle('open');
-    mobBtn.textContent = isOpen ? '✕' : '☰';
-    document.body.classList.toggle('menu-open', isOpen);
+  if(mobBtn) mobBtn.addEventListener('click', function(){
+    mobMenu && mobMenu.classList.contains('open') ? closeMenu() : openMenu();
   });
-  mobMenu.querySelectorAll('a').forEach(a => {
-    a.addEventListener('click', () => {
-      mobMenu.classList.remove('open');
-      mobBtn.textContent = '☰';
-      document.body.classList.remove('menu-open');
-    });
+  if(closeBtn) closeBtn.addEventListener('click', closeMenu);
+  if(mobMenu) mobMenu.querySelectorAll('a').forEach(function(a){
+    a.addEventListener('click', closeMenu);
   });
-  document.addEventListener('click', e => {
-    if(!mobBtn.contains(e.target) && !mobMenu.contains(e.target)){
-      mobMenu.classList.remove('open');
-      mobBtn.textContent = '☰';
-      document.body.classList.remove('menu-open');
+  document.addEventListener('click', function(e){
+    if(mobMenu && mobMenu.classList.contains('open')){
+      if(mobBtn && !mobBtn.contains(e.target) && !mobMenu.contains(e.target)) closeMenu();
     }
   });
-}
 
-// ── Scroll reveal ──
-const ro = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if(e.isIntersecting){ e.target.classList.add('in'); ro.unobserve(e.target); }
-  });
-}, {threshold: 0.06, rootMargin: '0px 0px -24px 0px'});
-document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
-
-// ── GitHub stats (index only) ──
-async function loadGitHubStats(){
-  try {
-    const repo = await fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp').then(r => r.json());
-    const stars = repo.stargazers_count ?? 0;
-    ['starCount','ghStars'].forEach(id => {
-      const el = document.getElementById(id);
-      if(el) el.textContent = stars.toLocaleString();
-    });
-    const releases = await fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp/releases').then(r => r.json());
-    let totalDl = 0, latestVer = 'v1.2.0';
-    if(Array.isArray(releases) && releases.length > 0){
-      latestVer = releases[0].tag_name || 'v1.2.0';
-      releases.forEach(r => {
-        (r.assets || []).forEach(a => {
-          if(a.name && (a.name.endsWith('.exe') || a.name.endsWith('.zip')))
-            totalDl += a.download_count || 0;
-        });
+  /* ── Scroll reveal ── */
+  if('IntersectionObserver' in window){
+    var ro = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ e.target.classList.add('in'); ro.unobserve(e.target); }
       });
-    }
-    ['releaseVer','relTag'].forEach(id => {
-      const el = document.getElementById(id); if(el) el.textContent = latestVer;
-    });
-    const dlEls = ['dlCount','statDl'];
-    if(totalDl > 0){
-      const dur = 1400, start = performance.now();
-      const tick = now => {
-        const p = Math.min((now - start) / dur, 1);
-        const ease = 1 - Math.pow(1 - p, 3);
-        const val = Math.round(ease * totalDl).toLocaleString();
-        dlEls.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = val; });
-        if(p < 1) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-    } else {
-      dlEls.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '0'; });
-    }
-  } catch(err) { console.log('GitHub stats:', err.message); }
-}
-loadGitHubStats();
+    }, {threshold:0.05, rootMargin:'0px 0px -20px 0px'});
+    document.querySelectorAll('.reveal').forEach(function(el){ ro.observe(el); });
+  } else {
+    // Fallback for older browsers
+    document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
+  }
 
-// ── Docs sidebar toggle (docs page only) ──
-function toggleSidebar(){
-  const sidebar = document.getElementById('docsSidebar');
-  if(sidebar) sidebar.classList.toggle('expanded');
-}
-function initSidebarToggle(){
-  const toggle = document.getElementById('sidebarToggle');
-  const sidebar = document.getElementById('docsSidebar');
-  if(!toggle || !sidebar) return;
-  const update = () => {
-    toggle.style.display = window.innerWidth <= 800 ? 'flex' : 'none';
-    if(window.innerWidth > 800) sidebar.classList.remove('expanded');
-  };
-  update();
-  window.addEventListener('resize', update);
-  sidebar.querySelectorAll('.sidebar-link').forEach(link => {
-    link.addEventListener('click', () => {
-      if(window.innerWidth <= 800) sidebar.classList.remove('expanded');
-    });
-  });
-}
-initSidebarToggle();
+  /* ── GitHub stats (index only) ── */
+  function loadGitHubStats(){
+    fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp')
+      .then(function(r){ return r.json(); })
+      .then(function(repo){
+        var stars = repo.stargazers_count || 0;
+        ['starCount','ghStars','starCountHero'].forEach(function(id){
+          var el = document.getElementById(id); if(el) el.textContent = stars.toLocaleString();
+        });
+      }).catch(function(){});
 
-// ── Docs scrollspy ──
-const sidebarLinks = document.querySelectorAll('.sidebar-link[href^="#"]');
-if(sidebarLinks.length){
-  const headings = Array.from(document.querySelectorAll('.docs-content h2, .docs-content h1'));
-  const updateActive = () => {
-    let current = headings[0] ? headings[0].id : '';
-    headings.forEach(h => { if(h.id && scrollY >= h.offsetTop - 100) current = h.id; });
-    sidebarLinks.forEach(l => {
-      l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+    fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp/releases')
+      .then(function(r){ return r.json(); })
+      .then(function(releases){
+        if(!Array.isArray(releases) || !releases.length) return;
+        var ver = releases[0].tag_name || 'v1.2.0';
+        var dl = 0;
+        releases.forEach(function(r){
+          (r.assets||[]).forEach(function(a){
+            if(a.name && (a.name.endsWith('.exe')||a.name.endsWith('.zip'))) dl += (a.download_count||0);
+          });
+        });
+        ['releaseVer','relTag'].forEach(function(id){
+          var el = document.getElementById(id); if(el) el.textContent = ver;
+        });
+        if(dl > 0){
+          var dur=1400, start=performance.now();
+          (function tick(now){
+            var p=Math.min((now-start)/dur,1), ease=1-Math.pow(1-p,3), val=Math.round(ease*dl).toLocaleString();
+            ['dlCount','statDl'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=val; });
+            if(p<1) requestAnimationFrame(tick);
+          })(performance.now());
+        }
+      }).catch(function(){});
+  }
+  loadGitHubStats();
+
+  /* ── Docs sidebar toggle & scrollspy ── */
+  function initDocs(){
+    var toggle  = document.getElementById('sidebarToggle');
+    var sidebar = document.getElementById('docsSidebar');
+    if(!sidebar) return;
+
+    function updateToggle(){
+      if(toggle) toggle.style.display = window.innerWidth <= 800 ? 'flex' : 'none';
+      if(window.innerWidth > 800 && sidebar) sidebar.classList.remove('expanded');
+    }
+    updateToggle();
+    window.addEventListener('resize', updateToggle);
+
+    if(sidebar) sidebar.querySelectorAll('.sidebar-link').forEach(function(l){
+      l.addEventListener('click', function(){
+        if(window.innerWidth <= 800 && sidebar) sidebar.classList.remove('expanded');
+      });
     });
-  };
-  window.addEventListener('scroll', updateActive, {passive:true});
-  updateActive();
-}
+
+    /* Scrollspy */
+    var links = Array.from(document.querySelectorAll('.sidebar-link[href^="#"]'));
+    var heads = Array.from(document.querySelectorAll('.docs-content h1, .docs-content h2'));
+    if(!links.length || !heads.length) return;
+    function updateSpy(){
+      var cur = heads[0] ? heads[0].id : '';
+      heads.forEach(function(h){ if(h.id && window.scrollY >= h.offsetTop - 100) cur = h.id; });
+      links.forEach(function(l){ l.classList.toggle('active', l.getAttribute('href') === '#'+cur); });
+    }
+    window.addEventListener('scroll', updateSpy, {passive:true});
+    updateSpy();
+  }
+  initDocs();
+
+})();
 </script>
 </body>
 </html>
