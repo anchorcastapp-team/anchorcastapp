@@ -1,18 +1,18 @@
-# ⚓ AnchorCast v1.1.0
+# ⚓ AnchorCast v1.2.0
 ### *Free & Open-Source AI Church Presentation Software*
 
 <p align="center">
-  <a href="https://github.com/gbkeku/anchorcastapp/stargazers">
-    <img src="https://img.shields.io/github/stars/gbkeku/anchorcastapp?style=for-the-badge" />
+  <a href="https://github.com/anchorcastapp-team/anchorcastapp/stargazers">
+    <img src="https://img.shields.io/github/stars/anchorcastapp-team/anchorcastapp?style=for-the-badge" />
   </a>
-  <a href="https://github.com/gbkeku/anchorcastapp/releases">
-    <img src="https://img.shields.io/github/v/release/gbkeku/anchorcastapp?style=for-the-badge&label=version" />
+  <a href="https://github.com/anchorcastapp-team/anchorcastapp/releases">
+    <img src="https://img.shields.io/github/v/release/anchorcastapp-team/anchorcastapp?style=for-the-badge&label=version" />
   </a>
-  <a href="https://github.com/gbkeku/anchorcastapp/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/gbkeku/anchorcastapp?style=for-the-badge" />
+  <a href="https://github.com/anchorcastapp-team/anchorcastapp/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/anchorcastapp-team/anchorcastapp?style=for-the-badge" />
   </a>
-  <a href="https://github.com/gbkeku/anchorcastapp/issues">
-    <img src="https://img.shields.io/github/issues/gbkeku/anchorcastapp?style=for-the-badge" />
+  <a href="https://github.com/anchorcastapp-team/anchorcastapp/issues">
+    <img src="https://img.shields.io/github/issues/anchorcastapp-team/anchorcastapp?style=for-the-badge" />
   </a>
   <a href="https://www.anchorcastapp.com">
     <img src="https://img.shields.io/badge/website-anchorcastapp.com-blue?style=for-the-badge" />
@@ -47,7 +47,7 @@
 ## ⚡ Quick Start
 
 ```bash
-git clone https://github.com/gbkeku/anchorcastapp.git
+git clone https://github.com/anchorcastapp-team/anchorcastapp.git
 cd anchorcastapp
 npm install
 npm start
@@ -60,7 +60,7 @@ On Windows, double-click `start.bat`.
 ## 📥 Download
 
 👉 **[anchorcastapp.com](https://www.anchorcastapp.com)** — Windows installer (Python + Whisper bundled, fully offline)  
-👉 **[GitHub Releases](https://github.com/gbkeku/anchorcastapp/releases)** — all versions
+👉 **[GitHub Releases](https://github.com/anchorcastapp-team/anchorcastapp/releases)** — all versions
 
 ---
 
@@ -75,7 +75,7 @@ On Windows, double-click `start.bat`.
 
 ### 🎵 Worship Tools
 - **Song Manager** — full library with lyrics editor, auto slide formatting, and Genius lyrics search
-- **Import from EasyWorship or ProPresenter XML** — or paste raw lyrics for instant AI formatting
+- **Import songs** — paste raw lyrics for instant AI formatting, or import from compatible song library files
 - **Theme Designer** — custom fonts, colors, backgrounds, and logos; per-category themes for Scripture, Songs, and Presentations
 - **Presentation Editor** — 1920×1080 canvas designer with text, images, shapes, and backgrounds
 - **Service Schedule** — drag-and-drop planner to stage verses, songs, and media in order
@@ -204,14 +204,20 @@ AnchorCast is MIT licensed and open to contributions from developers, designers,
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines and [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ```bash
-git clone https://github.com/gbkeku/anchorcastapp.git
+git clone https://github.com/anchorcastapp-team/anchorcastapp.git
 ```
+
+---
+
+## ⚠️ Disclaimer
+
+See [DISCLAIMER.md](DISCLAIMER.md) for important information regarding third-party services, AI accuracy, data privacy, and limitations of the software.
 
 ---
 
 ## ❤️ Mission
 
-To give every church, regardless of size or budget, a powerful, reliable, and free tools for worship and the Word.
+To give every church, regardless of size or budget, powerful, reliable, and free tools for worship and the Word.
 
 ---
 
