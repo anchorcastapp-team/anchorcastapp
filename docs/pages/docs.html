@@ -31,7 +31,7 @@ body{
 body::before{
   content:'';
   position:fixed;inset:0;
-  z-index:0;pointer-events:none;
+  z-index:-1;pointer-events:none;
   background:
     radial-gradient(ellipse 80% 50% at 20% 0%, rgba(201,168,76,.08) 0%, transparent 60%),
     radial-gradient(ellipse 60% 40% at 80% 100%, rgba(96,120,250,.05) 0%, transparent 55%),
@@ -56,24 +56,24 @@ nav.scrolled{box-shadow:0 8px 40px rgba(0,0,0,.6)}
 .nav-links a{color:var(--muted);font-size:13px;font-weight:500;text-decoration:none;
   letter-spacing:.03em;transition:color .2s}
 .nav-links a:hover{color:var(--text)}
-.nav-dl{background:linear-gradient(135deg,var(--gold),var(--gold-dk))!important;color:#000!important;
+.nav-dl{background:linear-gradient(135deg,var(--gold),var(--gold-dk))!important;color:#000!important;-webkit-text-fill-color:#000!important;
   font-weight:700!important;padding:8px 20px;border-radius:8px;
   transition:opacity .2s,transform .2s!important}
 .nav-dl:hover{opacity:.88!important;transform:translateY(-1px)!important}
 
 /* ── BUTTONS ── */
 .btn-gold{display:inline-flex;align-items:center;gap:8px;
-  background:linear-gradient(135deg,var(--gold),var(--gold-dk));color:#000;
+  background:linear-gradient(135deg,var(--gold),var(--gold-dk));color:#000;-webkit-text-fill-color:#000;
   font-weight:700;font-size:15px;padding:15px 36px;border-radius:10px;
   text-decoration:none;letter-spacing:.02em;
   transition:transform .2s,box-shadow .2s;box-shadow:0 6px 28px rgba(201,168,76,.3)}
 .btn-gold:hover{transform:translateY(-2px);box-shadow:0 12px 38px rgba(201,168,76,.45)}
 .btn-ghost{display:inline-flex;align-items:center;gap:8px;background:transparent;
-  color:var(--text);font-weight:500;font-size:15px;padding:15px 28px;border-radius:10px;
+  color:var(--text);-webkit-text-fill-color:var(--text);font-weight:500;font-size:15px;padding:15px 28px;border-radius:10px;
   text-decoration:none;border:1px solid rgba(255,255,255,.13);transition:border-color .2s,background .2s}
 .btn-ghost:hover{border-color:var(--gold);background:var(--gold-glow)}
 .btn-outline{display:inline-flex;align-items:center;gap:8px;background:transparent;
-  color:var(--gold);font-weight:600;font-size:13.5px;padding:11px 22px;border-radius:9px;
+  color:var(--gold);-webkit-text-fill-color:var(--gold);font-weight:600;font-size:13.5px;padding:11px 22px;border-radius:9px;
   text-decoration:none;border:1px solid var(--gold-rim);transition:background .2s}
 .btn-outline:hover{background:var(--gold-glow)}
 .btn-sm-dl{display:inline-flex;align-items:center;gap:6px;
@@ -747,6 +747,8 @@ footer{
 .docs-content{
   padding:52px 60px;
   max-width:860px;
+  position:relative;
+  z-index:1;
 }
 .docs-content h1{
   font-family:'Cinzel Decorative',serif;
@@ -869,6 +871,40 @@ footer{
   .docs-content{padding:24px 16px}
   .docs-content h1{font-size:clamp(22px,8vw,34px)!important}
   .docs-content h2{font-size:18px;padding-top:32px;margin-top:32px}
+}
+
+
+/* ── DOCS MOBILE ── */
+@media(max-width:800px){
+  .docs-wrap{grid-template-columns:1fr;margin-top:58px}
+  .docs-sidebar{
+    display:flex;flex-wrap:wrap;gap:0;
+    padding:12px 0;
+    border-right:none;
+    border-bottom:1px solid rgba(201,168,76,.12);
+  }
+  .sidebar-section{margin-bottom:0;min-width:50%}
+  .sidebar-label{padding:10px 16px 4px;font-size:9px}
+  .sidebar-link{padding:6px 16px;font-size:12px}
+}
+@media(max-width:560px){
+  .docs-sidebar{flex-direction:column}
+  .sidebar-section{min-width:100%}
+  .docs-content{padding:20px 16px}
+  .docs-content h1{font-size:clamp(20px,8vw,32px)!important}
+  .docs-content h2{font-size:18px;padding-top:28px;margin-top:28px}
+  .docs-panel-grid{grid-template-columns:1fr}
+  .docs-shortcut-grid{grid-template-columns:1fr}
+  .docs-table{font-size:12px}
+  .docs-table th,.docs-table td{padding:8px 10px}
+  .docs-steps li{gap:10px}
+  .docs-step-n{width:22px;height:22px;font-size:10px;flex-shrink:0}
+  .docs-callout{padding:12px 14px;gap:8px}
+  .btn-gold,.btn-ghost{width:100%;justify-content:center;font-size:14px;padding:13px 18px}
+}
+@media(max-width:400px){
+  .docs-content{padding:16px 12px}
+  .docs-content code{font-size:11px}
 }
 
 </style>
@@ -1141,7 +1177,7 @@ footer{
     <h3>How do I contribute or report a bug?</h3>
     <p>Open an issue or pull request on <a href="https://github.com/anchorcastapp-team/anchorcastapp" target="_blank">GitHub</a>. We welcome contributions of all kinds — code, documentation, translations, and bug reports.</p>
 
-    <div style="margin-top:52px;padding-top:28px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:14px;flex-wrap:wrap">
+    <div style="margin-top:52px;padding-top:28px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:14px;flex-wrap:wrap;position:relative;z-index:1">
       <a href="download.html" class="btn-gold">⬇ Download AnchorCast Free</a>
       <a href="https://github.com/anchorcastapp-team/anchorcastapp" class="btn-ghost" target="_blank" rel="noopener">View on GitHub ↗</a>
     </div>
