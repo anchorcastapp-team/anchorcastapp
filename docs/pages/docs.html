@@ -427,12 +427,14 @@ footer{
 }
 .mob-menu-btn:hover{background:rgba(255,255,255,.08)}
 .mob-menu{
-  display:none;position:fixed;top:58px;left:0;right:0;bottom:0;
-  background:rgba(6,8,15,.99);backdrop-filter:blur(24px);
-  border-bottom:1px solid var(--gold-rim);
-  flex-direction:column;padding:8px 0;z-index:9000;
-  overflow-y:auto;-webkit-overflow-scrolling:touch;
-  max-height:calc(100vh - 58px);
+  display:none;
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  background:#06080f;
+  flex-direction:column;
+  z-index:9500;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
 }
 .mob-menu.open{display:flex}
 .mob-menu a{
@@ -1206,7 +1208,17 @@ body.menu-open{overflow:hidden;position:fixed;width:100%;top:0}
     <li><a href="download.html" class="nav-dl">⬇ Free Download</a></li>
   </ul>
   <button class="mob-menu-btn" id="mobMenuBtn">☰</button>
-  <div class="mob-menu" id="mobMenu">
+
+</nav>
+
+<div class="mob-menu" id="mobMenu">
+  <div class="mob-menu-header">
+    <a href="../index.html" class="mob-menu-logo" onclick="document.getElementById('mobMenu').classList.remove('open');document.body.classList.remove('menu-open');document.body.style.top='';return true;">
+      <div class="mob-menu-logo-mark">✝</div>
+      <span>AnchorCast</span>
+    </a>
+    <button class="mob-menu-close" id="mobMenuClose" onclick="(function(){var y=parseInt(document.body.style.top||0)*-1;document.getElementById('mobMenu').classList.remove('open');document.getElementById('mobMenuBtn').textContent='☰';document.body.classList.remove('menu-open');document.body.style.top='';window.scrollTo(0,y);})()">✕</button>
+  </div>
     <a href="../index.html">Home</a>
     <a href="features.html">Features</a>
     <a href="demo.html">Demo</a>
@@ -1215,7 +1227,7 @@ body.menu-open{overflow:hidden;position:fixed;width:100%;top:0}
     <a href="https://github.com/anchorcastapp-team/anchorcastapp/wiki" target="_blank">Wiki</a>
     <a href="download.html" class="mob-dl">⬇ Free Download</a>
   </div>
-</nav>
+
 
 <div class="docs-wrap">
   <!-- SIDEBAR -->
