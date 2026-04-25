@@ -23,9 +23,26 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--text);overflow-x:hidden;line-height:1.65}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--ink);
+  color:var(--text);
+  overflow-x:hidden;
+  line-height:1.65;
+}
+/* Rich layered background */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 0%, rgba(201,168,76,.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(96,120,250,.05) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 60% at 50% 50%, rgba(201,168,76,.03) 0%, transparent 70%),
+    linear-gradient(180deg, #05060f 0%, #070820 40%, #05060f 100%);
+}
 body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");opacity:.5}
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");opacity:.6}
 
 /* ── NAV ── */
 nav{position:fixed;top:0;left:0;right:0;z-index:800;display:flex;align-items:center;
@@ -73,8 +90,12 @@ nav.scrolled{box-shadow:0 8px 40px rgba(0,0,0,.6)}
   justify-content:center;text-align:center;padding:140px 6% 80px;
   position:relative;overflow:hidden}
 .hero::before{content:'';position:absolute;top:50%;left:50%;
-  transform:translate(-50%,-60%);width:1000px;height:700px;border-radius:50%;
-  background:radial-gradient(ellipse,rgba(201,168,76,.07) 0%,transparent 68%);pointer-events:none}
+  transform:translate(-50%,-60%);width:1100px;height:750px;border-radius:50%;
+  background:radial-gradient(ellipse,rgba(201,168,76,.09) 0%,rgba(201,168,76,.03) 40%,transparent 70%);
+  pointer-events:none;animation:hero-pulse 8s ease-in-out infinite}
+@keyframes hero-pulse{0%,100%{transform:translate(-50%,-60%) scale(1)}50%{transform:translate(-50%,-62%) scale(1.06)}}
+.hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:180px;
+  background:linear-gradient(to top,var(--ink),transparent);pointer-events:none;z-index:1}
 .pill{display:inline-flex;align-items:center;gap:8px;background:var(--gold-glow);
   border:1px solid var(--gold-rim);border-radius:100px;padding:5px 16px;
   font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.12em;
@@ -94,9 +115,10 @@ h1{font-family:'Cinzel Decorative',serif;font-size:clamp(38px,6.5vw,84px);
 .hero-cta{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:64px}
 
 /* Hero screenshot frame */
-.hero-frame{width:min(1040px,95%);margin:0 auto;border-radius:14px;overflow:hidden;
-  border:1px solid rgba(201,168,76,.25);
-  box-shadow:0 48px 120px rgba(0,0,0,.85),0 0 0 1px rgba(201,168,76,.07)}
+.hero-frame{width:min(1040px,95%);margin:0 auto;border-radius:16px;overflow:hidden;
+  border:1px solid rgba(201,168,76,.28);
+  box-shadow:0 60px 140px rgba(0,0,0,.9),0 0 80px rgba(201,168,76,.08),0 0 0 1px rgba(201,168,76,.08);
+  position:relative;z-index:2}
 .frame-bar{background:#070819;padding:10px 16px;display:flex;align-items:center;
   gap:8px;border-bottom:1px solid rgba(255,255,255,.04)}
 .dot{width:11px;height:11px;border-radius:50%}
@@ -105,7 +127,7 @@ h1{font-family:'Cinzel Decorative',serif;font-size:clamp(38px,6.5vw,84px);
 .hero-frame img{width:100%;display:block}
 
 /* ── SHARED LAYOUT ── */
-.section{padding:100px 6%;max-width:1200px;margin:0 auto}
+.section{padding:100px 6%;max-width:1200px;margin:0 auto;position:relative;z-index:1}
 .section.wide{max-width:100%}
 .centered{text-align:center}
 .sec-tag{font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.22em;
@@ -123,7 +145,17 @@ h2 i{font-family:'Crimson Pro',serif;font-style:italic;color:var(--gold);font-we
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
   background:var(--gold-rim);border:1px solid var(--gold-rim);
   border-radius:16px;overflow:hidden;margin-top:56px}
-.stat{background:var(--ink2);padding:36px 24px;text-align:center}
+.stat{
+  background:linear-gradient(135deg,var(--ink2) 0%,rgba(14,16,40,.8) 100%);
+  padding:36px 24px;text-align:center;
+  position:relative;overflow:hidden;
+}
+.stat::before{
+  content:'';position:absolute;top:-50%;left:-50%;
+  width:200%;height:200%;
+  background:radial-gradient(ellipse at center,rgba(201,168,76,.04) 0%,transparent 60%);
+  pointer-events:none;
+}
 .stat-n{font-family:'Cinzel',serif;font-size:44px;font-weight:900;
   color:var(--gold);line-height:1;margin-bottom:8px}
 .stat-l{font-size:13px;color:var(--muted);line-height:1.5}
@@ -181,7 +213,10 @@ h2 i{font-family:'Crimson Pro',serif;font-style:italic;color:var(--gold);font-we
   border-radius:16px;overflow:hidden;margin-top:56px}
 .feat-card{background:var(--ink2);padding:34px 30px;display:flex;flex-direction:column;
   gap:12px;transition:background .2s}
-.feat-card:hover{background:var(--ink3)}
+.feat-card:hover{
+  background:linear-gradient(135deg,var(--ink3) 0%,rgba(14,16,40,.9) 100%);
+  border-left:2px solid rgba(201,168,76,.3);
+}
 .feat-ic{font-size:26px;width:52px;height:52px;display:grid;place-items:center;
   background:var(--gold-glow);border:1px solid var(--gold-rim);border-radius:12px}
 .feat-tag{display:inline-flex;font-size:9px;font-weight:700;letter-spacing:.1em;
@@ -314,13 +349,74 @@ h2 i{font-family:'Crimson Pro',serif;font-style:italic;color:var(--gold);font-we
 .dl-note a{color:var(--gold);text-decoration:none}
 
 /* ── FOOTER ── */
-footer{padding:52px 6%;text-align:center;border-top:1px solid rgba(255,255,255,.04)}
-.footer-logo{font-family:'Cinzel',serif;font-size:20px;font-weight:700;color:var(--gold);margin-bottom:10px}
-.footer-sub{font-size:13px;color:var(--muted);margin-bottom:22px}
-.footer-links{display:flex;justify-content:center;gap:26px;margin-bottom:24px;flex-wrap:wrap}
-.footer-links a{font-size:12.5px;color:var(--muted);text-decoration:none;transition:color .2s}
-.footer-links a:hover{color:var(--gold)}
-.footer-copy{font-size:11px;color:#222240}
+footer{
+  padding:0;
+  border-top:1px solid rgba(201,168,76,.12);
+  position:relative;z-index:1;
+  background:linear-gradient(180deg, var(--ink2) 0%, #030410 100%);
+}
+.footer-top{
+  display:grid;
+  grid-template-columns:1.8fr 1fr 1fr 1fr;
+  gap:48px;
+  padding:64px 6% 48px;
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+.footer-brand{}
+.footer-logo{
+  font-family:'Cinzel',serif;font-size:22px;font-weight:700;color:var(--gold);
+  display:flex;align-items:center;gap:10px;margin-bottom:14px;
+}
+.footer-logo-mark{
+  width:34px;height:34px;border-radius:8px;
+  background:linear-gradient(135deg,var(--gold),var(--gold-dk));
+  display:grid;place-items:center;font-size:17px;
+}
+.footer-tagline{
+  font-family:'Crimson Pro',serif;font-size:15px;
+  color:var(--muted);line-height:1.7;max-width:260px;margin-bottom:18px;
+}
+.footer-social{display:flex;gap:10px;margin-top:4px}
+.footer-social a{
+  width:36px;height:36px;border-radius:8px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+  display:grid;place-items:center;color:var(--muted);
+  text-decoration:none;font-size:15px;transition:all .2s;
+}
+.footer-social a:hover{background:var(--gold-glow);border-color:var(--gold-rim);color:var(--gold)}
+.footer-col h4{
+  font-family:'Cinzel',serif;font-size:11px;font-weight:700;
+  color:var(--gold);letter-spacing:.18em;text-transform:uppercase;
+  margin-bottom:16px;
+}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+.footer-col ul li a{
+  font-size:13px;color:var(--muted);text-decoration:none;transition:color .2s;
+  display:flex;align-items:center;gap:6px;
+}
+.footer-col ul li a:hover{color:var(--text)}
+.footer-bottom{
+  padding:20px 6%;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:12px;
+}
+.footer-copy{font-size:11.5px;color:#222240;line-height:1.6}
+.footer-copy a{color:var(--gold);text-decoration:none;opacity:.7}
+.footer-copy a:hover{opacity:1}
+.footer-badges{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.footer-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+  border-radius:6px;padding:4px 10px;
+  font-size:10.5px;color:#333a5c;letter-spacing:.04em;
+}
+@media(max-width:900px){
+  .footer-top{grid-template-columns:1fr 1fr;gap:32px}
+}
+@media(max-width:560px){
+  .footer-top{grid-template-columns:1fr;gap:28px;padding:40px 5% 32px}
+  .footer-bottom{flex-direction:column;align-items:flex-start;padding:16px 5%}
+}
 
 
 
@@ -592,11 +688,28 @@ footer{padding:52px 6%;text-align:center;border-top:1px solid rgba(255,255,255,.
   .home-nav-grid{grid-template-columns:1fr}
   .quick-strip{grid-template-columns:1fr}
 }
+
+/* ── SCROLL PROGRESS ── */
+.scroll-progress{
+  position:fixed;top:0;left:0;height:2px;
+  background:linear-gradient(90deg,var(--gold-dk),var(--gold),var(--gold-lt));
+  z-index:9000;width:0%;transition:width .1s linear;
+  box-shadow:0 0 8px rgba(201,168,76,.5);
+}
+/* ── SECTION SEPARATORS ── */
+.section-sep{
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(201,168,76,.12),transparent);
+  max-width:1200px;margin:0 auto;
+}
+/* ── HOME NAV CARD ACTIVE STATE ── */
+.home-nav-card:focus{outline:2px solid var(--gold);outline-offset:2px}
 </style>
 </head>
 <body>
 
 <!-- NAV -->
+<div class="scroll-progress" id="scrollProg"></div>
 <nav id="nav">
   <a href="index.html" class="logo">
     <div class="logo-mark">✝</div>
@@ -783,30 +896,75 @@ footer{padding:52px 6%;text-align:center;border-top:1px solid rgba(255,255,255,.
 <!-- FOOTER -->
 <!-- FOOTER -->
 <footer>
-  <div class="footer-logo">✝ AnchorCast</div>
-  <div class="footer-sub">Free AI Sermon &amp; Worship Display: Built for Every Church</div>
-  <div class="footer-links">
-    <a href="index.html">Home</a>
-    <a href="pages/features.html">Features</a>
-    <a href="pages/screenshots.html">Screenshots</a>
-    <a href="pages/docs.html">Docs</a>
-    <a href="pages/open-source.html">Open Source</a>
-    <a href="https://github.com/anchorcastapp-team/anchorcastapp/wiki" target="_blank">Wiki</a>
-    <a href="pages/download.html">Download</a>
-    <a href="https://github.com/anchorcastapp-team/anchorcastapp/issues" target="_blank">Support</a>
-    <a href="mailto:support@anchorcastapp.com">Contact</a>
+  <div class="footer-top">
+    <div class="footer-brand">
+      <div class="footer-logo">
+        <div class="footer-logo-mark">✝</div>
+        AnchorCast
+      </div>
+      <p class="footer-tagline">Free AI church presentation software — built for real Sunday services, every week, everywhere.</p>
+      <div class="footer-social">
+        <a href="https://github.com/anchorcastapp-team/anchorcastapp" target="_blank" rel="noopener" title="GitHub">⚓</a>
+        <a href="https://www.anchorcastapp.com" title="Website">🌐</a>
+        <a href="mailto:info@kaitamtech.com" title="Email">✉</a>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h4>Product</h4>
+      <ul>
+        <li><a href="pages/features.html">Features</a></li>
+        <li><a href="pages/screenshots.html">Screenshots</a></li>
+        <li><a href="pages/download.html">⬇ Download Free</a></li>
+        <li><a href="pages/docs.html">Documentation</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/wiki" target="_blank">Wiki ↗</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Project</h4>
+      <ul>
+        <li><a href="pages/open-source.html">Open Source</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp" target="_blank">GitHub ↗</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/blob/main/CONTRIBUTING.md" target="_blank">Contribute ↗</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/blob/main/CHANGELOG.md" target="_blank">Changelog ↗</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/blob/main/LICENSE" target="_blank">MIT License ↗</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Support</h4>
+      <ul>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/issues" target="_blank">Report a Bug ↗</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/discussions" target="_blank">Discussions ↗</a></li>
+        <li><a href="mailto:info@kaitamtech.com">info@kaitamtech.com</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/blob/main/DISCLAIMER.md" target="_blank">Disclaimer ↗</a></li>
+      </ul>
+    </div>
   </div>
-  <div class="footer-copy">
-    © 2026 AnchorCast ·
-    <a href="https://github.com/anchorcastapp-team/anchorcastapp" style="color:var(--gold);text-decoration:none">github.com/anchorcastapp-team/anchorcastapp</a>
-    · MIT License · Built with ♥ for the Church
+  <div class="footer-bottom">
+    <div class="footer-copy">
+      © 2026 AnchorCast · Developed by <strong style="color:#3a4060">Kaitam Technologies</strong> ·
+      <a href="https://github.com/anchorcastapp-team/anchorcastapp">github.com/anchorcastapp-team</a>
+      · Built with ♥ for churches everywhere
+    </div>
+    <div class="footer-badges">
+      <span class="footer-badge">✦ MIT License</span>
+      <span class="footer-badge">🔒 100% Free</span>
+      <span class="footer-badge">⚡ Open Source</span>
+      <span class="footer-badge">v1.2.0</span>
+    </div>
   </div>
 </footer>
 
 <script>
 // Nav scroll
 const nav=document.getElementById('nav');
-window.addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>50),{passive:true});
+window.addEventListener('scroll',()=>{
+  nav.classList.toggle('scrolled',scrollY>50);
+  const prog=document.getElementById('scrollProg');
+  if(prog){
+    const pct=(scrollY/(document.documentElement.scrollHeight-innerHeight))*100;
+    prog.style.width=pct+'%';
+  }
+},{passive:true});
 
 // Mobile menu
 const mobBtn=document.getElementById('mobMenuBtn');
