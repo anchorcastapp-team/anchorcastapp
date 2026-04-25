@@ -329,10 +329,12 @@ footer{padding:52px 6%;text-align:center;border-top:1px solid rgba(255,255,255,.
 }
 .mob-menu-btn:hover{background:rgba(255,255,255,.08)}
 .mob-menu{
-  display:none;position:fixed;top:58px;left:0;right:0;
-  background:rgba(6,8,15,.97);backdrop-filter:blur(24px);
+  display:none;position:fixed;top:58px;left:0;right:0;bottom:0;
+  background:rgba(6,8,15,.99);backdrop-filter:blur(24px);
   border-bottom:1px solid var(--gold-rim);
-  flex-direction:column;padding:16px 0;z-index:799;
+  flex-direction:column;padding:8px 0;z-index:9000;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  max-height:calc(100vh - 58px);
 }
 .mob-menu.open{display:flex}
 .mob-menu a{
@@ -534,6 +536,68 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
   .logo-name{font-size:14px}
   .nav-links a{font-size:12px}
   .stat-n{font-size:28px!important}
+}
+
+
+/* ── FOOTER MOBILE ── */
+@media(max-width:768px){
+  .footer-top{grid-template-columns:1fr 1fr;gap:28px;padding:40px 5% 32px}
+  .footer-logo{font-size:17px}
+  .footer-tagline{font-size:13px;max-width:100%}
+  .footer-col h4{font-size:10px;margin-bottom:12px}
+  .footer-col ul li a{font-size:13px}
+}
+@media(max-width:480px){
+  .footer-top{grid-template-columns:1fr;gap:24px;padding:32px 5% 24px}
+  .footer-brand{margin-bottom:4px}
+  .footer-social a{width:32px;height:32px;font-size:14px}
+  .footer-bottom{padding:14px 5%;gap:10px}
+  .footer-copy{font-size:11px}
+  .footer-badges{gap:6px}
+  .footer-badge{font-size:10px;padding:3px 9px}
+}
+
+
+/* ── MOB-MENU FULL FIXES ── */
+@media(max-width:1024px){
+  .mob-menu.open{display:flex}
+  .mob-menu{
+    max-height:calc(100vh - 58px);
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .mob-menu a{
+    font-size:16px;
+    padding:16px 6%;
+    border-bottom:1px solid rgba(255,255,255,.05);
+    color:var(--text-2,#b4bad6);
+  }
+}
+
+
+/* ── MOBILE NAV POLISH ── */
+@media(max-width:1024px){
+  nav{height:58px;padding:0 4%}
+  .mob-menu a{
+    font-size:16px;
+    padding:18px 6%;
+    color:#b4bad6;
+    letter-spacing:.01em;
+    border-bottom:1px solid rgba(255,255,255,.05);
+  }
+  .mob-menu a:hover{color:#f0f2ff;background:rgba(255,255,255,.04)}
+  .mob-dl{
+    margin:12px 6% 8px!important;
+    border-radius:10px!important;
+    text-align:center!important;
+    padding:16px!important;
+    font-size:15px!important;
+    border-bottom:none!important;
+  }
+}
+@media(max-width:480px){
+  .logo-name{font-size:15px}
+  .logo-mark{width:30px;height:30px;font-size:14px}
 }
 
 </style>
