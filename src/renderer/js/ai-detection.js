@@ -183,10 +183,31 @@ window.AIDetection = (() => {
       const verseText = window.BibleDB.getVerse(bibleRef.book, ch, v || 1);
       if (!verseText) continue;
       if (results.some(r => r.book === bibleRef.book && r.chapter === ch && r.verse === (v || 1))) continue;
+      // Guard: "Genesis 5 and 6" — two chapters connected by 'and' without
+      // a verse keyword is a CHAPTER RANGE announcement, not Book 5:6.
+      // Detect by checking if the match text contains "and N" as the verse
+      // and no "verse" keyword preceded the number.
+      const matchedText = m[0] || '';
+      const hasVerseKeyword = /\bverses?\s/i.test(matchedText) || /\bv\.?\s*\d/i.test(matchedText);
+      const isChapterRange = !hasVerseKeyword && /\band\s+\d/i.test(matchedText) && !v;
+      // Also suppress: verse captured was literally from "and N" pattern with no verse keyword
+      const verseFromAnd = !hasVerseKeyword && m[3] && /^(and\s+)?\d+$/.test(m[3].trim()) && !v;
+      if (isChapterRange || verseFromAnd) {
+        // Treat as chapter-only — emit verse 1 but with very low confidence
+        // so the navigation buffer + dedup can suppress it
+        results.push({
+          bookIdx: BOOK_NAMES[bookStr], book: bibleRef.book, chapter: ch, verse: 1,
+          ref: `${bibleRef.book} ${ch}:1`,
+          confidence: 0.60, type: 'direct',
+          _chapterOnly: true, _chapterRange: true,
+        });
+        continue;
+      }
+
       results.push({
         bookIdx: BOOK_NAMES[bookStr], book: bibleRef.book, chapter: ch, verse: v || 1,
         ref: `${bibleRef.book} ${ch}:${v || 1}`,
-        confidence: v ? 0.95 : 0.95, type: 'direct',
+        confidence: v ? 0.95 : 0.92, type: 'direct',
         _chapterOnly: !v,
       });
     }

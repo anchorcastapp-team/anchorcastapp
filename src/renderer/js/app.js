@@ -2418,6 +2418,67 @@ const _BIBLICAL_FIXES = [
   [/\bfor God's love the world\b/gi, 'for God so loved the world'],
   [/\blamb of got\b/gi,              'Lamb of God'],
   [/\blamb of guard\b/gi,            'Lamb of God'],
+
+  // ── Corrections from live Deepgram sermon (Apr 26, 2026) ─────────────
+  // Biblical names
+  [/\bzaki?[ue]us\b/gi,              'Zacchaeus'],
+  [/\bzache?us\b/gi,                 'Zacchaeus'],
+  [/\bbesali\b/gi,                   'Bezalel'],
+  [/\bdesall?y\b/gi,                 'Bezalel'],
+  [/\bbesaly\b/gi,                   'Bezalel'],
+  [/\bpostmortem\b/gi,               'Paul'],
+  [/\bpolymer\b/gi,                  'Paul'],
+
+  // "Grace" misheard as other words
+  [/\bdecrease of (god|law|christ)\b/gi, 'grace of $1'],
+  [/\bincrease of gold\b/gi,         'grace of God'],
+  [/\bgrade of god\b/gi,             'grace of God'],
+  [/\bgraze of god\b/gi,             'grace of God'],
+  [/\braised? of god\b/gi,           'grace of God'],
+
+  // "God" misheard in fast speech
+  [/\bgrace of job\b/gi,             'grace of God'],
+  [/\bgrace of gold\b/gi,            'grace of God'],
+  [/\b(word|kingdom|people|children|man|woman) of go\b/gi, '$1 of God'],
+
+  // Profanity that is actually a Biblical phrase
+  [/\bnoah fuck grace\b/gi,          'Noah found grace'],
+  [/\bfuck grace\b/gi,               'found grace'],
+  [/\bwhat pussy\b/gi,               'what passage'],
+
+  // Book name mishears
+  [/\bin fifteenth chapter\b/gi,     'Ephesians chapter'],
+  [/\bfifteenth chapter (\w+)\b/gi, 'Ephesians chapter $1'],
+  [/\bamos two was talking about\b/gi, '1 Peter was talking about'],
+
+  // Misc sermon speech patterns
+  [/\bthe antiseper\b/gi,            'the answer is'],
+  [/\bchris open\b/gi,               'Christ upon'],
+  [/\bpostmortem was talking\b/gi,   'Paul was talking'],
+  [/\bgod is good at all time(?!s)\b/gi, 'God is good at all times'],
+  [/\bthe grace of job\b/gi,         'the grace of God'],
+
+  // ── Corrections from live Deepgram Sermon 2 (Apr 19, 2026) ──────────
+  [/\bsad vision\b/gi,               'salvation'],
+  [/\bfor sad vision\b/gi,           'for salvation'],
+  [/\baffixure\b/gi,                 'apostle'],
+  [/\bby ?secuting\b/gi,             'persecuting'],
+  [/\bcycling ship\b/gi,             'keeping sheep'],
+  [/\bkick ?ship\b/gi,               'kingship'],
+  [/\bmessi says\b/gi,               'mercy says'],
+  [/\bmessy says\b/gi,               'mercy says'],
+  [/\bunsel?fly\b/gi,                'unselfishly'],
+  [/\bunmerited female\b/gi,         'unmerited favor'],
+  [/\bscriptatory\b/gi,              'scriptures'],
+  [/\bchrist located\b/gi,           'Christ located'],
+  [/\bgrass of god\b/gi,             'grace of God'],
+  [/\bgrace for sad\b/gi,            'grace for salvation'],
+  // "salvation" commonly misheard
+  [/\bsalvation vision\b/gi,         'salvation'],
+  [/\bsad addition\b/gi,             'salvation'],
+  // "apostle" misheard
+  [/\ban affixure\b/gi,              'an apostle'],
+  [/\bnot worthy to be called an affixure\b/gi, 'not worthy to be called an apostle'],
   [/\bholy goes\b/gi,                'Holy Ghost'],
   [/\bholy coast\b/gi,               'Holy Ghost'],
   [/\bholy goats\b/gi,               'Holy Ghost'],
@@ -2451,6 +2512,50 @@ const _BIBLICAL_FIXES = [
   [/\becclesiasties\b/gi,           'Ecclesiastes'],
   [/\becclesiast\b/gi,              'Ecclesiastes'],
   [/\becclesiat\b/gi,               'Ecclesiastes'],
+
+  // ── Sermon 3 corrections (Apr 12, 2026) ─ FOCUS sermon ──────────────────
+  // CRITICAL: 'focus' misheard as profanity in African English accent
+  [/\bfuck us\b/gi,                         'focus'],
+  [/\bif you.?re watching,? fuck us\b/gi,   'if you are watching, focus'],
+  [/\bfuck us on\b/gi,                      'focus on'],
+  // 1 Kings misheard as 'first kick'
+  [/\bfirst kick from the (\d+)/gi,         '1 Kings chapter $1'],
+  [/\bfirst kick from the\b/gi,             '1 Kings'],
+  [/\bfourth kings?\b/gi,                   '1 Kings'],
+  [/\bfirst kick (\d+)/gi,                  '1 Kings $1'],
+  [/\bfirst take (\d+)\b/gi,               '1 Kings $1'],
+  // Ephesians variant
+  [/\bephysians?\b/gi,                      'Ephesians'],
+  // Names
+  [/\bzolom\b/gi,                           'Solomon'],
+  // Mishears
+  [/\bfraud stealing in god\b/gi,           'trusting in God'],
+  [/\bfraud stealing\b/gi,                  'trusting'],
+  [/\bwhy your son was pissed\b/gi,         'why your son was busy'],
+  [/\bjack of poultry\b/gi,                 'jack of all trades'],
+  [/\bmaster of no\b/gi,                    'master of none'],
+
+  // ── Sermon 4 corrections (Apr 15, 2026) ─ NEW LIFE IN CHRIST ────────────
+  [/\bgalicia'?s chapter\b/gi,           'Galatians chapter'],
+  [/\bgalicias\b/gi,                     'Galatians'],
+  [/\bcollisions chapter\b/gi,           'Colossians chapter'],
+  [/\bcollisions\b/gi,                   'Colossians'],
+  [/\bconverseius chapter\b/gi,          'Colossians chapter'],
+  [/\bfishes number (\d+)/gi,            'Ephesians chapter $1'],
+  [/\bfishes number\b/gi,               'Ephesians'],
+  [/\bnew pipe a robot slab\b/gi,        'now Romans'],
+  [/\bjoint ears\b/gi,                   'joint heirs'],
+  [/\bears of god\b/gi,                  'heirs of God'],
+  [/\bwe are afraid of god\b/gi,         'we are heirs of God'],
+  [/\bwe are ears\b/gi,                  'we are heirs'],
+  [/\bco ears\b/gi,                      'co-heirs'],
+  [/\bthe fourth born of all creation\b/gi, 'the firstborn of all creation'],
+  [/\bfourth born\b/gi,                  'firstborn'],
+  [/\bpebillion people\b/gi,             'peculiar people'],
+  [/\bsave conscious\b/gi,               'righteousness conscious'],
+  [/\bkisos\b/gi,                        'Jesus'],
+  [/\bnew payment\b/gi,                  'new man'],
+  [/\bnew ports\b/gi,                    'new man'],
 ];
 function _applyBiblicalFixes(text) {
   let out = text;
@@ -2486,6 +2591,13 @@ function pushTranscriptLine(text, detectVerses = false) {
     appliedRules,
   };
   State.transcriptLines.push(line);
+
+  // Track navigation phrases so handleDetection can apply the buffer
+  if (_isNavigationPhrase(displayText)) {
+    _lastNavPhraseTime = Date.now();
+    console.log(`[Nav] Navigation phrase detected: "${displayText.slice(0,60)}"`);
+  }
+
   // Mark transcript as unsaved so the close-safeguard dialog fires
   window.electronAPI?.setTranscriptUnsaved?.(true);
   _pushReplayEvent('transcript-line', {
@@ -2633,11 +2745,118 @@ function stopMicAnimation() {
 }
 
 // ─── AI DETECTION HANDLER ─────────────────────────────────────────────────────
+// ── Navigation buffer ──────────────────────────────────────────────────────
+// Tracks when the preacher announces a chapter ("let us go to Romans 6")
+// without quoting it. Prevents chapter-announcement false positives on verse :1
+const _NAV_PHRASES = [
+  /\blet(?:'?s| us) (?:go to|open|turn to|read|look at)\b/i,
+  /\bopen your bibles? to\b/i,
+  /\bturn (?:with me |your bibles? )?to\b/i,
+  /\blet me read(?: that scripture)?\b/i,
+  /\bplease open to\b/i,
+  /\bgo to\b.*\b(?:chapter|chap)\.?\b/i,
+  /\bread (?:from|this scripture)\b/i,
+  /\bwe(?:'re| are) going to look at\b/i,
+  /\bI want (?:us |you )?to (?:read|look at|go to)\b/i,
+  /\bscripture (?:is|says?|reads?)\b/i,
+  /\bverse\s+\d+\b/i,  // "verse 16" — specific verse called out
+];
+let _lastNavPhraseTime = 0;
+const _NAV_BUFFER_MS = 12000; // 12 seconds after a navigation phrase
+
+function _isNavigationPhrase(text) {
+  return _NAV_PHRASES.some(p => p.test(text));
+}
+
 function handleDetection(detection) {
   const lastLine = (State.transcriptLines || []).slice(-1)[0] || null;
 
-  // Deduplicate exact ref + same source phrase
-  if (State.detections.find(d => d.ref === detection.ref && String(d.sourceText || '') === String(lastLine?.text || lastLine?.raw || ''))) return;
+  // Deduplicate: same ref + same source phrase (exact match)
+  if (State.detections.find(d =>
+    d.ref === detection.ref &&
+    String(d.sourceText || '') === String(lastLine?.text || lastLine?.raw || '')
+  )) return;
+
+  // ── Smart deduplication ────────────────────────────────────────────────
+  const now = Date.now();
+
+  // ── Navigation buffer check ──────────────────────────────────────────────
+  // If the last transcript line was a navigation phrase ("let us go to Romans 6")
+  // AND the detection is for verse :1 of a chapter → very likely a false positive.
+  // The preacher is announcing the chapter, not quoting it yet.
+  const sourceText = detection.sourcePhrase || lastLine?.text || lastLine?.raw || '';
+  const isNavPhrase = _isNavigationPhrase(sourceText);
+  if (isNavPhrase) _lastNavPhraseTime = now;
+
+  const withinNavBuffer = (now - _lastNavPhraseTime) < _NAV_BUFFER_MS;
+  if (withinNavBuffer) {
+    // Within 12s of a navigation phrase — apply stricter rules
+    const ref = detection.ref || '';
+    const verseNum = parseInt((ref.match(/:(\d+)$/) || [])[1] || '0', 10);
+    const isFirstVerse = verseNum === 1;
+    const isLowVerse = verseNum <= 3;
+    const isDirectType = (detection.type || '').toLowerCase() === 'direct';
+    const isHighConf = (detection.confidence || 0) >= 0.94;
+
+    if (isFirstVerse && !isHighConf) {
+      console.log(`[Detection] Suppressed (chapter announcement FP): ${ref}`);
+      return;
+    }
+    if (isLowVerse && !isDirectType && !isHighConf) {
+      console.log(`[Detection] Suppressed (nav buffer low verse): ${ref}`);
+      return;
+    }
+  }
+
+  // ── Offline Whisper hallucination guard ────────────────────────────────────
+  // Whisper offline mode produces hallucinations on background noise.
+  // Chapter-range detections (_chapterRange) are almost always FPs in offline mode.
+  // Raise minimum confidence for chapter-only detections when offline.
+  const isOfflineMode = !State.isOnline;
+  if (isOfflineMode) {
+    if (detection._chapterRange) {
+      console.log(`[Detection] Suppressed (offline chapter-range FP): ${detection.ref}`);
+      return;
+    }
+    // Require higher minimum confidence offline — Whisper hallucinations are noisy
+    const offlineMinConf = 0.70;
+    if ((detection.confidence || 0) < offlineMinConf && detection._chapterOnly) {
+      console.log(`[Detection] Suppressed (offline low-confidence chapter-only): ${detection.ref}`);
+      return;
+    }
+  }
+
+  // Window 1: Was this verse PRESENTED to the congregation?
+  // After presenting, suppress for rest of service (60 min).
+  // When preacher's whole sermon is on one verse, we don't want it
+  // firing every 5 minutes — once presented it's done.
+  const PRESENTED_SUPPRESS_MS = 60 * 60 * 1000; // 60 minutes = rest of service
+  const wasPresented = State.detections.find(d =>
+    d.ref === detection.ref &&
+    (d.status === 'presented' || d.status === 'approved') &&
+    (now - (d.createdAt || 0)) < PRESENTED_SUPPRESS_MS
+  );
+  if (wasPresented) {
+    // Allow re-detection only if confidence is very high (direct quote again)
+    const HIGH_CONFIDENCE = 0.97;
+    if ((detection.confidence || 0) < HIGH_CONFIDENCE) {
+      console.log(`[Detection] Suppressed (already presented): ${detection.ref}`);
+      return;
+    }
+  }
+
+  // Window 2: Was this verse detected (but not yet acted on) in the last 5 minutes?
+  // Covers repeated detection of the sermon's main verse
+  const DETECT_SUPPRESS_MS = 5 * 60 * 1000; // 5 minutes
+  const recentSameRef = State.detections.find(d =>
+    d.ref === detection.ref &&
+    (now - (d.createdAt || 0)) < DETECT_SUPPRESS_MS &&
+    d.status !== 'rejected' // allow if user rejected — preacher may re-quote it
+  );
+  if (recentSameRef) {
+    console.log(`[Detection] Suppressed duplicate: ${detection.ref} (seen ${Math.round((now - recentSameRef.createdAt)/1000)}s ago)`);
+    return;
+  }
 
   // Apply confidence threshold by detection type
   const type = String(detection.type || 'keyword').toLowerCase();
@@ -7383,11 +7602,34 @@ function showMediaContextMenu(e, item) {
   const menu = document.getElementById('mediaContextMenu');
   if (!menu) return;
   if (item?.id != null) menu.dataset.mediaid = String(item.id);
+
+  // Show briefly off-screen to measure real dimensions
+  menu.style.visibility = 'hidden';
   menu.style.display = 'block';
-  const x = Math.min(e.clientX, window.innerWidth - 220);
-  const y = Math.min(e.clientY, window.innerHeight - 160);
+  menu.style.left = '0px';
+  menu.style.top = '0px';
+
+  const menuW = menu.offsetWidth || 260;
+  const menuH = menu.offsetHeight || 300;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // Position so menu is always fully inside the viewport
+  // If click is near bottom — open upward; if near right — open leftward
+  let x = e.clientX + 2;
+  let y = e.clientY + 2;
+
+  if (x + menuW > vw - 8) x = e.clientX - menuW - 2;
+  if (y + menuH > vh - 8) y = e.clientY - menuH - 2;
+
+  // Final clamp so it never goes off any edge
+  x = Math.max(4, Math.min(x, vw - menuW - 4));
+  y = Math.max(4, Math.min(y, vh - menuH - 4));
+
   menu.style.left = x + 'px';
-  menu.style.top = y + 'px';
+  menu.style.top  = y + 'px';
+  menu.style.visibility = 'visible';
+
   setTimeout(() => document.addEventListener('click', hideMediaContextMenu, { once: true }), 10);
 }
 
