@@ -41,7 +41,7 @@ const REG_FILE     = path.join(app.getPath('userData'), 'registration.json');
 // Gmail SMTP config
 const SMTP_HOST    = 'smtp.gmail.com';
 const SMTP_PORT    = 587;
-const SMTP_USER    = 'REPLACE_WITH_APP_EMAIL_ADDRESS';
+const SMTP_USER    = 'godbless.keku@gmail.com';
 const SMTP_PASS    = 'REPLACE_WITH_APP_PASSWORD';  // Gmail App Password (16 chars)
 const FROM_EMAIL   = 'donotreply@anchorcastapp.com';
 const APP_PROTOCOL = 'anchorcast';
@@ -1338,6 +1338,34 @@ function createMainWindow(){
     trafficLightPosition:{x:16,y:12},
   });
   mainWindow.loadURL(`http://127.0.0.1:${rendererPort}/index.html`);
+  // Recover from white/frozen screen caused by display changes
+  mainWindow.on('unresponsive', () => {
+    console.log('[MainWindow] Unresponsive — will attempt recovery');
+    // Give it 3 seconds to recover naturally first
+    setTimeout(() => {
+      try {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          // Try a soft JS ping first
+          mainWindow.webContents.executeJavaScript('1+1')
+            .then(() => {
+              console.log('[MainWindow] Recovered naturally');
+            })
+            .catch(() => {
+              // Still frozen — reload the renderer
+              console.log('[MainWindow] Still unresponsive — reloading renderer');
+              mainWindow.webContents.reload();
+            });
+        }
+      } catch(e) {
+        try { mainWindow.webContents.reload(); } catch(_) {}
+      }
+    }, 3000);
+  });
+
+  mainWindow.on('responsive', () => {
+    console.log('[MainWindow] Responsive again');
+  });
+
   mainWindow.webContents.once('did-finish-load',()=>{
     const elapsed = Date.now() - splashShownAt;
     const reveal = () => {
@@ -1455,6 +1483,8 @@ function createProjectionWindow(displayId){
   // Guard: restore projection if Win+D, Win+Tab or taskbar causes it to
   // lose fullscreen or become minimized. Check every 500ms.
   let _projGuardInterval = null;
+  let _projGuardPaused = false; // paused during display removal to avoid GPU conflicts
+
   function _startProjGuard() {
     if (_projGuardInterval) return;
     _projGuardInterval = setInterval(() => {
@@ -1464,6 +1494,9 @@ function createProjectionWindow(displayId){
           _projGuardInterval = null;
           return;
         }
+        // Don't fight the OS during display removal/reconnection
+        if (_projGuardPaused) return;
+
         if (!isSameDisplayAsMain) {
           if (projectionWindow.isMinimized()) {
             projectionWindow.restore();
@@ -1497,6 +1530,11 @@ function createProjectionWindow(displayId){
       if (!projectionWindow || projectionWindow.isDestroyed()) return;
       if (projectionWindow._targetDisplayId !== removedDisplay.id) return;
 
+      // Pause the guard interval immediately — it fighting setFullScreen
+      // during GPU compositor teardown is what causes the white screen freeze
+      _projGuardPaused = true;
+      console.log('[Display] Guard paused for display removal');
+
       projectionWindow._lostTargetDisplay = true;
       const primaryId  = screen.getPrimaryDisplay().id;
       const remaining  = screen.getAllDisplays();
@@ -1511,7 +1549,15 @@ function createProjectionWindow(displayId){
         projectionWindow._displayWidth  = b.width;
         projectionWindow._displayHeight = b.height;
         projectionWindow.setBounds({ x: b.x, y: b.y, width: b.width, height: b.height });
-        projectionWindow.setFullScreen(true);
+        // Unpause guard after a short settle period then resume fullscreen
+        setTimeout(() => {
+          try {
+            if (projectionWindow && !projectionWindow.isDestroyed()) {
+              projectionWindow.setFullScreen(true);
+            }
+          } catch(e) {}
+          _projGuardPaused = false;
+        }, 800);
         mainWindow?.webContents.send('display-warning',
           { msg: 'Projection moved to another external display.' });
       } else {
@@ -1519,31 +1565,76 @@ function createProjectionWindow(displayId){
         // Close is safer than minimizing because the guard interval would restore it.
         try {
           projectionWindow.setAlwaysOnTop(false);
+          // Step 1: exit fullscreen first and wait for GPU to release
           projectionWindow.setFullScreen(false);
-          projectionWindow.minimize();
-          // Give a moment for fullscreen to exit, then close
           setTimeout(() => {
-            if (projectionWindow && !projectionWindow.isDestroyed()) {
-              projectionWindow.close();
+            try {
+              if (!projectionWindow || projectionWindow.isDestroyed()) return;
+              // Step 2: move to primary display before closing
+              // This prevents the GPU from reassigning context to mainWindow mid-close
+              const pb = screen.getPrimaryDisplay().bounds;
+              projectionWindow.setBounds({
+                x: pb.x + 100, y: pb.y + 100,
+                width: 400, height: 300
+              });
+              projectionWindow.minimize();
+              // Step 3: close after GPU has settled
+              setTimeout(() => {
+                try {
+                  if (projectionWindow && !projectionWindow.isDestroyed()) {
+                    projectionWindow.close();
+                  }
+                } catch(_) {}
+              }, 300);
+            } catch(e) {
+              try { projectionWindow.close(); } catch(_) {}
             }
-          }, 400);
+          }, 350);
         } catch(e) {
           try { projectionWindow.close(); } catch(_) {}
         }
         // Bring main window to front now that projection is closing
-        setTimeout(() => {
+        // Staggered recovery: let projection fully close before restoring main window
+        const _recoverMainWindow = () => {
           try {
-            if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.setAlwaysOnTop(true);
-              mainWindow.show();
-              mainWindow.focus();
-              mainWindow.restore();
-              setTimeout(() => {
-                if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setAlwaysOnTop(false);
-              }, 600);
-            }
-          } catch(e) {}
-        }, 450);
+            if (!mainWindow || mainWindow.isDestroyed()) return;
+            // Step 1: restore from minimized/hidden state
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.show();
+            // Step 2: bring to front using app-level focus
+            app.focus({ steal: true });
+            mainWindow.focus();
+            // Step 3: ensure it's not behind anything
+            mainWindow.setAlwaysOnTop(true);
+            setTimeout(() => {
+              try {
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                  mainWindow.setAlwaysOnTop(false);
+                  mainWindow.focus();
+                  // Step 4: if still white/unresponsive, trigger a soft reload
+                  if (mainWindow.webContents.isLoadingMainFrame() === false) {
+                    mainWindow.webContents.executeJavaScript(
+                      'document.body ? "ok" : "blank"'
+                    ).then(result => {
+                      if (result !== 'ok') {
+                        console.log('[Display] Main window blank — reloading');
+                        mainWindow.webContents.reload();
+                      }
+                    }).catch(() => {
+                      mainWindow.webContents.reload();
+                    });
+                  }
+                }
+              } catch(e) {}
+            }, 800);
+          } catch(e) {
+            console.error('[Display] Recovery error:', e);
+          }
+        };
+        // Wait for projection window to fully close before recovering
+        setTimeout(_recoverMainWindow, 600);
+        // Unpause the guard after full recovery (projection is gone so guard will self-clear)
+        setTimeout(() => { _projGuardPaused = false; }, 2000);
         mainWindow?.webContents.send('display-warning', {
           msg: 'External display disconnected — projection closed. Reconnect the display and press Project Live again.',
           level: 'error'
@@ -1562,15 +1653,71 @@ function createProjectionWindow(displayId){
       projectionWindow._displayWidth = b.width;
       projectionWindow._displayHeight = b.height;
       projectionWindow.setBounds({ x: b.x, y: b.y, width: b.width, height: b.height });
-      projectionWindow.setFullScreen(true);
+
+      // Step 1: go fullscreen after display settles (800ms)
+      setTimeout(() => {
+        try {
+          if (projectionWindow && !projectionWindow.isDestroyed()) {
+            projectionWindow.setFullScreen(true);
+          }
+        } catch(e) {}
+        _projGuardPaused = false;
+      }, 800);
+
+      // Step 2: re-push the last render state so media/verse/song reappears
+      // Must wait for fullscreen + renderer to be ready to receive IPC (1400ms)
+      setTimeout(() => {
+        try {
+          if (projectionWindow && !projectionWindow.isDestroyed()) {
+            console.log('[Display] Restoring render state after reconnect:', currentRenderState?.module);
+            projectionWindowReadySync();
+            mainWindow?.webContents.send('projection-display-restored');
+          }
+        } catch(e) {
+          console.error('[Display] Failed to restore render state:', e);
+        }
+      }, 1400);
+
+      mainWindow?.webContents.send('display-warning', {
+        msg: 'External display reconnected — content restored.',
+        level: 'info'
+      });
+    });
+
+    // Guard: if main window becomes unresponsive after any display change, recover it
+    screen.on('display-metrics-changed', () => {
+      // Pause guard during metrics change too — display bounds are shifting
+      _projGuardPaused = true;
+      setTimeout(() => {
+        _projGuardPaused = false;
+        try {
+          if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused()) {
+            // Only recover if no projection window is active
+            if (!projectionWindow || projectionWindow.isDestroyed()) {
+              mainWindow.show();
+              mainWindow.focus();
+            }
+          }
+        } catch(e) {}
+      }, 600);
     });
   }
 
   projectionWindow.on('closed',()=>{
+    const wasDisplayRemoval = projectionWindow?._lostTargetDisplay === true;
     projectionWindow=null;
-    currentLiveVerse=null;
-    currentBackgroundMedia=null;
-    buildRenderState('clear', null, { backgroundMedia: null });
+
+    if (!wasDisplayRemoval) {
+      // User closed projection deliberately — clear the live state
+      currentLiveVerse=null;
+      currentBackgroundMedia=null;
+      buildRenderState('clear', null, { backgroundMedia: null });
+    } else {
+      // Display was removed — preserve currentRenderState so it can be
+      // restored when the display is reconnected and projection reopens
+      console.log('[Display] Projection closed by display removal — preserving render state:', currentRenderState?.module);
+    }
+
     mainWindow?.webContents.send('projection-closed');
     if (projectionPowerBlockerId !== null && powerSaveBlocker.isStarted(projectionPowerBlockerId)) {
       powerSaveBlocker.stop(projectionPowerBlockerId);
@@ -5848,6 +5995,129 @@ function normalizeTranscriptText(text) {
     [/\bfirst timothy\b/gi, '1 Timothy'], [/\bsecond timothy\b/gi, '2 Timothy'],
     [/\bfirst thessalonians\b/gi, '1 Thessalonians'], [/\bsecond thessalonians\b/gi, '2 Thessalonians'],
     [/\bsong of songs\b/gi, 'Song of Solomon'],
+
+    // ── Biblical names Deepgram commonly mishears ──────────────────────────
+    [/\bzakius\b/gi, 'Zacchaeus'],
+    [/\bzakeus\b/gi, 'Zacchaeus'],
+    [/\bzakey?us\b/gi, 'Zacchaeus'],
+    [/\bzache?us\b/gi, 'Zacchaeus'],
+    [/\bzacheus\b/gi, 'Zacchaeus'],
+    [/\bbesali\b/gi, 'Bezalel'],
+    [/\bdesally\b/gi, 'Bezalel'],
+    [/\bbesaly\b/gi, 'Bezalel'],
+    [/\bbe[sz]al[iy]el?\b/gi, 'Bezalel'],
+    [/\bpostmortem\b/gi, 'Paul'],          // Deepgram mishears "Paul" as "postmortem"
+    [/\bpolymer\b/gi, 'Paul'],             // "Paul" misheard as "polymer"
+
+    // ── "Grace" misheard as other words (very common in fast African speech) ──
+    [/\bdecrease of (god|law|christ)\b/gi, 'grace of $1'],
+    [/\bincrease of gold\b/gi, 'grace of God'],
+    [/\bgrade of god\b/gi, 'grace of God'],
+    [/\braised? of god\b/gi, 'grace of God'],
+    [/\bgraze of god\b/gi, 'grace of God'],
+
+    // ── "God" misheard in fast speech ─────────────────────────────────────
+    [/\bgrace of job\b/gi, 'grace of God'],
+    [/\bgrace of gold\b/gi, 'grace of God'],
+    [/\bgrace of go\b/gi, 'grace of God'],
+    [/\bkingdom of go\b/gi, 'kingdom of God'],
+    [/\bword of go\b/gi, 'word of God'],
+    [/\bchildren of go\b/gi, 'children of God'],
+    [/\bpeople of go\b/gi, 'people of God'],
+    [/\bman of go\b/gi, 'man of God'],
+
+    // ── "Found grace" vs profanity — context-aware ────────────────────────
+    // Deepgram transcribes "Noah found grace" as "Noah fuck grace" in some accents
+    [/\bnoah fuck grace\b/gi, 'Noah found grace'],
+    [/\bfuck grace\b/gi, 'found grace'],       // biblical context only
+
+    // ── Book name mishears from this sermon ──────────────────────────────
+    // "Ephesians" heard as "in fifteenth" or "fifteen" by Deepgram
+    [/\bin fifteenth chapter\b/gi, 'Ephesians chapter'],
+    [/\bfifteenth chapter (\w+)\b/gi, 'Ephesians chapter $1'],
+    // "1 Peter" heard as "Amos two" — harder to fix without context
+    // Adding Amos cleanup so false detections are less likely
+    [/\bamos two was talking about\b/gi, '1 Peter was talking about'],
+
+    // ── Common sermon speech patterns that cause false positives ─────────
+    [/\bwhat pussy\b/gi, 'what passage'],      // "what passage?" misheard
+    [/\bthe antiseper\b/gi, 'the answer is'],
+    [/\bchris open\b/gi, 'Christ upon'],
+    [/\bit was biggie\b/gi, 'it was big'],
+    [/\bpostmortem was talking\b/gi, 'Paul was talking'],
+
+    // ── "Grace" core word reinforcement ──────────────────────────────────
+    [/\bthe grace of job\b/gi, 'the grace of God'],
+    [/\bgod is good at all time(?!s)\b/gi, 'God is good at all times'],
+
+    // ── Sermon 2 corrections (Apr 19, 2026) ──────────────────────────────
+    [/\bsad vision\b/gi, 'salvation'],
+    [/\bfor sad vision\b/gi, 'for salvation'],
+    [/\baffixure\b/gi, 'apostle'],
+    [/\ban affixure\b/gi, 'an apostle'],
+    [/\bby ?secuting\b/gi, 'persecuting'],
+    [/\bcycling ship\b/gi, 'keeping sheep'],
+    [/\bkick ?ship\b/gi, 'kingship'],
+    [/\bmess[iy] says\b/gi, 'mercy says'],
+    [/\bunsel?fly\b/gi, 'unselfishly'],
+    [/\bunmerited female\b/gi, 'unmerited favor'],
+    [/\bscriptatory\b/gi, 'scriptures'],
+    [/\bgrass of god\b/gi, 'grace of God'],
+    [/\bgrace for sad\b/gi, 'grace for salvation'],
+    [/\bsad addition\b/gi, 'salvation'],
+
+    // ── Sermon 3 corrections (Apr 12, 2026) ─ FOCUS sermon ──────────────
+    // CRITICAL: 'focus' → 'fuck us' in African English accent
+    [/\bfuck us\b/gi, 'focus'],
+    [/\bif you.?re watching,? fuck us\b/gi, 'if you are watching, focus'],
+    [/\bfuck us on\b/gi, 'focus on'],
+    [/\bfuck us\.\b/gi, 'focus.'],
+    // 1 Kings misheard
+    [/\bfirst kick from the (\d+)/gi, '1 Kings chapter $1'],
+    [/\bfirst kick from the\b/gi, '1 Kings'],
+    [/\bfourth kings?\b/gi, '1 Kings'],
+    [/\bfirst kick (\d+)/gi, '1 Kings $1'],
+    [/\bfirst take (\d+)\b/gi, '1 Kings $1'],
+    // Ephesians variant
+    [/\bephysians?\b/gi, 'Ephesians'],
+    // Names
+    [/\bzolom\b/gi, 'Solomon'],
+    // Mishears
+    [/\bfraud stealing in god\b/gi, 'trusting in God'],
+    [/\bfraud stealing\b/gi, 'trusting'],
+    [/\bwhy your son was pissed\b/gi, 'why your son was busy'],
+    [/\bjack of poultry\b/gi, 'jack of all trades'],
+    [/\bmaster of no\b/gi, 'master of none'],
+    // ── Sermon 4 corrections (Apr 15, 2026) ─ NEW LIFE IN CHRIST ────────
+    // Book name mishears
+    [/\bgalicia'?s chapter\b/gi,           'Galatians chapter'],
+    [/\bgalicias\b/gi,                     'Galatians'],
+    [/\bcollisions chapter\b/gi,           'Colossians chapter'],
+    [/\bcollisions\b/gi,                   'Colossians'],
+    [/\bconverseius chapter\b/gi,          'Colossians chapter'],
+    [/\bfishes number (\d+)/gi,            'Ephesians chapter $1'],
+    [/\bfishes number\b/gi,               'Ephesians'],
+    [/\bnew pipe a robot slab\b/gi,        'now Romans'],
+    // 'heirs' misheard as 'ears' — critical KJV word
+    [/\bjoint ears\b/gi,                   'joint heirs'],
+    [/\bears of god\b/gi,                  'heirs of God'],
+    [/\bears and heirs\b/gi,               'heirs of God'],
+    [/\bco ears\b/gi,                      'co-heirs'],
+    [/\bwe are afraid of god\b/gi,         'we are heirs of God'],
+    [/\bwe are ears\b/gi,                  'we are heirs'],
+    // 'firstborn' → 'fourth born'
+    [/\bthe fourth born of all creation\b/gi, 'the firstborn of all creation'],
+    [/\bfourth born\b/gi,                  'firstborn'],
+    // 'peculiar people' → 'pebillion people'
+    [/\bpebillion people\b/gi,             'peculiar people'],
+    // Other mishears
+    [/\bseed round before god\b/gi,        'filthy rags before God'],
+    [/\bsave conscious\b/gi,               'righteousness conscious'],
+    [/\bright ?eous conscious\b/gi,        'righteousness conscious'],
+    [/\bkisos\b/gi,                        'Jesus'],
+    [/\bright side of him\b/gi,            'right hand of the Father'],
+    [/\bnew payment\b/gi,                  'new man'],
+    [/\bnew ports\b/gi,                    'new man'],
   ];
   for (const [pattern, replacement] of fixes) out = out.replace(pattern, replacement);
 
@@ -5855,8 +6125,13 @@ function normalizeTranscriptText(text) {
   // Applies BEFORE dedup so the ref survives
   out = _convertVerbalRefs(out);
 
-  // ── Repetition removal — 3 passes ────────────────────────────────────────
-  // Pass 1: 2+ word phrase repeats with optional punctuation between (catches "Bible reading, Bible reading")
+  // ── Repetition removal — 4 passes ────────────────────────────────────────
+  // Pass 0: Sentence-level loop collapse (Deepgram streaming glitch)
+  // When audio drops, Deepgram re-transcribes the last sentence 5-15 times.
+  // Detect: same sentence (8+ words) repeating 3+ times consecutively → keep once
+  out = out.replace(/([^.!?]{30,}[.!?,]?)(?:\s+\1){2,}/gi, '$1');
+
+  // Pass 1: 2+ word phrase repeats with optional punctuation between
   out = out.replace(/\b(.{4,80}?)(?:[,.\s]+\1)+\b/gi, '$1');
   // Pass 2: exact word-pair repeats "Jesus Christ Jesus Christ"
   out = out.replace(/\b(\w+\s+\w+)[,. ]+\1\b/gi, '$1');
