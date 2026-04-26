@@ -225,9 +225,44 @@ async function exportS(id){
 }
 
 async function copyS(id){
-  const s=all.find(x=>x.id===id); if(!s) return;
-  await navigator.clipboard.writeText(s.text||'');
-  toast('⎘ Copied to clipboard');
+  const s = all.find(x => x.id === id);
+  if (!s) return;
+
+  const content = s.text || '';
+  if (!content) { toast('⚠ Nothing to copy'); return; }
+
+  // Method 1: Electron IPC — most reliable in Electron windows
+  if (window.electronAPI?.copyToClipboard) {
+    try {
+      await window.electronAPI.copyToClipboard(content);
+      toast('⎘ Transcript copied to clipboard');
+      return;
+    } catch(e) { /* fall through */ }
+  }
+
+  // Method 2: navigator.clipboard (requires window focus)
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(content);
+      toast('⎘ Transcript copied to clipboard');
+      return;
+    } catch(e) { /* fall through to execCommand */ }
+  }
+
+  // Method 3: legacy execCommand fallback (always works in Electron)
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = content;
+    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) { toast('⎘ Transcript copied to clipboard'); return; }
+  } catch(e) {}
+
+  toast('⚠ Could not copy — try selecting the text manually');
 }
 
 async function delS(id){

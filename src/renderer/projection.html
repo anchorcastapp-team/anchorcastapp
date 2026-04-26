@@ -156,7 +156,7 @@
 
     /* Caption overlay */
     .caption-layer {
-      position: absolute; bottom: 0; left: 0; right: 0; z-index: 6;
+      position: absolute; bottom: 0; left: 0; right: 0; z-index: 51;
       padding: clamp(20px,4vh,60px) clamp(30px,6vw,100px);
       background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
       display: none;
@@ -174,7 +174,7 @@
     /* Clock/Date overlay */
     .clock-layer {
       position: absolute;
-      z-index: 30;  /* above timer-layer (z-index 20) and edge strip */
+      z-index: 55;  /* above timer-layer (z-index 50) */
       display: none;
       flex-direction: column;
       align-items: center;
@@ -208,7 +208,7 @@
 
     /* Timer/countdown overlay */
     .timer-layer {
-      position: absolute; z-index: 7;
+      position: absolute; z-index: 50; /* Always above all content layers */
       display: none; flex-direction: column;
     }
     .timer-layer.active { display: flex; }
@@ -310,7 +310,7 @@
 
     /* Logo overlay layer */
     .logo-overlay-layer {
-      position: absolute; z-index: 10;
+      position: absolute; z-index: 52;
       display: none; pointer-events: none;
     }
     .logo-overlay-layer.active { display: block; }

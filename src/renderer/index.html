@@ -309,7 +309,7 @@
         <div class="panel-header">
           <div class="panel-title" id="previewPanelTitle">👁 Program Preview</div>
           <div class="panel-actions">
-            <!-- View mode toggle: List ⟷ Slides (ProPresenter style) -->
+            <!-- View mode toggle: List ⟷ Slides -->
             <div id="slideViewToggle" style="display:flex;border:1px solid var(--border-lit);border-radius:4px;overflow:hidden">
               <button id="viewListBtn" title="List view" onclick="setPreviewViewMode('list')"
                 style="padding:3px 6px;font-size:10px;background:var(--gold);color:#000;border:none;cursor:pointer;font-weight:700">☰</button>
@@ -1178,9 +1178,10 @@
 
 
 <input id="mediaQuickImportInput" type="file" style="display:none" multiple>
-<div id="mediaContextMenu" style="display:none;position:fixed;z-index:800;
+<div id="mediaContextMenu" style="display:none;position:fixed;z-index:9999;
   background:var(--panel);border:1px solid var(--border-lit);border-radius:6px;
-  box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:250px;padding:4px 0;font-size:12px">
+  box-shadow:0 12px 32px rgba(0,0,0,.7);min-width:220px;padding:4px 0;font-size:12px;
+  overflow:visible;visibility:visible">
   <div class="ctx-item" onclick="importReplacementMediaForType(((State.media||[]).find(m=>String(m.id)===String(document.getElementById('mediaContextMenu').dataset.mediaid))||{}).type || 'image');hideMediaContextMenu()">📥 Import New Media File…</div>
   <div class="ctx-item" onclick="editCurrentMediaProperties()">✏ Edit Media Properties…</div>
   <div class="ctx-sep"></div>
