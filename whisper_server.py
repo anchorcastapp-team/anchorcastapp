@@ -439,6 +439,103 @@ _WORD_FIXES = [
     ('in the beginning was the word', 'In the beginning was the Word'),
     ('and the word was with god',     'and the Word was with God'),
     ('and the word was god',          'and the Word was God'),
+
+    # ── Corrections from live Deepgram sermon (Apr 26, 2026) ──────────────
+    # Biblical names misheard
+    ('zakius',                 'Zacchaeus'),
+    ('zakeus',                 'Zacchaeus'),
+    ('zaceus',                 'Zacchaeus'),
+    ('zacheus',                'Zacchaeus'),
+    ('besali',                 'Bezalel'),
+    ('desally',                'Bezalel'),
+    ('besaly',                 'Bezalel'),
+    ('postmortem',             'Paul'),    # "Paul" misheard as "postmortem"
+    ('polymer',                'Paul'),    # "Paul" misheard as "polymer"
+
+    # "Grace" misheard as other words (common in African English accents)
+    ('decrease of god',        'grace of God'),
+    ('decrease of law',        'grace of law'),  # "grace of the law"
+    ('increase of gold',       'grace of God'),
+    ('grade of god',           'grace of God'),
+    ('graze of god',           'grace of God'),
+
+    # "God" misheard in fast speech
+    ('grace of job',           'grace of God'),
+    ('grace of gold',          'grace of God'),
+    ('word of go ',            'word of God '),
+    ('kingdom of go ',         'kingdom of God '),
+    ('people of go ',          'people of God '),
+    ('children of go ',        'children of God '),
+    ('man of go ',             'man of God '),
+
+    # Profanity that is a Biblical phrase
+    ('noah fuck grace',        'Noah found grace'),
+    ('fuck grace',             'found grace'),
+    ('what pussy',             'what passage'),
+
+    # Book name mishears
+    ('in fifteenth chapter',   'Ephesians chapter'),
+    ('amos two was talking about', '1 Peter was talking about'),
+
+    # Misc
+    ('the antiseper',          'the answer is'),
+    ('chris open',             'Christ upon'),
+    ('postmortem was talking', 'Paul was talking'),
+    ('grace of the job',       'grace of God'),
+
+    # Sermon 2 corrections (Apr 19, 2026)
+    ('sad vision',             'salvation'),
+    ('for sad vision',         'for salvation'),
+    ('affixure',               'apostle'),
+    ('an affixure',            'an apostle'),
+    ('bysecuting',             'persecuting'),
+    ('cycling ship',           'keeping sheep'),
+    ('kick ship',              'kingship'),
+    ('messi says',             'mercy says'),
+    ('messy says',             'mercy says'),
+    ('unselfly',               'unselfishly'),
+    ('unmerited female',       'unmerited favor'),
+    ('scriptatory',            'scriptures'),
+    ('grass of god',           'grace of God'),
+    ('sad addition',           'salvation'),
+
+    # Sermon 3 corrections (Apr 12, 2026) — FOCUS sermon
+    # CRITICAL: 'focus' → 'fuck us' in African English
+    ('fuck us',                'focus'),
+    ('if you are watching, fuck us', 'if you are watching, focus'),
+    ('fuck us on',             'focus on'),
+    # 1 Kings misheard
+    ('first kick from the',    '1 Kings chapter'),
+    ('fourth kings',           '1 Kings'),
+    ('first kick',             '1 Kings'),
+    # Ephesians variant
+    ('ephysians',              'Ephesians'),
+    # Names
+    ('zolom',                  'Solomon'),
+    # Mishears
+    ('fraud stealing in god',  'trusting in God'),
+    ('fraud stealing',         'trusting'),
+    ('why your son was pissed','why your son was busy'),
+    ('jack of poultry',        'jack of all trades'),
+    ('master of no ',          'master of none '),
+
+    # Sermon 4 corrections (Apr 15, 2026) — New Life in Christ
+    ('galicias chapter',       'Galatians chapter'),
+    ("galicia's chapter",      'Galatians chapter'),
+    ('collisions chapter',     'Colossians chapter'),
+    ('collisions',             'Colossians'),
+    ('converseius chapter',    'Colossians chapter'),
+    ('fishes number',          'Ephesians'),
+    ('joint ears',             'joint heirs'),
+    ('ears of god',            'heirs of God'),
+    ('we are afraid of god',   'we are heirs of God'),
+    ('we are ears',            'we are heirs'),
+    ('the fourth born of all creation', 'the firstborn of all creation'),
+    ('fourth born',            'firstborn'),
+    ('pebillion people',       'peculiar people'),
+    ('save conscious',         'righteousness conscious'),
+    ('kisos',                  'Jesus'),
+    ('new payment',            'new man'),
 ]
 
 def _fix_words(text: str) -> str:
