@@ -1215,11 +1215,20 @@ footer{
           var el = document.getElementById(id); if(el) el.textContent = s.toLocaleString();
         });
       }).catch(function(){});
+    /* Fetch latest release version using /releases/latest (always the GitHub-marked latest) */
+    fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp/releases/latest')
+      .then(function(r){ return r.json(); })
+      .then(function(latest){
+        var ver = (latest && latest.tag_name) ? latest.tag_name : 'v1.2.0';
+        ['releaseVer','relTag'].forEach(function(id){
+          var el=document.getElementById(id); if(el) el.textContent=ver;
+        });
+      }).catch(function(){});
+    /* Separately fetch all releases for total download count */
     fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp/releases')
       .then(function(r){ return r.json(); })
       .then(function(releases){
         if(!Array.isArray(releases)||!releases.length) return;
-        var ver = releases[0].tag_name || 'v1.2.0';
         var dl = 0;
         releases.forEach(function(r){
           (r.assets||[]).forEach(function(a){
