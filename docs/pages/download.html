@@ -936,6 +936,102 @@ footer{
 }
 @media (max-width: 360px){.footer-badges{grid-template-columns:1fr !important;}}
 /* === end AnchorCast mobile footer hard override, v4 === */
+
+/* ── Download build comparison cards ── */
+.dl-builds-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:24px;
+  margin-bottom:24px;
+}
+.dl-build-card{
+  background:var(--ink2);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;
+  padding:28px;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+  position:relative;
+  overflow:hidden;
+}
+.dl-build-card.dl-build-featured{
+  border-color:var(--gold-rim);
+  background:linear-gradient(160deg,rgba(201,168,76,.09),rgba(201,168,76,.02));
+}
+.dl-build-badge{
+  position:absolute;top:0;right:0;
+  background:linear-gradient(135deg,var(--gold),var(--gold-dk));
+  color:#000;font-family:'Cinzel',serif;
+  font-size:10px;font-weight:700;
+  padding:5px 16px;
+  border-bottom-left-radius:12px;
+  letter-spacing:.06em;
+}
+.dl-build-header{
+  display:flex;align-items:center;gap:14px;
+  margin-top:8px;
+}
+.dl-build-icon{
+  font-size:26px;width:52px;height:52px;
+  display:grid;place-items:center;flex-shrink:0;
+  background:var(--gold-glow);
+  border:1px solid var(--gold-rim);
+  border-radius:13px;
+}
+.dl-build-title{
+  font-family:'Cinzel',serif;
+  font-size:18px;font-weight:700;
+  color:var(--text);
+}
+.dl-build-version{
+  font-size:12px;color:var(--muted);
+  margin-top:3px;
+}
+.dl-build-desc{
+  font-size:13.5px;color:var(--muted);
+  line-height:1.75;
+}
+.dl-build-desc strong{color:var(--text)}
+.dl-build-specs{
+  display:flex;flex-direction:column;gap:9px;
+  flex:1;
+}
+.dl-spec{
+  display:flex;align-items:flex-start;gap:9px;
+  font-size:13px;color:var(--text-2,#c8cde8);
+  line-height:1.45;
+}
+.dl-spec-check{
+  color:var(--green,#22c55e);
+  font-weight:700;flex-shrink:0;
+}
+.dl-spec-muted{color:var(--muted);font-size:12px}
+.dl-build-filename{
+  font-size:11px;color:var(--muted);
+  text-align:center;font-family:monospace;
+  margin-top:-8px;
+}
+.dl-parity-note{
+  background:rgba(91,156,246,.07);
+  border:1px solid rgba(91,156,246,.2);
+  border-radius:12px;
+  padding:16px 20px;
+  display:flex;gap:12px;
+  align-items:flex-start;
+  font-size:13.5px;color:var(--muted);
+  line-height:1.7;
+}
+.dl-parity-icon{font-size:18px;flex-shrink:0}
+.dl-parity-note strong{color:var(--text)}
+
+/* Mobile */
+@media(max-width:680px){
+  .dl-builds-grid{grid-template-columns:1fr}
+  .dl-build-card{padding:22px 18px}
+  .dl-build-title{font-size:16px}
+}
+
 </style>
 </head>
 <body>
@@ -982,9 +1078,12 @@ footer{
     <div class="dl-title">Download AnchorCast</div>
     <div class="dl-sub">Free for every church. No subscription. No trial. No credit card. Install and start serving your congregation with the Word.</div>
     <div class="dl-btns">
-      <a href="https://github.com/anchorcastapp-team/anchorcastapp/releases/download/v1.2.0/AnchorCastSetup_v1.2.0.exe" class="btn-gold" style="font-size:16px;padding:16px 42px">⬇ Download for Windows — Free</a>
-      <a href="https://github.com/anchorcastapp-team/anchorcastapp" class="btn-ghost" target="_blank">View Source on GitHub</a>
+      <a href="https://github.com/anchorcastapp-team/anchorcastapp/releases/download/v1.2.0/AnchorCastSetup_v1.2.0.exe" class="btn-gold" style="font-size:16px;padding:16px 42px">⬇ Download — With AI Bundled</a>
+      <a href="https://github.com/anchorcastapp-team/anchorcastapp/releases/download/v1.1.0/AnchorCastSetup_v1.1.0.exe" class="btn-ghost" style="font-size:15px">⬇ Download — Lightweight</a>
     </div>
+    <p style="font-size:12.5px;color:var(--muted);margin-top:12px;text-align:center">
+      Not sure which to choose? <a href="#choose" style="color:var(--gold);text-decoration:none">See comparison below ↓</a>
+    </p>
     <div class="dl-meta">
       <div class="dl-meta-i"><span>✓</span> Windows 10 / 11</div>
       <div class="dl-meta-i"><span>✓</span> No internet required</div>
@@ -994,25 +1093,77 @@ footer{
   </div>
 </div>
 <section class="section">
-  <div class="release-card reveal">
-    <div class="release-hd">
-      <div><span class="release-ver">AnchorCast v1.2.0</span><span class="release-latest">Latest</span></div>
-      <span class="release-date">Apr 23, 2026</span>
-    </div>
-    <div class="release-body">
-      <div class="release-asset">
-        <div><div class="release-asset-name">🪟 AnchorCastSetup_v1.2.0.exe</div><div class="release-asset-meta">Windows · Python + Whisper bundled · Works offline · ~150MB</div></div>
-        <a href="https://github.com/anchorcastapp-team/anchorcastapp/releases/download/v1.2.0/AnchorCastSetup_v1.2.0.exe" class="btn-sm-dl">⬇ Download</a>
-      </div>
-      <div class="release-asset">
-        <div><div class="release-asset-name">📦 Source code (.zip)</div><div class="release-asset-meta">All platforms · npm install &amp; npm start</div></div>
-        <a href="https://github.com/anchorcastapp-team/anchorcastapp/archive/refs/tags/v1.2.0.zip" class="btn-sm-dl">⬇ Download</a>
-      </div>
-      <div class="release-note"><strong>Note:</strong> This release does not bundle the Whisper speech model (~244 MB). The installer will offer to download it on first run, or set it up from Settings → Audio &amp; AI.</div>
-      <a href="https://github.com/anchorcastapp-team/anchorcastapp/releases" class="btn-outline" style="margin-top:6px;font-size:12.5px" target="_blank">View all releases ↗</a>
-    </div>
+  <div id="choose" style="scroll-margin-top:80px">
+
+  <!-- Release comparison heading -->
+  <div class="centered" style="margin-bottom:36px">
+    <div class="sec-tag" style="justify-content:center">Choose Your Build</div>
+    <h2>Two Versions, <i>One App</i></h2>
+    <p class="sec-sub" style="margin:0 auto">Same full app — choose based on your internet availability and PC specs.</p>
   </div>
-  <!-- Install steps -->
+
+  <div class="dl-builds-grid">
+
+    <!-- BUILD 1: With Whisper bundled (RECOMMENDED) -->
+    <div class="dl-build-card dl-build-featured">
+      <div class="dl-build-badge">⭐ Recommended</div>
+      <div class="dl-build-header">
+        <div class="dl-build-icon">🧠</div>
+        <div>
+          <div class="dl-build-title">With AI Bundled</div>
+          <div class="dl-build-version">v1.2.0 — Full Offline</div>
+        </div>
+      </div>
+      <div class="dl-build-desc">Includes the Whisper AI model bundled inside the installer. Install once, works <strong>100% offline</strong> — no internet needed ever again after install.</div>
+      <div class="dl-build-specs">
+        <div class="dl-spec"><span class="dl-spec-check">✓</span>Local Whisper AI — fully private</div>
+        <div class="dl-spec"><span class="dl-spec-check">✓</span>Works without any internet connection</div>
+        <div class="dl-spec"><span class="dl-spec-check">✓</span>Best for churches with weak / no Wi-Fi</div>
+        <div class="dl-spec"><span class="dl-spec-check">✓</span>All features unlocked out of the box</div>
+        <div class="dl-spec dl-spec-muted"><span>📦</span>~629 MB installer</div>
+      </div>
+      <a href="https://github.com/anchorcastapp-team/anchorcastapp/releases/download/v1.2.0/AnchorCastSetup_v1.2.0.exe"
+         class="btn-gold" style="width:100%;justify-content:center;margin-top:auto">
+        ⬇ Download — With AI Bundled
+      </a>
+      <div class="dl-build-filename">AnchorCastSetup_v1.2.0.exe · Windows 10/11</div>
+    </div>
+
+    <!-- BUILD 2: Lightweight (without bundled Whisper) -->
+    <div class="dl-build-card">
+      <div class="dl-build-header">
+        <div class="dl-build-icon">⚡</div>
+        <div>
+          <div class="dl-build-title">Lightweight</div>
+          <div class="dl-build-version">v1.2.0 — Small Download</div>
+        </div>
+      </div>
+      <div class="dl-build-desc">Smaller installer without the Whisper model bundled. The AI model (~244 MB) downloads automatically on first use, or can be set up from Settings.</div>
+      <div class="dl-build-specs">
+        <div class="dl-spec"><span class="dl-spec-check">✓</span>Faster initial download</div>
+        <div class="dl-spec"><span class="dl-spec-check">✓</span>Good if you have reliable internet</div>
+        <div class="dl-spec"><span class="dl-spec-check">✓</span>Same full app and all features</div>
+        <div class="dl-spec dl-spec-muted"><span>⚠</span>Needs internet to download AI model (~244 MB)</div>
+        <div class="dl-spec dl-spec-muted"><span>📦</span>Smaller installer</div>
+      </div>
+      <a href="https://github.com/anchorcastapp-team/anchorcastapp/releases/download/v1.1.0/AnchorCastSetup_v1.1.0.exe"
+         class="btn-ghost" style="width:100%;justify-content:center;margin-top:auto">
+        ⬇ Download — Lightweight
+      </a>
+      <div class="dl-build-filename">AnchorCastSetup_v1.1.0.exe · Windows 10/11</div>
+    </div>
+
+  </div>
+
+  <!-- Feature parity note -->
+  <div class="dl-parity-note reveal">
+    <span class="dl-parity-icon">ℹ️</span>
+    <div><strong>Both versions are identical in features.</strong> The only difference is whether Whisper AI is bundled inside the installer or downloaded separately on first use. Either way, the app runs fully offline after setup.</div>
+  </div>
+
+</div>
+
+<!-- Install steps -->
   <div style="margin-top:48px" class="reveal">
     <div class="sec-tag">Installation</div>
     <h2>Up and Running <i>in Minutes</i></h2>
@@ -1077,6 +1228,7 @@ footer{
         <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/discussions" target="_blank">Discussions ↗</a></li>
         <li><a href="mailto:info@kaitamtech.com">info@kaitamtech.com</a></li>
         <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/blob/main/DISCLAIMER.md" target="_blank">Disclaimer ↗</a></li>
+        <li><a href="privacy.html">Privacy Policy</a></li>
       </ul>
     </div>
   </div>

@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Demo — AnchorCast</title>
-<meta name="description" content="Screenshots of AnchorCast — AI church presentation software"/>
+<title>Privacy Policy — AnchorCast</title>
+<meta name="description" content="AnchorCast privacy policy — we collect no data, store nothing, and transmit nothing. Fully local desktop app."/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
 <style>
+
 :root{
   --ink:#06080f; --ink2:#0c1222; --ink3:#111a30;
   --gold:#c9a84c; --gold-lt:#e6c86a; --gold-dk:#a07830;
@@ -478,7 +479,7 @@ h2 i{font-family:'Crimson Pro',serif;font-style:italic;color:var(--gold);font-we
 .page-hero h1{font-family:'Cinzel',serif;font-size:clamp(28px,5vw,52px);font-weight:700;margin-bottom:14px;background:linear-gradient(160deg,#fff 0%,var(--gold-lt) 55%,var(--gold) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .page-hero h1 i{font-family:'Crimson Pro',serif;font-style:italic;color:var(--gold);font-weight:300}
 .page-hero-sub{font-family:'Crimson Pro',serif;font-size:18px;color:var(--muted);max-width:560px;margin:0 auto;line-height:1.75}
-.nav-links a[href="demo.html"]{color:var(--gold)!important}
+.nav-links a[href="features.html"]{color:var(--gold)!important}
 
 /* ── FOOTER REDESIGN ── */
 
@@ -936,9 +937,91 @@ footer{
 }
 @media (max-width: 360px){.footer-badges{grid-template-columns:1fr !important;}}
 /* === end AnchorCast mobile footer hard override, v4 === */
+
+/* ── PRIVACY PAGE ── */
+.privacy-wrap{
+  max-width:760px;
+  margin:0 auto;
+  padding:64px 6% 80px;
+  position:relative;z-index:1;
+}
+.privacy-intro{
+  background:var(--ink2);
+  border:1px solid var(--gold-rim);
+  border-radius:14px;
+  padding:20px 24px;
+  display:flex;gap:14px;
+  align-items:flex-start;
+  margin-bottom:52px;
+  font-size:14px;color:var(--muted);line-height:1.75;
+}
+.privacy-intro-icon{font-size:22px;flex-shrink:0;margin-top:2px}
+.privacy-intro strong{color:var(--text)}
+.privacy-section{margin-bottom:48px}
+.privacy-section h2{
+  font-family:'Cinzel',serif;
+  font-size:16px;font-weight:700;
+  color:var(--gold);
+  margin-bottom:14px;
+  padding-bottom:10px;
+  border-bottom:1px solid rgba(201,168,76,.15);
+  -webkit-text-fill-color:var(--gold);
+  background:none;
+}
+.privacy-section p{
+  font-size:14.5px;color:var(--muted);
+  line-height:1.85;margin-bottom:12px;
+}
+.privacy-section p strong{color:var(--text)}
+.privacy-section a{
+  color:var(--gold);text-decoration:none;
+  -webkit-text-fill-color:var(--gold);
+}
+.privacy-section a:hover{text-decoration:underline}
+.privacy-section ul{
+  list-style:none;padding:0;margin:0 0 14px 0;
+  display:flex;flex-direction:column;gap:9px;
+}
+.privacy-section ul li{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:14px;color:var(--muted);line-height:1.6;
+}
+.privacy-section ul li::before{
+  content:'×';color:#f05454;
+  font-weight:700;flex-shrink:0;margin-top:1px;
+}
+.privacy-callout{
+  background:rgba(34,197,94,.07);
+  border:1px solid rgba(34,197,94,.22);
+  border-radius:14px;
+  padding:18px 22px;
+  display:flex;gap:13px;align-items:flex-start;
+  margin-top:48px;
+  font-size:14px;color:var(--muted);line-height:1.75;
+}
+.privacy-callout-icon{font-size:20px;flex-shrink:0;margin-top:2px}
+.privacy-callout strong{color:var(--text)}
+.privacy-btns{
+  display:flex;gap:14px;flex-wrap:wrap;margin-top:36px;
+}
+
+/* Mobile */
+@media(max-width:600px){
+  .privacy-wrap{padding:40px 4% 56px}
+  .privacy-intro{flex-direction:column;gap:10px}
+  .privacy-btns{flex-direction:column}
+  .privacy-btns .btn-gold,
+  .privacy-btns .btn-ghost{width:100%;justify-content:center}
+  .privacy-section h2{font-size:14.5px}
+  .privacy-section p,.privacy-section ul li{font-size:14px}
+}
+/* ── END PRIVACY ── */
 </style>
 </head>
 <body>
+
+<div class="scroll-progress" id="scrollProg"></div>
+
 <nav id="nav">
   <a href="../index.html" class="logo">
     <div class="logo-mark">✝</div>
@@ -974,81 +1057,89 @@ footer{
     <a href="download.html" class="mob-dl">⬇ Free Download</a>
   </div>
 
-
 <div class="page-hero">
-  <p class="page-hero-eye">See the App</p>
-  <h1>AnchorCast <i>Demo</i></h1>
-  <p class="page-hero-sub">Real screenshots from AnchorCast running in a live church setting.</p>
+  <p class="page-hero-eye">Legal</p>
+  <h1>Privacy <i>Policy</i></h1>
+  <p class="page-hero-sub">Last updated: April 2026 · AnchorCast v1.2.0</p>
 </div>
-<!-- DEMO GIFs -->
-<section class="section">
-  <div class="sec-tag">See It In Action</div>
-  <h2>Live Demos from <i>Real Services</i></h2>
-  <p class="sec-sub">Captured straight from AnchorCast running in a real service.</p>
 
-  <div class="demo-strip reveal">
-    <div class="demo-strip-card">
-      <div class="demo-strip-hd">🔥 AI Scripture Detection<span class="dbadge dba" style="margin-left:auto">AI Powered</span></div>
-      <img src="../assets/gifs/scripture-detection.gif" style="width:100%;display:block"
-           alt="AnchorCast AI scripture detection" loading="lazy"/>
-    </div>
-    <div class="demo-strip-card">
-      <div class="demo-strip-hd">⏱ Countdown Timer<span class="dbadge dbn" style="margin-left:auto">Standalone</span></div>
-      <img src="../assets/gifs/timer-sync.gif" style="width:100%;display:block"
-           alt="AnchorCast countdown timer synced to projection" loading="lazy"/>
-    </div>
-  </div>
-  
-  <div class="demo-strip reveal" style="margin-top:20px">
-    <div class="demo-strip-card">
-      <div class="demo-strip-hd">🎵 Songs &amp; Lyrics Projection<span class="dbadge dbn" style="margin-left:auto">Live</span></div>
-      <img src="../assets/gifs/songs-projection.gif" style="width:100%;display:block"
-           alt="AnchorCast song lyrics projection" loading="lazy"/>
-    </div>
-    <div class="demo-strip-card">
-      <div class="demo-strip-hd">📱 Wi-Fi Remote Control<span class="dbadge dba" style="margin-left:auto">Remote</span></div>
-      <img src="../assets/gifs/remote-control.gif" style="width:100%;display:block"
-           alt="AnchorCast Wi-Fi remote control" loading="lazy"/>
-    </div>
+<div class="privacy-wrap">
+
+  <div class="privacy-intro reveal">
+    <div class="privacy-intro-icon">🔒</div>
+    <div><strong>Short version:</strong> AnchorCast is a desktop application that runs locally on your computer. We do not collect, store, or transmit any personal data, audio, or sermon content. There are no user accounts, no analytics, and no tracking of any kind.</div>
   </div>
 
-</section>
+  <div class="privacy-section reveal">
+    <h2>1. What is AnchorCast?</h2>
+    <p>AnchorCast is a free, open-source desktop application for Windows. It is installed and runs entirely on your local machine. It is not a web service, SaaS product, or cloud platform.</p>
+  </div>
 
-<section class="section" style="padding-top:0">
-  <div class="sec-tag">App Screenshots</div>
-  <h2>The Real Interface, <i>Captured Live</i></h2>
-  <p class="sec-sub">Every panel from the actual AnchorCast desktop app.</p>
-</section>
+  <div class="privacy-section reveal">
+    <h2>2. Data We Do NOT Collect</h2>
+    <p>AnchorCast does <strong>not</strong> collect, store, process, or transmit any of the following:</p>
+    <ul>
+      <li>Audio recordings or sermon content</li>
+      <li>Transcriptions or detected Bible verses</li>
+      <li>Personal information (name, email, location, etc.)</li>
+      <li>Usage data, analytics, or telemetry</li>
+      <li>IP addresses or device identifiers</li>
+      <li>Church or congregation information</li>
+      <li>Song libraries or schedule data</li>
+    </ul>
+    <p>There are no user accounts and no registration is required.</p>
+  </div>
 
-<section class="section">
-  <div class="showcase reveal">
-    <div class="ss-card">
-      <div class="ss-bar"><div class="ss-dots"><div class="sd r"></div><div class="sd y"></div><div class="sd g"></div></div><span class="ss-label">Main Operator Dashboard</span></div>
-      <img src="../assets/screenshots/main-app.png" alt="AnchorCast main operator dashboard" loading="lazy"/>
-      <div class="ss-caption"><div class="ss-cap-title">4-Panel Operator Dashboard</div><div class="ss-cap-desc">Live Transcript on the far left, Service Schedule second, Program Preview in the centre, and Live Display on the right. The AI Detections panel shows Bible verses detected automatically in real time.</div></div>
-    </div>
-    <div class="ss-card">
-      <div class="ss-bar"><div class="ss-dots"><div class="sd r"></div><div class="sd y"></div><div class="sd g"></div></div><span class="ss-label">Timer Control Window</span></div>
-      <img src="../assets/screenshots/timer-window.png" alt="AnchorCast countdown timer" loading="lazy"/>
-      <div class="ss-caption"><div class="ss-cap-title">Countdown &amp; Count-Up Timer</div><div class="ss-cap-desc">Set title, duration, font, color, and screen position. Live preview shows exactly what the congregation sees. Syncs instantly to the projection screen.</div></div>
-    </div>
+  <div class="privacy-section reveal">
+    <h2>3. Local Processing Only</h2>
+    <p>All audio processing and AI transcription happens <strong>entirely on your local machine</strong>. In offline mode (the default), your microphone audio is processed by the bundled Whisper AI model and never leaves your PC. No audio is sent to any server, cloud service, or third party.</p>
+    <p>In online/cloud transcription mode (optional, disabled by default), audio is sent to a third-party speech-to-text service. If you use this mode, that service's own privacy policy applies. AnchorCast itself still does not store or log any of this data.</p>
   </div>
-  <div style="margin-top:28px" class="reveal">
-    <div class="ss-mobile-card">
-      <div class="ss-mobile-inner">
-        <div class="ss-mobile-img"><img src="../assets/screenshots/remote-mobile.png" alt="AnchorCast mobile remote" loading="lazy"/></div>
-        <div class="ss-mobile-text">
-          <div class="ss-mobile-tag">Wi-Fi Remote</div>
-          <div class="ss-mobile-title">Control from Any Phone</div>
-          <div class="ss-mobile-desc">Open <code style="background:var(--ink3);padding:2px 6px;border-radius:4px;font-size:12px">http://[your-ip]:5000/remote</code> in any browser on the same Wi-Fi. Scripture, Songs, Media, and Slides mode tabs. Full Prev/Next/Clear/Present controls with PIN-based role access.</div>
-        </div>
-      </div>
-    </div>
+
+  <div class="privacy-section reveal">
+    <h2>4. This Website (anchorcastapp.com)</h2>
+    <p>This website does not use cookies, tracking pixels, advertising networks, or analytics services. We do not collect visitor data, browsing behaviour, or any personally identifiable information from website visitors.</p>
+    <p>The website makes requests to the <a href="https://docs.github.com/en/rest" target="_blank" rel="noopener">GitHub public API</a> to display live download and star counts. These are client-side requests subject to <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's Privacy Policy</a>. No personal data is sent.</p>
   </div>
-  <div style="text-align:center;margin-top:48px">
-    <a href="download.html" class="btn-gold" style="font-size:15px;padding:14px 36px">⬇ Download Free and Try It</a>
+
+  <div class="privacy-section reveal">
+    <h2>5. GitHub</h2>
+    <p>AnchorCast's source code is hosted on GitHub. If you visit our <a href="https://github.com/anchorcastapp-team/anchorcastapp" target="_blank" rel="noopener">GitHub repository</a>, download releases, or open issues, <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's own privacy policy</a> applies. We do not control GitHub's data practices.</p>
   </div>
-</section>
+
+  <div class="privacy-section reveal">
+    <h2>6. Open Source</h2>
+    <p>AnchorCast is fully open source under the MIT license. You can inspect every line of code at <a href="https://github.com/anchorcastapp-team/anchorcastapp" target="_blank" rel="noopener">github.com/anchorcastapp-team/anchorcastapp</a> to verify exactly what the application does.</p>
+  </div>
+
+  <div class="privacy-section reveal">
+    <h2>7. Children's Privacy</h2>
+    <p>AnchorCast does not collect any data from anyone, including children. The application is designed for church operators and technical volunteers.</p>
+  </div>
+
+  <div class="privacy-section reveal">
+    <h2>8. Changes to This Policy</h2>
+    <p>If we make any material changes, we will update the date at the top of this page and note the changes in the <a href="https://github.com/anchorcastapp-team/anchorcastapp/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a>.</p>
+  </div>
+
+  <div class="privacy-section reveal">
+    <h2>9. Contact</h2>
+    <p>Questions about this policy? Contact us at <a href="mailto:info@kaitamtech.com">info@kaitamtech.com</a> or open a discussion on <a href="https://github.com/anchorcastapp-team/anchorcastapp/discussions" target="_blank" rel="noopener">GitHub Discussions</a>.</p>
+  </div>
+
+  <div class="privacy-callout reveal">
+    <div class="privacy-callout-icon">✅</div>
+    <div><strong>Summary:</strong> AnchorCast collects nothing. Stores nothing. Sends nothing. It's a local desktop app — your sermons stay completely private.</div>
+  </div>
+
+  <div class="privacy-btns reveal">
+    <a href="download.html" class="btn-gold">⬇ Download AnchorCast Free</a>
+    <a href="https://github.com/anchorcastapp-team/anchorcastapp/blob/main/DISCLAIMER.md"
+       class="btn-ghost" target="_blank" rel="noopener">View Disclaimer ↗</a>
+  </div>
+
+</div>
+
 <footer>
   <div class="footer-top">
     <div class="footer-brand">
@@ -1108,6 +1199,7 @@ footer{
     </div>
   </div>
 </footer>
+
 <script>
 (function(){
   /* ── Scroll progress ── */
