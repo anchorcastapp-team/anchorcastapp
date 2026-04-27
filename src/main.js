@@ -6083,6 +6083,20 @@ function normalizeTranscriptText(text) {
     // Names
     [/\bzolom\b/gi, 'Solomon'],
 
+
+    // ── Sermon 6 corrections (Apr 26, 2026) ─ Blessing of Work (Deepgram) ──
+    [/\blocust placed man\b/gi,              'Lord placed man'],
+    [/\bhard water has plenty\b/gi,          'hard worker has plenty'],
+    [/\bhard water get rich\b/gi,            'hard worker gets rich'],
+    [/\bdelacing and become a slave\b/gi,    'be lazy and become a slave'],
+    [/\bmay not live to poverty\b/gi,        'mere talk leads to poverty'],
+    [/\blazy people work much\b/gi,          'lazy people want much'],
+    [/\bpestilence\.?\s+focus on\b/gi,    'perseverance. Focus on'],
+    [/\bfoursight\b/gi,                      'foresight'],
+    [/\btitty\b/gi,                          'duty'],
+    [/\bboiling the midnight oil\b/gi,       'burning the midnight oil'],
+    [/\bthe copier\b/gi,                     'the cupbearer'],
+
     // ── Sermon 5 corrections (Apr 26, 2026) ─ Blessing of Work ──────────
     [/\bprocter\b/gi, 'Proverbs'],
     [/\bproctor\b/gi, 'Proverbs'],
