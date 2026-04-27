@@ -1243,25 +1243,25 @@ footer{
         });
       });
 
-    /* Total downloads — count ALL .exe and .zip assets across all releases */
+    /* Total downloads — count ALL assets across all releases */
     fetch(BASE + '/releases')
       .then(function(r){ return r.json(); })
       .then(function(releases){
         var dl = 0;
+        var assetCount = 0;
         if(Array.isArray(releases)){
           releases.forEach(function(release){
             if(release && Array.isArray(release.assets)){
+              assetCount += release.assets.length;
               release.assets.forEach(function(asset){
-                if(asset && asset.name &&
-                   (asset.name.toLowerCase().endsWith('.exe') ||
-                    asset.name.toLowerCase().endsWith('.zip'))){
-                  dl += (asset.download_count || 0);
-                }
+                dl += (asset.download_count || 0);
               });
             }
           });
         }
-        /* Always show a number — animate from 0 to dl */
+        console.log('[AnchorCast] GitHub releases:', releases ? releases.length : 0,
+          '| Assets found:', assetCount, '| Total downloads:', dl);
+        /* Animate counter — always show a number */
         var dur = 1200, start = performance.now();
         (function tick(now){
           var p = Math.min((now - start) / dur, 1);
@@ -1273,8 +1273,8 @@ footer{
           });
           if(p < 1) requestAnimationFrame(tick);
         })(performance.now());
-      }).catch(function(){
-        /* On error show 0 rather than leaving as — */
+      }).catch(function(err){
+        console.error('[AnchorCast] GitHub API error:', err);
         ['dlCount','statDl'].forEach(function(id){
           var el = document.getElementById(id); if(el) el.textContent = '0';
         });
