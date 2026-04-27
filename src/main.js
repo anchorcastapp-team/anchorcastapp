@@ -2128,7 +2128,7 @@ const remoteAuthState = { failures: new Map() };
 const remoteRuntimeStatus = { lastSeenAt: 0, lastRole: null, lastIp: null };
 
 const remoteSessionTokens = new Map();
-function mintRemoteSessionToken(role='admin', ttlMs=(8*60*60*1000)){
+function mintRemoteSessionToken(role='admin', ttlMs=(4*60*60*1000)){ // 4h session
   const token = crypto.randomBytes(24).toString('hex');
   const expiresAt = Date.now() + ttlMs;
   remoteSessionTokens.set(token, { role, expiresAt });
@@ -2318,18 +2318,27 @@ function getAuthorizedRemoteRole(req){
   // Auth required check — if auth is disabled, allow unauthenticated access
   // IMPORTANT: only skip auth when remoteRequireAuth is explicitly false AND
   // no admin PIN is configured (prevents bypass when PIN is set but field is missing)
-  const authRequired = isRemoteAuthRequired(currentSettings.remoteRequireAuth);
+  // Re-evaluate auth requirement live from settings (never cache this)
+  const rawAuthSetting = currentSettings.remoteRequireAuth;
+  const authRequired = isRemoteAuthRequired(rawAuthSetting);
   const hasAnyPin = !!(normalizeRemotePinValue(currentSettings.remoteAdminPin || currentSettings.remotePin || ''));
+
+  // SECURITY: if a PIN is configured, ALWAYS require it regardless of remoteRequireAuth flag
+  // This prevents the case where the UI toggle is off but a PIN is set — PIN always wins
+  if (hasAnyPin && !getAuthorizedRemoteRole._bypassPinCheck) {
+    const role = remoteRoleForPin(getRemoteAuthHeader(req) || getRemotePinFromUrl(req.url || ''));
+    if (role) { markRemoteActivity(req, role); return role; }
+    // Has PIN configured but none provided / wrong one → deny
+    // (even if remoteRequireAuth flag is false — PIN presence overrides)
+    const tokenRole = remoteRoleForToken(getRemoteTokenFromReq(req));
+    if (tokenRole) { markRemoteActivity(req, tokenRole); return tokenRole; }
+    return null;
+  }
+
   if (!authRequired && !hasAnyPin) {
     // Truly open — allow role from header/query (no PIN configured)
-    try {
-      const roleFromHeader = String(req.headers['x-remote-role'] || '').trim().toLowerCase();
-      if (['admin','scripture','songs','media','monitor'].includes(roleFromHeader)) { markRemoteActivity(req, roleFromHeader); return roleFromHeader; }
-    } catch(_) {}
-    try {
-      const roleFromQuery = String(new URL(req.url || '/', 'http://localhost').searchParams.get('role') || '').trim().toLowerCase();
-      if (['admin','scripture','songs','media','monitor'].includes(roleFromQuery)) { markRemoteActivity(req, roleFromQuery); return roleFromQuery; }
-    } catch(_) {}
+    // NOTE: X-Remote-Role header is intentionally NOT trusted as auth here.
+    // It is sent by the remote HTML for UI hints only. Only PIN or session token grants access.
     markRemoteActivity(req, 'admin');
     return 'admin';
   }
@@ -2425,14 +2434,16 @@ function startHttpServer(port){
           });
         } catch (e) {
           console.error('[REMOTE] bootstrap failed', e);
-          return json(res,200,{
-            ok:true,
-            authRequired:isRemoteAuthRequired(currentSettings.remoteRequireAuth),
-            role:'admin',
-            capabilities: roleCapabilities('admin'),
-            live: !!(currentRenderState?.module && currentRenderState.module !== 'clear'),
-            projection: projectionWindow!==null,
-            version: 'r52-fallback',
+          // SECURITY: never grant role on error — require re-auth
+          const authReqOnError = isRemoteAuthRequired(currentSettings.remoteRequireAuth);
+          return json(res, authReqOnError ? 500 : 200, {
+            ok: !authReqOnError,
+            authRequired: authReqOnError,
+            role: authReqOnError ? null : 'admin',
+            capabilities: authReqOnError ? [] : roleCapabilities('admin'),
+            live: false,
+            projection: false,
+            version: 'r54-fallback',
             error: e?.message || String(e)
           });
         }
@@ -2495,11 +2506,11 @@ function startHttpServer(port){
     if(req.method==='POST'&&url==='/api/control'){
       if(remoteLockedOut(req)) return json(res,429,{error:'Too many failed attempts. Try again later.'});
       let role = getAuthorizedRemoteRole(req);
-      // When auth is not required, always fall back to 'admin' — same logic as /api/bootstrap
+      // Only fall back to admin when auth is genuinely not required AND no PIN configured
       if(!role && !isRemoteAuthRequired(currentSettings.remoteRequireAuth)) role = 'admin';
       if(!role){
         recordRemoteAuthFailure(req);
-        return json(res,401,{error:'Authentication required'});
+        return json(res,401,{error:'Authentication required. Please enter your PIN in the remote control interface.',authRequired:true});
       }
       clearRemoteAuthFailures(req);
       let body='';
@@ -3329,9 +3340,17 @@ function bootstrap(){
       }
       return;
     }
+    // If server says auth is required but returned no role, force re-auth
+    if(data.authRequired && !data.role){
+      token='';pin='';role='';caps=[];
+      try{localStorage.removeItem('acToken');localStorage.removeItem('acPin');localStorage.removeItem('acRole');}catch(e){}
+      show($('authBox'),true);
+      var em=$('authMsg');if(em)em.textContent='';
+      return;
+    }
     role=String(data.role||'admin').toLowerCase();
     caps=data.capabilities||capsFor(role);
-    if(!AUTH_REQUIRED||!data.authRequired)show($('authBox'),false);
+    if(!data.authRequired)show($('authBox'),false);
     var rb=$('roleBadge');if(rb){rb.className='role-badge show';rb.textContent='\uD83D\uDC64 '+role.charAt(0).toUpperCase()+role.slice(1);}
     refreshUI();loadLib('songs');loadLib('media');poll();
   });
@@ -3340,7 +3359,9 @@ function bootstrap(){
 window.addEventListener('load',function(){
   try{token=localStorage.getItem('acToken')||'';}catch(e){}
   try{pin=localStorage.getItem('acPin')||'';}catch(e){}
-  try{var r=localStorage.getItem('acRole');if(r){role=r;caps=capsFor(role);}}catch(e){}
+  // Always start with auth box visible — bootstrap() will hide it if auth passes
+  // This prevents stale tokens from bypassing the PIN screen on fresh open
+  try{var r=localStorage.getItem('acRole');if(r&&(token||pin)){role=r;caps=capsFor(role);}}catch(e){}
 
   $('modeScripture').onclick=function(){setMode('scripture');};
   $('modeSongs').onclick=function(){setMode('songs');};
@@ -4138,6 +4159,18 @@ ipcMain.handle('get-displays',()=>
 ipcMain.handle('get-settings',()=>({ ...defaultSettings(), ...loadSettings() }));
 ipcMain.handle('save-settings',(_,s,opts)=>{
   try{
+    // If PIN or auth settings changed, invalidate all existing remote sessions
+    const pinChanged = (
+      String(s.remoteAdminPin||'') !== String(currentSettings.remoteAdminPin||'') ||
+      String(s.remoteScripturePin||'') !== String(currentSettings.remoteScripturePin||'') ||
+      String(s.remoteSongsPin||'') !== String(currentSettings.remoteSongsPin||'') ||
+      String(s.remoteMediaPin||'') !== String(currentSettings.remoteMediaPin||'') ||
+      String(s.remoteRequireAuth||'') !== String(currentSettings.remoteRequireAuth||'')
+    );
+    if (pinChanged) {
+      remoteSessionTokens.clear();
+      console.log('[Remote] PIN/auth settings changed — all sessions invalidated');
+    }
     saveSettings(s);
     // opts.themeOnly = true means only a song/presentation/scripture theme ID changed.
     // The renderer uses this to skip re-projecting live scripture when a song theme is saved.
