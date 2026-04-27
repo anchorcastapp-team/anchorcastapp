@@ -1835,22 +1835,55 @@ async function openRemotePopover() {
     }
   });
 
-  // Copy URL
-  pop.querySelector('#remoteCopyBtn')?.addEventListener('click', () => {
+  // ── Copy URL — 3-method fallback (same as History copy) ──
+  async function copyTextToClipboard(text) {
+    // Method 1: Electron IPC (most reliable)
+    if (window.electronAPI?.copyToClipboard) {
+      try { await window.electronAPI.copyToClipboard(text); return true; } catch(e) {}
+    }
+    // Method 2: navigator.clipboard
+    if (navigator.clipboard?.writeText) {
+      try { await navigator.clipboard.writeText(text); return true; } catch(e) {}
+    }
+    // Method 3: execCommand fallback
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) return true;
+    } catch(e) {}
+    return false;
+  }
+
+  pop.querySelector('#remoteCopyBtn')?.addEventListener('click', async () => {
     const currentUrl = pop.querySelector('#remoteUrlText')?.textContent || url;
-    if (currentUrl && currentUrl !== '—') { navigator.clipboard?.writeText(currentUrl).catch(()=>{}); toast('📋 URL copied!'); }
+    if (!currentUrl || currentUrl === '—') { toast('⚠ No URL to copy'); return; }
+    const ok = await copyTextToClipboard(currentUrl);
+    if (ok) {
+      const btn = pop.querySelector('#remoteCopyBtn');
+      if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = 'Copy'; }, 2000); }
+      toast('📋 URL copied!');
+    } else {
+      toast('⚠ Could not copy — select the URL manually');
+    }
   });
 
-  // Copy shareable message
-  pop.querySelector('#remoteShareBtn')?.addEventListener('click', () => {
+  pop.querySelector('#remoteShareBtn')?.addEventListener('click', async () => {
     const currentUrl = pop.querySelector('#remoteUrlText')?.textContent || url;
-    if (!currentUrl || currentUrl === '—') return;
-    const msg = `📱 AnchorCast Remote Control\n\nOpen this link on your phone or tablet to control the worship presentation:\n\n${currentUrl}\n\n(Make sure you're connected to the same WiFi network)`;
-    navigator.clipboard?.writeText(msg).then(() => {
+    if (!currentUrl || currentUrl === '—') { toast('⚠ Remote is not active'); return; }
+    const msg = `📱 AnchorCast Remote Control\n\nOpen this link on your phone or tablet to control the worship presentation:\n\n${currentUrl}\n\n(Make sure you\'re connected to the same WiFi network)`;
+    const ok = await copyTextToClipboard(msg);
+    if (ok) {
       const btn = pop.querySelector('#remoteShareBtn');
-      if (btn) { btn.textContent = '✓ Copied! Paste in WhatsApp or SMS'; setTimeout(() => { btn.innerHTML = '📋 Copy Link to Share via WhatsApp / SMS'; }, 2000); }
-      toast('📋 Shareable message copied to clipboard!');
-    }).catch(()=>{ toast('⚠ Could not copy to clipboard'); });
+      if (btn) { btn.textContent = '✓ Copied! Paste in WhatsApp or SMS'; setTimeout(() => { btn.innerHTML = '📋 Copy Link to Share via WhatsApp / SMS'; }, 2500); }
+      toast('📋 Shareable message copied!');
+    } else {
+      toast('⚠ Could not copy to clipboard');
+    }
   });
 
   // Open settings
