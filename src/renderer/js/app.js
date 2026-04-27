@@ -2535,6 +2535,30 @@ const _BIBLICAL_FIXES = [
   [/\bjack of poultry\b/gi,                 'jack of all trades'],
   [/\bmaster of no\b/gi,                    'master of none'],
 
+
+  // ── Sermon 6 corrections (Apr 26, 2026) ─ Blessing of Work (Deepgram) ──
+  // 'Lord' misheard
+  [/\blocust placed man\b/gi,              'Lord placed man'],
+  [/\bplaced man in the daddy\b/gi,        'placed man in the garden'],
+  // Verse text corrections (affect detection matching)
+  [/\bhard water has plenty\b/gi,          'hard worker has plenty'],
+  [/\bhard water get rich\b/gi,            'hard worker gets rich'],
+  [/\bdelacing and become a slave\b/gi,    'be lazy and become a slave'],
+  [/\bmay not live to poverty\b/gi,        'mere talk leads to poverty'],
+  [/\blazy people work much\b/gi,          'lazy people want much'],
+  // Section headers
+  [/\bpestilence\.?\s+focus on\b/gi,    'perseverance. Focus on'],
+  [/\bfoursight\b/gi,                      'foresight'],
+  // Embarrassing mishears
+  [/\btitty\b/gi,                          'duty'],
+  [/\byou have a titty\b/gi,               'you have a duty'],
+  [/\bboiling the midnight oil\b/gi,       'burning the midnight oil'],
+  [/\bwalk in the day study\b/gi,          'work in the day study'],
+  // Biblical references
+  [/\bcopier will speak to the king\b/gi,  'cupbearer will speak to the king'],
+  [/\bthe copier\b/gi,                     'the cupbearer'],
+  [/\ba bandage scour seating\b/gi,        'like a bandit'],
+
   // ── Sermon 5 corrections (Apr 26, 2026) ─ Blessing of Work ─────────────
   // Book name mishears
   [/\bprocter\b/gi,                          'Proverbs'],
