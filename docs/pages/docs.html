@@ -1794,17 +1794,14 @@ footer{
             if(a.name&&(a.name.endsWith('.exe')||a.name.endsWith('.zip'))) dl+=(a.download_count||0);
           });
         });
-        ['releaseVer','relTag'].forEach(function(id){
-          var el=document.getElementById(id); if(el) el.textContent=ver;
-        });
-        if(dl>0){
-          var dur=1400,start=performance.now();
-          (function tick(now){
-            var p=Math.min((now-start)/dur,1),ease=1-Math.pow(1-p,3),val=Math.round(ease*dl).toLocaleString();
-            ['dlCount','statDl'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=val; });
-            if(p<1) requestAnimationFrame(tick);
-          })(performance.now());
-        }
+        var showDl = dl > 0 ? dl : 0;
+        var dur=1400, start=performance.now();
+        (function tick(now){
+          var p=Math.min((now-start)/dur,1), ease=1-Math.pow(1-p,3);
+          var val = showDl > 0 ? Math.round(ease*showDl).toLocaleString() : '0';
+          ['dlCount','statDl'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=val; });
+          if(p<1) requestAnimationFrame(tick);
+        })(performance.now());
       }).catch(function(){});
   }
   loadStats();
@@ -1942,17 +1939,14 @@ footer{
             if(a.name&&(a.name.endsWith('.exe')||a.name.endsWith('.zip'))) dl+=(a.download_count||0);
           });
         });
-        ['releaseVer','relTag'].forEach(function(id){
-          var el=document.getElementById(id); if(el) el.textContent=ver;
-        });
-        if(dl>0){
-          var dur=1400,start=performance.now();
-          (function tick(now){
-            var p=Math.min((now-start)/dur,1),ease=1-Math.pow(1-p,3),val=Math.round(ease*dl).toLocaleString();
-            ['dlCount','statDl'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=val; });
-            if(p<1) requestAnimationFrame(tick);
-          })(performance.now());
-        }
+        var showDl = dl > 0 ? dl : 0;
+        var dur=1400, start=performance.now();
+        (function tick(now){
+          var p=Math.min((now-start)/dur,1), ease=1-Math.pow(1-p,3);
+          var val = showDl > 0 ? Math.round(ease*showDl).toLocaleString() : '0';
+          ['dlCount','statDl'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=val; });
+          if(p<1) requestAnimationFrame(tick);
+        })(performance.now());
       }).catch(function(){});
   }
   loadStats();
