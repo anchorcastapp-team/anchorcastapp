@@ -519,6 +519,24 @@ _WORD_FIXES = [
     ('jack of poultry',        'jack of all trades'),
     ('master of no ',          'master of none '),
 
+    # Sermon 5 corrections (Apr 26, 2026) — Blessing of Work
+    ('procter',                'Proverbs'),
+    ('proctor',                'Proverbs'),
+    ('their lungs',            'their lamps'),
+    ('our lungs',              'our lamps'),
+    ('the lungs',              'the lamps'),
+    ('lungs are going',        'lamps are going out'),
+    ('having suicide',         'having foresight'),
+    ('four sides',             'foresight'),
+    ('suicide is the ability', 'foresight is the ability'),
+    ('learning from the aunts','learning from the ants'),
+    ('the aunts today',        'the ants today'),
+    ('the aunt this morning',  'the ant this morning'),
+    ('atonement is very weak', 'your amen is very weak'),
+    ("it's delicious",         'diligence'),
+    ('propitiation for yourself', 'provision for yourself'),
+    ('propitiation for others',   'provision for others'),
+
     # Sermon 4 corrections (Apr 15, 2026) — New Life in Christ
     ('galicias chapter',       'Galatians chapter'),
     ("galicia's chapter",      'Galatians chapter'),
