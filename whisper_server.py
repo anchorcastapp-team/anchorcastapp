@@ -519,6 +519,20 @@ _WORD_FIXES = [
     ('jack of poultry',        'jack of all trades'),
     ('master of no ',          'master of none '),
 
+
+    # Sermon 6 corrections (Apr 26, 2026) — Blessing of Work (Deepgram)
+    ('locust placed man',          'Lord placed man'),
+    ('placed man in the daddy',    'placed man in the garden'),
+    ('hard water has plenty',      'hard worker has plenty'),
+    ('delacing and become a slave','be lazy and become a slave'),
+    ('may not live to poverty',    'mere talk leads to poverty'),
+    ('lazy people work much',      'lazy people want much'),
+    ('foursight',                  'foresight'),
+    ('titty',                      'duty'),
+    ('boiling the midnight oil',   'burning the midnight oil'),
+    ('the copier',                 'the cupbearer'),
+    ('a bandage scour seating',    'like a bandit'),
+
     # Sermon 5 corrections (Apr 26, 2026) — Blessing of Work
     ('procter',                'Proverbs'),
     ('proctor',                'Proverbs'),
