@@ -6082,6 +6082,25 @@ function normalizeTranscriptText(text) {
     [/\bephysians?\b/gi, 'Ephesians'],
     // Names
     [/\bzolom\b/gi, 'Solomon'],
+
+    // ── Sermon 5 corrections (Apr 26, 2026) ─ Blessing of Work ──────────
+    [/\bprocter\b/gi, 'Proverbs'],
+    [/\bproctor\b/gi, 'Proverbs'],
+    [/\btheir lungs\b/gi, 'their lamps'],
+    [/\bour lungs\b/gi, 'our lamps'],
+    [/\bthe lungs\b/gi, 'the lamps'],
+    [/\blungs are going\b/gi, 'lamps are going out'],
+    [/\bhaving suicide\b/gi, 'having foresight'],
+    [/\bfour sides\b/gi, 'foresight'],
+    [/\bsuicide is the ability\b/gi, 'foresight is the ability'],
+    [/\blearning from the aunts\b/gi, 'learning from the ants'],
+    [/\bthe aunts today\b/gi, 'the ants today'],
+    [/\bthe aunt this morning\b/gi, 'the ant this morning'],
+    [/\batonement is very weak\b/gi, 'your amen is very weak'],
+    [/\bit'?s delicious!\b/gi, 'diligence!'],
+    [/\bpropitiation for yourself\b/gi, 'provision for yourself'],
+    [/\bpropitiation for others\b/gi, 'provision for others'],
+
     // Mishears
     [/\bfraud stealing in god\b/gi, 'trusting in God'],
     [/\bfraud stealing\b/gi, 'trusting'],
