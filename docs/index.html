@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
+  <link rel="icon" type="image/x-icon" href="assets/favicon.ico"/>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg"/>
+  <link rel="apple-touch-icon" href="assets/favicon.svg"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>AnchorCast — Free AI Church Presentation Software</title>
 <meta name="description" content="AnchorCast is a free, open-source AI church presentation app for Windows. Real-time Bible verse detection, live sermon transcription, song display, countdown timer, NDI streaming — fully offline."/>
@@ -668,7 +671,7 @@ h2 i{font-family:'Crimson Pro',serif;font-style:italic;color:var(--gold);font-we
 ════════════════════════════════════════════════════════ */
 
 /* ── Body scroll-lock when menu is open ── */
-body.menu-open{overflow:hidden;position:fixed;width:100%;top:0}
+body.menu-open{overflow:hidden}
 
 /* ── Nav & hamburger button ── */
 .mob-menu-btn{
@@ -1031,62 +1034,102 @@ footer{
     gap:36px 28px;
     padding:44px 5% 36px;
   }
-  .footer-brand{
-    grid-column:1 / -1;  /* brand spans full width */
-  }
+  .footer-brand{grid-column:1 / -1}
 }
-@media(max-width:560px){
-  .footer-top{
-    grid-template-columns:1fr 1fr;
-    gap:28px 20px;
-    padding:36px 4% 28px;
-  }
-  .footer-brand{
-    grid-column:1 / -1;
-  }
-  .footer-tagline{max-width:100%}
-}
-@media(max-width:420px){
+
+/* Mobile footer fix, iPhones are commonly 390px-430px CSS width,
+   so this must start well above 420px. */
+@media(max-width:640px){
+  footer{overflow:hidden}
   .footer-top{
     grid-template-columns:1fr;
-    gap:24px;
-    padding:32px 4% 24px;
+    gap:0;
+    padding:30px 20px 22px;
+    text-align:left;
   }
-  .footer-brand{grid-column:auto}
+  .footer-brand{
+    grid-column:auto;
+    align-items:flex-start;
+    padding-bottom:22px;
+    margin-bottom:18px;
+    border-bottom:1px solid rgba(255,255,255,.07);
+  }
+  .footer-logo{margin-bottom:10px}
+  .footer-tagline{
+    max-width:100%;
+    margin-bottom:14px;
+    font-size:13px;
+  }
+  .footer-social{gap:10px;flex-wrap:wrap}
+  .footer-social a{width:38px;height:38px}
+  .footer-col{
+    padding:16px 0;
+    border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .footer-col:last-of-type{border-bottom:0}
+  .footer-col h4{
+    margin-bottom:14px;
+    font-size:11px;
+  }
+  .footer-col ul{gap:12px}
+  .footer-col ul li a{
+    font-size:14px;
+    line-height:1.35;
+  }
   .footer-bottom{
     flex-direction:column;
-    align-items:flex-start;
-    gap:12px;
-    padding:16px 4%;
+    align-items:stretch;
+    gap:14px;
+    padding:18px 20px calc(18px + env(safe-area-inset-bottom));
   }
-  .footer-copy{font-size:11px}
-  .footer-badges{gap:6px}
-  .footer-badge{font-size:9.5px;padding:3px 9px}
-  .footer-social a{width:34px;height:34px}
+  .footer-copy{
+    font-size:11.5px;
+    line-height:1.65;
+  }
+  .footer-badges{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    width:100%;
+  }
+  .footer-badge{
+    justify-content:center;
+    min-height:34px;
+    padding:7px 8px;
+    font-size:10px;
+    border-radius:8px;
+    white-space:nowrap;
+  }
+}
+@media(max-width:360px){
+  .footer-badges{grid-template-columns:1fr}
 }
 /* ════════════════ END FOOTER ════════════════ */
 
-/* AnchorCast mobile footer hard fix */
+/* === AnchorCast mobile footer hard override, v4 === */
 @media (max-width: 768px){
-  footer, footer *{box-sizing:border-box;max-width:100%;}
-  footer{overflow:hidden;}
-  .footer-top{display:flex!important;flex-direction:column!important;align-items:flex-start!important;grid-template-columns:none!important;gap:30px!important;width:100%!important;padding:36px 20px 30px!important;margin:0!important;}
-  .footer-brand,.footer-col{width:100%!important;grid-column:auto!important;}
-  .footer-logo{width:100%!important;justify-content:flex-start!important;}
-  .footer-tagline{max-width:none!important;width:100%!important;margin:0 0 16px!important;}
-  .footer-social{display:flex!important;flex-wrap:wrap!important;gap:10px!important;}
-  .footer-col h4{margin:0 0 14px!important;}
-  .footer-col ul{display:flex!important;flex-direction:column!important;gap:12px!important;padding:0!important;margin:0!important;list-style:none!important;}
-  .footer-col li{display:block!important;width:100%!important;}
-  .footer-col a{display:inline-flex!important;align-items:center!important;width:auto!important;max-width:100%!important;white-space:normal!important;word-break:break-word!important;line-height:1.45!important;}
-  .footer-bottom{display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:flex-start!important;width:100%!important;gap:16px!important;padding:18px 20px 24px!important;margin:0!important;}
-  .footer-copy{width:100%!important;font-size:12px!important;line-height:1.7!important;}
-  .footer-copy a,.footer-copy strong{display:inline!important;white-space:normal!important;word-break:break-word!important;}
-  .footer-badges{display:flex!important;flex-wrap:wrap!important;justify-content:flex-start!important;align-items:center!important;gap:8px!important;width:100%!important;}
-  .footer-badge{display:inline-flex!important;flex:0 0 auto!important;width:auto!important;max-width:100%!important;white-space:nowrap!important;font-size:10px!important;padding:5px 10px!important;}
+  html, body{max-width:100% !important; overflow-x:hidden !important;}
+  footer, footer *{box-sizing:border-box !important;}
+  footer{width:100% !important; max-width:100vw !important; overflow:hidden !important; background:#080d1c !important;}
+  .footer-top{display:flex !important; flex-direction:column !important; width:100% !important; max-width:100% !important; padding:24px 16px 18px !important; margin:0 !important; gap:14px !important; border-bottom:1px solid rgba(255,255,255,.07) !important; text-align:left !important;}
+  .footer-brand{display:flex !important; grid-column:auto !important; width:100% !important; max-width:100% !important; align-items:center !important; text-align:center !important; padding:16px !important; margin:0 0 4px !important; border:1px solid rgba(255,255,255,.08) !important; border-radius:16px !important; background:rgba(255,255,255,.025) !important;}
+  .footer-logo{justify-content:center !important; width:100% !important; margin:0 0 8px !important;}
+  .footer-tagline{max-width:320px !important; margin:0 auto 12px !important; font-size:13px !important; line-height:1.55 !important;}
+  .footer-social{justify-content:center !important; width:100% !important; gap:10px !important; flex-wrap:wrap !important;}
+  .footer-social a{width:40px !important; height:40px !important; flex:0 0 40px !important;}
+  .footer-col{width:100% !important; max-width:100% !important; display:block !important; padding:16px !important; margin:0 !important; border:1px solid rgba(255,255,255,.08) !important; border-radius:16px !important; background:rgba(255,255,255,.022) !important;}
+  .footer-col h4{margin:0 0 12px !important; font-size:11px !important; letter-spacing:.18em !important;}
+  .footer-col ul{display:grid !important; grid-template-columns:1fr !important; gap:8px !important; margin:0 !important; padding:0 !important; width:100% !important;}
+  .footer-col ul li{margin:0 !important; padding:0 !important; width:100% !important;}
+  .footer-col ul li a{display:flex !important; align-items:center !important; width:100% !important; min-height:38px !important; padding:8px 10px !important; border-radius:10px !important; background:rgba(255,255,255,.025) !important; border:1px solid rgba(255,255,255,.05) !important; font-size:14px !important; line-height:1.25 !important; overflow-wrap:anywhere !important;}
+  .footer-bottom{display:flex !important; flex-direction:column !important; align-items:stretch !important; justify-content:flex-start !important; width:100% !important; max-width:100% !important; padding:18px 16px calc(18px + env(safe-area-inset-bottom)) !important; margin:0 !important; gap:14px !important; text-align:center !important;}
+  .footer-copy{width:100% !important; max-width:100% !important; font-size:12px !important; line-height:1.65 !important; overflow-wrap:anywhere !important;}
+  .footer-copy strong{color:#8a91b4 !important; -webkit-text-fill-color:#8a91b4 !important;}
+  .footer-badges{display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)) !important; gap:8px !important; width:100% !important; max-width:100% !important; align-items:stretch !important;}
+  .footer-badge{display:flex !important; justify-content:center !important; align-items:center !important; min-width:0 !important; width:100% !important; min-height:36px !important; padding:8px 6px !important; border-radius:10px !important; font-size:10.5px !important; line-height:1.1 !important; white-space:nowrap !important;}
 }
-@media (max-width: 380px){.footer-top{padding-left:16px!important;padding-right:16px!important;}.footer-bottom{padding-left:16px!important;padding-right:16px!important;}.footer-badge{font-size:9.5px!important;padding:5px 8px!important;}}
-
+@media (max-width: 360px){.footer-badges{grid-template-columns:1fr !important;}}
+/* === end AnchorCast mobile footer hard override, v4 === */
 </style>
 </head>
 <body>
@@ -1104,7 +1147,7 @@ footer{
     <li><a href="pages/demo.html">Demo</a></li>
     <li><a href="pages/docs.html">Docs</a></li>
     <li><a href="pages/open-source.html">Open Source</a></li>
-    <li><a href="https://github.com/gbkeku/anchorcastapp/wiki" target="_blank" rel="noopener">Wiki</a></li>
+    <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/wiki" target="_blank" rel="noopener">Wiki</a></li>
     <li><a href="pages/download.html" class="nav-dl">⬇ Free Download</a></li>
   </ul>
   <button class="mob-menu-btn" id="mobMenuBtn" aria-label="Menu">☰</button>
@@ -1113,18 +1156,18 @@ footer{
 
 <div class="mob-menu" id="mobMenu">
   <div class="mob-menu-header">
-    <a href="index.html" class="mob-menu-logo" onclick="document.getElementById('mobMenu').classList.remove('open');document.body.classList.remove('menu-open');document.body.style.top='';return true;">
+    <a href="index.html" class="mob-menu-logo" onclick="document.getElementById('mobMenu').classList.remove('open');if(document.getElementById('mobMenuBtn'))document.getElementById('mobMenuBtn').textContent='☰';document.documentElement.style.overflow='';return true;">
       <div class="mob-menu-logo-mark">✝</div>
       <span>AnchorCast</span>
     </a>
-    <button class="mob-menu-close" id="mobMenuClose" onclick="(function(){var y=parseInt(document.body.style.top||0)*-1;document.getElementById('mobMenu').classList.remove('open');document.getElementById('mobMenuBtn').textContent='☰';document.body.classList.remove('menu-open');document.body.style.top='';window.scrollTo(0,y);})()">✕</button>
+    <button class="mob-menu-close" id="mobMenuClose" onclick="(function(){document.getElementById('mobMenu').classList.remove('open');var b=document.getElementById('mobMenuBtn');if(b)b.textContent='☰';document.documentElement.style.overflow='';})()">✕</button>
   </div>
     <a href="index.html">Home</a>
     <a href="pages/features.html">Features</a>
     <a href="pages/demo.html">Demo</a>
     <a href="pages/docs.html">Docs</a>
     <a href="pages/open-source.html">Open Source</a>
-    <a href="https://github.com/gbkeku/anchorcastapp/wiki" target="_blank">Wiki</a>
+    <a href="https://github.com/anchorcastapp-team/anchorcastapp/wiki" target="_blank">Wiki</a>
     <a href="pages/download.html" class="mob-dl">⬇ Free Download</a>
   </div>
 
@@ -1150,7 +1193,7 @@ footer{
     <a href="pages/download.html" class="btn-gold" style="font-size:16px;padding:16px 40px">
       ⬇ Download for Windows — Free
     </a>
-    <a href="https://github.com/gbkeku/anchorcastapp" class="btn-ghost" target="_blank" rel="noopener">
+    <a href="https://github.com/anchorcastapp-team/anchorcastapp" class="btn-ghost" target="_blank" rel="noopener">
       ⭐ Star on GitHub
     </a>
   </div>
@@ -1159,12 +1202,12 @@ footer{
   <div class="dl-counter-wrap">
     <div class="dl-counter-inner">
       <div class="dl-counter-block">
-        <span class="dl-counter-num" id="dlCount">1+</span>
+        <span class="dl-counter-num" id="dlCount">—</span>
         <span class="dl-counter-lbl">Total Downloads</span>
       </div>
       <div class="dl-counter-divider"></div>
       <div class="dl-counter-block">
-        <span class="dl-counter-num" id="starCountHero">3</span>
+        <span class="dl-counter-num" id="starCountHero">—</span>
         <span class="dl-counter-lbl">GitHub Stars</span>
       </div>
       <div class="dl-counter-divider"></div>
@@ -1245,7 +1288,7 @@ footer{
       <div class="home-nav-arrow">View on GitHub →</div>
     </a>
 
-    <a href="https://github.com/gbkeku/anchorcastapp/wiki" class="home-nav-card" target="_blank" rel="noopener">
+    <a href="https://github.com/anchorcastapp-team/anchorcastapp/wiki" class="home-nav-card" target="_blank" rel="noopener">
       <div class="home-nav-icon">📚</div>
       <div class="home-nav-title">Wiki</div>
       <div class="home-nav-desc">Full documentation wiki: interface overview, AI transcription, song manager, timer, NDI, troubleshooting, and FAQ.</div>
@@ -1273,7 +1316,7 @@ footer{
       </div>
       <p class="footer-tagline">Free AI church presentation software — built for real Sunday services, every week, everywhere.</p>
       <div class="footer-social">
-        <a href="https://github.com/gbkeku/anchorcastapp" target="_blank" rel="noopener" title="GitHub">⚓</a>
+        <a href="https://github.com/anchorcastapp-team/anchorcastapp" target="_blank" rel="noopener" title="GitHub">⚓</a>
         <a href="https://www.anchorcastapp.com" title="Website">🌐</a>
         <a href="mailto:info@kaitamtech.com" title="Email">✉</a>
       </div>
@@ -1285,33 +1328,34 @@ footer{
         <li><a href="pages/demo.html">Demo</a></li>
         <li><a href="pages/download.html">⬇ Download Free</a></li>
         <li><a href="pages/docs.html">Documentation</a></li>
-        <li><a href="https://github.com/gbkeku/anchorcastapp/wiki" target="_blank">Wiki ↗</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/wiki" target="_blank">Wiki ↗</a></li>
       </ul>
     </div>
     <div class="footer-col">
       <h4>Project</h4>
       <ul>
         <li><a href="pages/open-source.html">Open Source</a></li>
-        <li><a href="https://github.com/gbkeku/anchorcastapp" target="_blank">GitHub ↗</a></li>
-        <li><a href="https://github.com/gbkeku/anchorcastapp/blob/main/CONTRIBUTING.md" target="_blank">Contribute ↗</a></li>
-        <li><a href="https://github.com/gbkeku/anchorcastapp/blob/main/CHANGELOG.md" target="_blank">Changelog ↗</a></li>
-        <li><a href="https://github.com/gbkeku/anchorcastapp/blob/main/LICENSE" target="_blank">MIT License ↗</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp" target="_blank">GitHub ↗</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/blob/main/CONTRIBUTING.md" target="_blank">Contribute ↗</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/blob/main/CHANGELOG.md" target="_blank">Changelog ↗</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/blob/main/LICENSE" target="_blank">MIT License ↗</a></li>
       </ul>
     </div>
     <div class="footer-col">
       <h4>Support</h4>
       <ul>
-        <li><a href="https://github.com/gbkeku/anchorcastapp/issues" target="_blank">Report a Bug ↗</a></li>
-        <li><a href="https://github.com/gbkeku/anchorcastapp/discussions" target="_blank">Discussions ↗</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/issues" target="_blank">Report a Bug ↗</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/discussions" target="_blank">Discussions ↗</a></li>
         <li><a href="mailto:info@kaitamtech.com">info@kaitamtech.com</a></li>
-        <li><a href="https://github.com/gbkeku/anchorcastapp/blob/main/DISCLAIMER.md" target="_blank">Disclaimer ↗</a></li>
+        <li><a href="https://github.com/anchorcastapp-team/anchorcastapp/blob/main/DISCLAIMER.md" target="_blank">Disclaimer ↗</a></li>
+        <li><a href="pages/privacy.html">Privacy Policy</a></li>
       </ul>
     </div>
   </div>
   <div class="footer-bottom">
     <div class="footer-copy">
       © 2026 AnchorCast · Developed by <strong style="color:#3a4060">Kaitam Technologies</strong> ·
-      <a href="https://github.com/gbkeku/anchorcastapp">github.com/gbkeku</a>
+      <a href="https://github.com/anchorcastapp-team/anchorcastapp">github.com/anchorcastapp-team</a>
       · Built with ♥ for churches everywhere
     </div>
     <div class="footer-badges">
@@ -1325,49 +1369,69 @@ footer{
 
 <script>
 (function(){
-  /* ── Scroll progress bar ── */
-  const bar = document.getElementById('scrollProg');
-  const nav = document.getElementById('nav');
+  /* ── Scroll progress ── */
+  var bar = document.getElementById('scrollProg');
+  var navEl = document.getElementById('nav');
   window.addEventListener('scroll', function(){
     if(bar){
-      var pct = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+      var pct = (window.scrollY/(document.documentElement.scrollHeight-window.innerHeight))*100;
       bar.style.width = pct + '%';
     }
-    if(nav) nav.classList.toggle('scrolled', window.scrollY > 40);
+    if(navEl) navEl.classList.toggle('scrolled', window.scrollY > 40);
   }, {passive:true});
 
   /* ── Mobile menu ── */
-  var mobBtn   = document.getElementById('mobMenuBtn') || document.getElementById('mobBtn');
-  var mobMenu  = document.getElementById('mobMenu');
-  var closeBtn = document.getElementById('mobMenuClose');
+  var mobBtn  = document.getElementById('mobMenuBtn') || document.getElementById('mobBtn');
+  var mobMenu = document.getElementById('mobMenu');
 
   function openMenu(){
     if(!mobMenu) return;
     mobMenu.classList.add('open');
     if(mobBtn) mobBtn.textContent = '✕';
-    document.body.classList.add('menu-open');
-    document.body.style.top = '-' + window.scrollY + 'px';
+    /* Lock scroll without position:fixed to avoid iOS jump bug */
+    document.documentElement.style.overflow = 'hidden';
   }
   function closeMenu(){
     if(!mobMenu) return;
-    var scrollY = parseInt(document.body.style.top || '0') * -1;
     mobMenu.classList.remove('open');
     if(mobBtn) mobBtn.textContent = '☰';
-    document.body.classList.remove('menu-open');
-    document.body.style.top = '';
-    window.scrollTo(0, scrollY);
+    /* Restore scroll */
+    document.documentElement.style.overflow = '';
   }
 
-  if(mobBtn) mobBtn.addEventListener('click', function(){
-    mobMenu && mobMenu.classList.contains('open') ? closeMenu() : openMenu();
+  if(mobBtn){
+    mobBtn.addEventListener('click', function(e){
+      e.stopPropagation();
+      mobMenu && mobMenu.classList.contains('open') ? closeMenu() : openMenu();
+    });
+  }
+
+  /* Close btn inside menu header */
+  var closeBtn = document.getElementById('mobMenuClose');
+  if(closeBtn) closeBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    closeMenu();
   });
-  if(closeBtn) closeBtn.addEventListener('click', closeMenu);
-  if(mobMenu) mobMenu.querySelectorAll('a').forEach(function(a){
-    a.addEventListener('click', closeMenu);
-  });
+
+  /* Nav links in mobile menu — just close overlay, let browser navigate normally */
+  if(mobMenu){
+    mobMenu.querySelectorAll('a').forEach(function(a){
+      a.addEventListener('click', function(){
+        /* Don't preventDefault — let navigation happen */
+        /* Just close the menu cleanly */
+        mobMenu.classList.remove('open');
+        if(mobBtn) mobBtn.textContent = '☰';
+        document.documentElement.style.overflow = '';
+      });
+    });
+  }
+
+  /* Close on outside click */
   document.addEventListener('click', function(e){
     if(mobMenu && mobMenu.classList.contains('open')){
-      if(mobBtn && !mobBtn.contains(e.target) && !mobMenu.contains(e.target)) closeMenu();
+      if(mobBtn && !mobBtn.contains(e.target) && !mobMenu.contains(e.target)){
+        closeMenu();
+      }
     }
   });
 
@@ -1380,80 +1444,104 @@ footer{
     }, {threshold:0.05, rootMargin:'0px 0px -20px 0px'});
     document.querySelectorAll('.reveal').forEach(function(el){ ro.observe(el); });
   } else {
-    // Fallback for older browsers
     document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
   }
 
-  /* ── GitHub stats (index only) ── */
-  function loadGitHubStats(){
-    fetch('https://api.github.com/repos/gbkeku/anchorcastapp')
-      .then(function(r){ return r.json(); })
-      .then(function(repo){
-        var stars = (repo && typeof repo.stargazers_count === 'number') ? repo.stargazers_count : null;
-        ['starCount','ghStars','starCountHero'].forEach(function(id){
-          var el = document.getElementById(id); if(el && stars !== null) el.textContent = stars.toLocaleString();
-        });
-      }).catch(function(){});
+  /* ── GitHub stats ── */
+  function loadStats(){
+    var REPO = 'anchorcastapp-team/anchorcastapp';
+    var BASE = 'https://api.github.com/repos/' + REPO;
 
-    fetch('https://api.github.com/repos/gbkeku/anchorcastapp/releases')
+    /* Stars */
+    fetch(BASE)
       .then(function(r){ return r.json(); })
-      .then(function(releases){
-        if(!Array.isArray(releases) || !releases.length) return;
-        var ver = releases[0].tag_name || 'v1.2.0';
-        var dl = 0;
-        releases.forEach(function(r){
-          (r.assets||[]).forEach(function(a){
-            if(a && typeof a.download_count === 'number' && (!a.name || /\.(exe|zip|msi|dmg|pkg|AppImage) i.test(a.name))) dl += a.download_count;
-          });
+      .then(function(d){
+        var s = (d && d.stargazers_count) ? d.stargazers_count : 0;
+        ['starCount','ghStars','starCountHero'].forEach(function(id){
+          var el = document.getElementById(id);
+          if(el) el.textContent = s.toLocaleString();
         });
+      }).catch(function(){
+        ['starCount','ghStars','starCountHero'].forEach(function(id){
+          var el = document.getElementById(id); if(el) el.textContent = '0';
+        });
+      });
+
+    /* Latest version — use /releases/latest which respects GitHub "Latest" tag */
+    fetch(BASE + '/releases/latest')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var ver = (d && d.tag_name) ? d.tag_name : 'v1.2.0';
         ['releaseVer','relTag'].forEach(function(id){
           var el = document.getElementById(id); if(el) el.textContent = ver;
         });
-        if(dl > 0){
-          var dur=1400, start=performance.now();
-          (function tick(now){
-            var p=Math.min((now-start)/dur,1), ease=1-Math.pow(1-p,3), val=Math.round(ease*dl).toLocaleString();
-            ['dlCount','statDl'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=val; });
-            if(p<1) requestAnimationFrame(tick);
-          })(performance.now());
-        }
-      }).catch(function(){});
-  }
-  loadGitHubStats();
+      }).catch(function(){
+        /* Fallback: hardcoded version */
+        ['releaseVer','relTag'].forEach(function(id){
+          var el = document.getElementById(id); if(el) el.textContent = 'v1.2.0';
+        });
+      });
 
-  /* ── Docs sidebar toggle & scrollspy ── */
-  function initDocs(){
+    /* Total downloads — count ALL .exe and .zip assets across all releases */
+    fetch(BASE + '/releases')
+      .then(function(r){ return r.json(); })
+      .then(function(releases){
+        var dl = 0;
+        if(Array.isArray(releases)){
+          releases.forEach(function(release){
+            if(release && Array.isArray(release.assets)){
+              release.assets.forEach(function(asset){
+                if(asset && asset.name &&
+                   (asset.name.toLowerCase().endsWith('.exe') ||
+                    asset.name.toLowerCase().endsWith('.zip'))){
+                  dl += (asset.download_count || 0);
+                }
+              });
+            }
+          });
+        }
+        /* Always show a number — animate from 0 to dl */
+        var dur = 1200, start = performance.now();
+        (function tick(now){
+          var p = Math.min((now - start) / dur, 1);
+          var ease = 1 - Math.pow(1 - p, 3);
+          var val = Math.round(ease * dl).toLocaleString();
+          ['dlCount','statDl'].forEach(function(id){
+            var el = document.getElementById(id);
+            if(el) el.textContent = val;
+          });
+          if(p < 1) requestAnimationFrame(tick);
+        })(performance.now());
+      }).catch(function(){
+        /* On error show 0 rather than leaving as — */
+        ['dlCount','statDl'].forEach(function(id){
+          var el = document.getElementById(id); if(el) el.textContent = '0';
+        });
+      });
+  }
+  loadStats();
+
+  /* ── Docs sidebar ── */
+  (function(){
     var toggle  = document.getElementById('sidebarToggle');
     var sidebar = document.getElementById('docsSidebar');
     if(!sidebar) return;
-
-    function updateToggle(){
-      if(toggle) toggle.style.display = window.innerWidth <= 800 ? 'flex' : 'none';
-      if(window.innerWidth > 800 && sidebar) sidebar.classList.remove('expanded');
-    }
-    updateToggle();
-    window.addEventListener('resize', updateToggle);
-
-    if(sidebar) sidebar.querySelectorAll('.sidebar-link').forEach(function(l){
-      l.addEventListener('click', function(){
-        if(window.innerWidth <= 800 && sidebar) sidebar.classList.remove('expanded');
-      });
+    function upd(){ if(toggle) toggle.style.display = innerWidth<=800?'flex':'none'; if(innerWidth>800) sidebar.classList.remove('expanded'); }
+    upd(); window.addEventListener('resize', upd);
+    sidebar.querySelectorAll('.sidebar-link').forEach(function(l){
+      l.addEventListener('click', function(){ if(innerWidth<=800) sidebar.classList.remove('expanded'); });
     });
-
-    /* Scrollspy */
     var links = Array.from(document.querySelectorAll('.sidebar-link[href^="#"]'));
-    var heads = Array.from(document.querySelectorAll('.docs-content h1, .docs-content h2'));
-    if(!links.length || !heads.length) return;
-    function updateSpy(){
-      var cur = heads[0] ? heads[0].id : '';
-      heads.forEach(function(h){ if(h.id && window.scrollY >= h.offsetTop - 100) cur = h.id; });
-      links.forEach(function(l){ l.classList.toggle('active', l.getAttribute('href') === '#'+cur); });
+    var heads = Array.from(document.querySelectorAll('.docs-content h1,.docs-content h2'));
+    if(links.length&&heads.length){
+      function spy(){
+        var cur=heads[0]?heads[0].id:'';
+        heads.forEach(function(h){ if(h.id&&scrollY>=h.offsetTop-100) cur=h.id; });
+        links.forEach(function(l){ l.classList.toggle('active',l.getAttribute('href')==='#'+cur); });
+      }
+      window.addEventListener('scroll',spy,{passive:true}); spy();
     }
-    window.addEventListener('scroll', updateSpy, {passive:true});
-    updateSpy();
-  }
-  initDocs();
-
+  })();
 })();
 </script>
 </body>
