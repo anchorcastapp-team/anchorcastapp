@@ -2535,6 +2535,34 @@ const _BIBLICAL_FIXES = [
   [/\bjack of poultry\b/gi,                 'jack of all trades'],
   [/\bmaster of no\b/gi,                    'master of none'],
 
+  // ── Sermon 5 corrections (Apr 26, 2026) ─ Blessing of Work ─────────────
+  // Book name mishears
+  [/\bprocter\b/gi,                          'Proverbs'],
+  [/\bproctor\b/gi,                          'Proverbs'],
+  // 'lamps' in ten virgins parable (Matthew 25) misheard as 'lungs'
+  [/\btheir lungs\b/gi,                      'their lamps'],
+  [/\bour lungs\b/gi,                        'our lamps'],
+  [/\bthe lungs\b/gi,                        'the lamps'],
+  [/\blungs are going\b/gi,                  'lamps are going out'],
+  // CRITICAL: 'foresight' misheard as profanity/wrong words
+  [/\bhaving suicide\b/gi,                   'having foresight'],
+  [/\bfour sides\b/gi,                       'foresight'],
+  [/\bsuicide is the ability\b/gi,           'foresight is the ability'],
+  // 'ants' misheard as 'aunts'
+  [/\blearning from the aunts\b/gi,          'learning from the ants'],
+  [/\bthe aunts today\b/gi,                  'the ants today'],
+  [/\bthe aunt this morning\b/gi,            'the ant this morning'],
+  [/\bfrom the aunts\b/gi,                   'from the ants'],
+  // 'amen is weak' misheard as 'atonement is weak'
+  [/\batonement is very weak\b/gi,           'your amen is very weak'],
+  [/\batonement is weak\b/gi,                'amen is weak'],
+  // 'diligence' misheard as 'delicious'
+  [/\bit'?s delicious!\b/gi,                 'diligence!'],
+  [/\bdelicious!\s*constant\b/gi,           'diligence! constant'],
+  // Financial provision misheard as theological propitiation
+  [/\bpropitiation for yourself\b/gi,        'provision for yourself'],
+  [/\bpropitiation for others\b/gi,          'provision for others'],
+
   // ── Sermon 4 corrections (Apr 15, 2026) ─ NEW LIFE IN CHRIST ────────────
   [/\bgalicia'?s chapter\b/gi,           'Galatians chapter'],
   [/\bgalicias\b/gi,                     'Galatians'],
