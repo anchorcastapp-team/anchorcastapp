@@ -41,7 +41,7 @@ const REG_FILE     = path.join(app.getPath('userData'), 'registration.json');
 // Gmail SMTP config
 const SMTP_HOST    = 'smtp.gmail.com';
 const SMTP_PORT    = 587;
-const SMTP_USER    = 'godbless.keku@gmail.com';
+const SMTP_USER    = 'REPLACE_WITH_EMAIL_ADDRESS';
 const SMTP_PASS    = 'REPLACE_WITH_APP_PASSWORD';  // Gmail App Password (16 chars)
 const FROM_EMAIL   = 'donotreply@anchorcastapp.com';
 const APP_PROTOCOL = 'anchorcast';
