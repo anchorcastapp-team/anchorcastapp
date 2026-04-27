@@ -1210,43 +1210,75 @@ footer{
 
   /* ── GitHub stats ── */
   function loadStats(){
-    fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp')
+    var REPO = 'anchorcastapp-team/anchorcastapp';
+    var BASE = 'https://api.github.com/repos/' + REPO;
+
+    /* Stars */
+    fetch(BASE)
       .then(function(r){ return r.json(); })
       .then(function(d){
-        var s = d.stargazers_count || 0;
+        var s = (d && d.stargazers_count) ? d.stargazers_count : 0;
         ['starCount','ghStars','starCountHero'].forEach(function(id){
-          var el = document.getElementById(id); if(el) el.textContent = s.toLocaleString();
+          var el = document.getElementById(id);
+          if(el) el.textContent = s.toLocaleString();
         });
-      }).catch(function(){});
-    /* Fetch latest release version using /releases/latest (always the GitHub-marked latest) */
-    fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp/releases/latest')
+      }).catch(function(){
+        ['starCount','ghStars','starCountHero'].forEach(function(id){
+          var el = document.getElementById(id); if(el) el.textContent = '0';
+        });
+      });
+
+    /* Latest version — use /releases/latest which respects GitHub "Latest" tag */
+    fetch(BASE + '/releases/latest')
       .then(function(r){ return r.json(); })
-      .then(function(latest){
-        var ver = (latest && latest.tag_name) ? latest.tag_name : 'v1.2.0';
+      .then(function(d){
+        var ver = (d && d.tag_name) ? d.tag_name : 'v1.2.0';
         ['releaseVer','relTag'].forEach(function(id){
-          var el=document.getElementById(id); if(el) el.textContent=ver;
+          var el = document.getElementById(id); if(el) el.textContent = ver;
         });
-      }).catch(function(){});
-    /* Separately fetch all releases for total download count */
-    fetch('https://api.github.com/repos/anchorcastapp-team/anchorcastapp/releases')
+      }).catch(function(){
+        /* Fallback: hardcoded version */
+        ['releaseVer','relTag'].forEach(function(id){
+          var el = document.getElementById(id); if(el) el.textContent = 'v1.2.0';
+        });
+      });
+
+    /* Total downloads — count ALL .exe and .zip assets across all releases */
+    fetch(BASE + '/releases')
       .then(function(r){ return r.json(); })
       .then(function(releases){
-        if(!Array.isArray(releases)||!releases.length) return;
         var dl = 0;
-        releases.forEach(function(r){
-          (r.assets||[]).forEach(function(a){
-            if(a.name&&(a.name.endsWith('.exe')||a.name.endsWith('.zip'))) dl+=(a.download_count||0);
+        if(Array.isArray(releases)){
+          releases.forEach(function(release){
+            if(release && Array.isArray(release.assets)){
+              release.assets.forEach(function(asset){
+                if(asset && asset.name &&
+                   (asset.name.toLowerCase().endsWith('.exe') ||
+                    asset.name.toLowerCase().endsWith('.zip'))){
+                  dl += (asset.download_count || 0);
+                }
+              });
+            }
           });
-        });
-        var showDl = dl > 0 ? dl : 0;
-        var dur=1400, start=performance.now();
+        }
+        /* Always show a number — animate from 0 to dl */
+        var dur = 1200, start = performance.now();
         (function tick(now){
-          var p=Math.min((now-start)/dur,1), ease=1-Math.pow(1-p,3);
-          var val = showDl > 0 ? Math.round(ease*showDl).toLocaleString() : '0';
-          ['dlCount','statDl'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=val; });
-          if(p<1) requestAnimationFrame(tick);
+          var p = Math.min((now - start) / dur, 1);
+          var ease = 1 - Math.pow(1 - p, 3);
+          var val = Math.round(ease * dl).toLocaleString();
+          ['dlCount','statDl'].forEach(function(id){
+            var el = document.getElementById(id);
+            if(el) el.textContent = val;
+          });
+          if(p < 1) requestAnimationFrame(tick);
         })(performance.now());
-      }).catch(function(){});
+      }).catch(function(){
+        /* On error show 0 rather than leaving as — */
+        ['dlCount','statDl'].forEach(function(id){
+          var el = document.getElementById(id); if(el) el.textContent = '0';
+        });
+      });
   }
   loadStats();
 
