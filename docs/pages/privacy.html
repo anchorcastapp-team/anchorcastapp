@@ -915,7 +915,7 @@ footer{
   .footer-top{grid-template-columns:1fr 1fr;gap:32px 24px;padding:44px 5% 36px}
   .footer-brand{grid-column:1 / -1}
 }
-@media(max-width:640px){
+@media(max-width:768px){
   .footer-top{grid-template-columns:1fr 1fr;gap:20px 16px;padding:28px 5% 20px}
   .footer-brand{
     grid-column:1 / -1;padding-bottom:18px;margin-bottom:4px;
@@ -926,18 +926,29 @@ footer{
   .footer-tagline{font-size:12.5px;margin-bottom:12px;max-width:100%}
   .footer-social{gap:8px}
   .footer-social a{width:34px;height:34px;font-size:14px}
-  .footer-col{padding:0;border:none;background:none;border-radius:0}
+  .footer-col{padding:0 !important;border:none !important;background:none !important;border-radius:0 !important}
   .footer-col h4{font-size:10px;margin-bottom:10px;letter-spacing:.14em}
-  .footer-col ul{gap:7px}
-  .footer-col ul li{background:none;border:none;border-radius:0;padding:0;margin:0;width:auto}
+  .footer-col ul{gap:7px;display:flex !important;flex-direction:column !important}
+  .footer-col ul li{
+    background:none !important;border:none !important;
+    border-radius:0 !important;padding:0 !important;
+    margin:0 !important;width:auto !important;
+    display:list-item !important;
+  }
   .footer-col ul li a{
-    display:block;font-size:12.5px;line-height:1.4;
-    background:none;border:none;border-radius:0;padding:0;min-height:0;
+    display:block !important;font-size:12.5px !important;line-height:1.4 !important;
+    background:none !important;border:none !important;
+    border-radius:0 !important;padding:0 !important;
+    min-height:0 !important;width:auto !important;
+    -webkit-text-fill-color:var(--muted) !important;
   }
   .footer-bottom{flex-direction:column;align-items:flex-start;gap:10px;padding:14px 5% calc(14px + env(safe-area-inset-bottom))}
   .footer-copy{font-size:11px;line-height:1.6}
-  .footer-badges{display:flex;flex-wrap:wrap;gap:6px;width:100%}
-  .footer-badge{font-size:10px;padding:3px 9px;border-radius:6px}
+  .footer-badges{display:flex !important;flex-wrap:wrap !important;gap:6px;width:100%}
+  .footer-badge{
+    font-size:10px;padding:3px 9px;border-radius:6px;
+    min-height:0 !important;width:auto !important;
+  }
 }
 /* ════════════════ END FOOTER v5 ════════════════ */
 </style>
