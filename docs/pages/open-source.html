@@ -835,6 +835,9 @@ footer{
   display:block;
   line-height:1.4;
   -webkit-text-fill-color:var(--muted);
+  background:none;
+  border:none;
+  padding:0;
 }
 .footer-col ul li a:hover{
   color:var(--text);
@@ -1209,7 +1212,7 @@ footer{
       });
 
     /* Total downloads — count ALL assets across all releases */
-    fetch(BASE + '/releases')
+    fetch(BASE + '/releases?t=' + Date.now(), {headers:{'Cache-Control':'no-cache'}})
       .then(function(r){ return r.json(); })
       .then(function(releases){
         var dl = 0;
@@ -1225,7 +1228,10 @@ footer{
           });
         }
         console.log('[AnchorCast] GitHub releases:', releases ? releases.length : 0,
-          '| Assets found:', assetCount, '| Total downloads:', dl);
+          '| Assets found:', assetCount, '| Total downloads from API:', dl);
+        /* Add base count for downloads before GitHub asset reset */
+        var BASE_DOWNLOADS = 0;
+        dl = dl + BASE_DOWNLOADS;
         /* Animate counter — always show a number */
         var dur = 1200, start = performance.now();
         (function tick(now){
