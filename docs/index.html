@@ -989,6 +989,9 @@ footer{
   display:block;
   line-height:1.4;
   -webkit-text-fill-color:var(--muted);
+  background:none;
+  border:none;
+  padding:0;
 }
 .footer-col ul li a:hover{
   color:var(--text);
@@ -1031,7 +1034,7 @@ footer{
 @media(max-width:900px){
   .footer-top{
     grid-template-columns:1fr 1fr;
-    gap:36px 28px;
+    gap:32px 24px;
     padding:44px 5% 36px;
   }
   .footer-brand{grid-column:1 / -1}
@@ -1042,57 +1045,76 @@ footer{
 @media(max-width:640px){
   footer{overflow:hidden}
   .footer-top{
-    grid-template-columns:1fr;
-    gap:0;
-    padding:30px 20px 22px;
-    text-align:left;
+    grid-template-columns:1fr 1fr;
+    gap:24px 20px;
+    padding:28px 5% 20px;
   }
   .footer-brand{
-    grid-column:auto;
+    grid-column:1 / -1;
     align-items:flex-start;
-    padding-bottom:22px;
-    margin-bottom:18px;
+    padding-bottom:20px;
+    margin-bottom:4px;
     border-bottom:1px solid rgba(255,255,255,.07);
   }
-  .footer-logo{margin-bottom:10px}
+  .footer-logo{margin-bottom:8px;font-size:17px}
+  .footer-logo-mark{width:28px;height:28px;font-size:13px}
   .footer-tagline{
     max-width:100%;
-    margin-bottom:14px;
-    font-size:13px;
+    margin-bottom:12px;
+    font-size:12.5px;
   }
-  .footer-social{gap:10px;flex-wrap:wrap}
-  .footer-social a{width:38px;height:38px}
+  .footer-social{gap:8px}
+  .footer-social a{width:34px;height:34px;font-size:14px}
+  /* Columns: 2-column grid on mobile */
   .footer-col{
-    padding:16px 0;
-    border-bottom:1px solid rgba(255,255,255,.06);
+    padding:0;
+    border-bottom:none;
   }
-  .footer-col:last-of-type{border-bottom:0}
   .footer-col h4{
-    margin-bottom:14px;
-    font-size:11px;
+    margin-bottom:10px;
+    font-size:10px;
+    letter-spacing:.15em;
   }
-  .footer-col ul{gap:12px}
+  /* Links: plain text, no card/pill styling */
+  .footer-col ul{
+    gap:8px;
+    list-style:none;
+  }
+  .footer-col ul li{
+    background:none!important;
+    border:none!important;
+    border-radius:0!important;
+    padding:0!important;
+  }
   .footer-col ul li a{
-    font-size:14px;
-    line-height:1.35;
+    font-size:12.5px;
+    line-height:1.4;
+    display:inline;
+    background:none!important;
+    border:none!important;
+    border-radius:0!important;
+    padding:0!important;
   }
   .footer-bottom{
     flex-direction:column;
-    align-items:stretch;
-    gap:14px;
-    padding:18px 20px calc(18px + env(safe-area-inset-bottom));
+    align-items:flex-start;
+    gap:10px;
+    padding:14px 5% calc(14px + env(safe-area-inset-bottom));
   }
   .footer-copy{
-    font-size:11.5px;
-    line-height:1.65;
+    font-size:11px;
+    line-height:1.6;
   }
+  /* Badges: single row, wrap if needed */
   .footer-badges{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:8px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
     width:100%;
   }
   .footer-badge{
+    font-size:10px;
+    padding:3px 9px;
     justify-content:center;
     min-height:34px;
     padding:7px 8px;
@@ -1483,7 +1505,7 @@ footer{
       });
 
     /* Total downloads — count ALL assets across all releases */
-    fetch(BASE + '/releases')
+    fetch(BASE + '/releases?t=' + Date.now(), {headers:{'Cache-Control':'no-cache'}})
       .then(function(r){ return r.json(); })
       .then(function(releases){
         var dl = 0;
@@ -1499,7 +1521,10 @@ footer{
           });
         }
         console.log('[AnchorCast] GitHub releases:', releases ? releases.length : 0,
-          '| Assets found:', assetCount, '| Total downloads:', dl);
+          '| Assets found:', assetCount, '| Total downloads from API:', dl);
+        /* Add base count for downloads before GitHub asset reset */
+        var BASE_DOWNLOADS = 0;
+        dl = dl + BASE_DOWNLOADS;
         /* Animate counter — always show a number */
         var dur = 1200, start = performance.now();
         (function tick(now){
