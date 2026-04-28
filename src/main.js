@@ -2546,6 +2546,13 @@ function startHttpServer(port){
       });
       return;
     }
+    if(req.method==='POST'&&url==='/api/signout'){
+      // Revoke the session token (sent as X-Remote-Token by the remote client)
+      const tok = String(req.headers['x-remote-token']||'').trim();
+      if(tok) remoteSessionTokens.delete(tok);
+      clearRemoteAuthFailures(req); // also clear any lockout on sign-out
+      return json(res,200,{success:true});
+    }
     json(res,404,{error:'Not found'});
   });
   httpServer.listen(port,'0.0.0.0',()=>{
@@ -2870,6 +2877,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #toast.show{opacity:1;transform:translateY(0)}
 .hidden{display:none}
 #authMsg{font-size:10px;color:var(--live);margin-top:7px}
+.signout-btn{background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.28);border-radius:var(--r-xs);color:#ff7b6b;font-size:10px;font-weight:700;padding:5px 9px;cursor:pointer;letter-spacing:.04em;display:none;font-family:inherit}
+.signout-btn.show{display:block}
+.signout-btn:active{opacity:.7}
 @media(orientation:landscape) and (max-height:500px){
   body{max-width:100%;padding-bottom:72px}
   .hdr{padding:8px 14px 6px}
@@ -2910,6 +2920,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div style="display:flex;align-items:center;gap:8px">
     <div class="onair" id="onairBadge"><div class="onair-dot"></div>ON AIR</div>
+    <button id="signOutBtn" class="signout-btn" onclick="signOut()" title="Sign out">SIGN OUT</button>
     <button id="homeBtn" onclick="window.location.href='/'" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r-xs);color:var(--text-dim);font-size:16px;padding:6px 10px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Back to main app">🏠</button>
   </div>
 </div>
@@ -3121,6 +3132,23 @@ function goLive(){
   cmd('present-current',{mode:activeMode},'\u2713 Sent to projection');
 }
 
+function signOut(){
+  // Revoke server-side session first, then clear local state
+  xhr('POST','/api/signout',{},function(){
+    token='';pin='';role='admin';caps=[];
+    try{localStorage.removeItem('acToken');}catch(e){}
+    try{localStorage.removeItem('acPin');}catch(e){}
+    try{localStorage.removeItem('acRole');}catch(e){}
+    var sb=$('signOutBtn');if(sb)sb.className='signout-btn';
+    var rb=$('roleBadge');if(rb){rb.className='role-badge';rb.textContent='';}
+    var em=$('authMsg');if(em)em.textContent='';
+    var pi=$('pinInput');if(pi)pi.value='';
+    var ab=$('authBox');if(ab)ab.style.display='';
+    setStatus('Signed out','Enter PIN to continue','\uD83D\uDD10');
+  });
+}
+window.signOut=signOut;
+
 function sendRef(){
   var v=($('refInput')||{}).value||'';v=v.trim();
   if(!v){toast('Enter a reference',true);return;}
@@ -3170,7 +3198,7 @@ function poll(){
         setStatus('\uD83D\uDD12 Locked','Enter PIN','\uD83D\uDD10');
         // Clear stale token so subsequent polls don't keep triggering auth failures
         if(token){token='';try{localStorage.removeItem('acToken');}catch(e){}}
-        show($('authBox'),true);
+        var _ab=$('authBox');if(_ab)_ab.style.display='';
       }
       else setStatus('No connection','Check WiFi','\u26A0');
       return;
@@ -3330,13 +3358,14 @@ function renderMedia(items){
 function bootstrap(){
   xhr('GET','/api/bootstrap',null,function(status,data){
     if(status===401||status===0){
-      if(AUTH_REQUIRED)show($('authBox'),true);
+      if(AUTH_REQUIRED){var _ab=$('authBox');if(_ab)_ab.style.display='';}
       setStatus(status===0?'Cannot reach AnchorCast':'Locked','Check WiFi or enter PIN','\u26A0');
       // Clear stale token — server may have restarted and token is no longer valid.
       // If we keep sending it, every background poll records an auth failure → 429.
       if(status===401){
         token='';
         try{localStorage.removeItem('acToken');}catch(e){}
+        var sb=$('signOutBtn');if(sb)sb.className='signout-btn';
       }
       return;
     }
@@ -3344,14 +3373,17 @@ function bootstrap(){
     if(data.authRequired && !data.role){
       token='';pin='';role='';caps=[];
       try{localStorage.removeItem('acToken');localStorage.removeItem('acPin');localStorage.removeItem('acRole');}catch(e){}
-      show($('authBox'),true);
+      var _ab=$('authBox');if(_ab)_ab.style.display='';
       var em=$('authMsg');if(em)em.textContent='';
       return;
     }
     role=String(data.role||'admin').toLowerCase();
     caps=data.capabilities||capsFor(role);
-    if(!data.authRequired)show($('authBox'),false);
+    // Hide auth box on any successful bootstrap — token is valid regardless of authRequired flag
+    {var _ab=$('authBox');if(_ab)_ab.style.display='none';}
     var rb=$('roleBadge');if(rb){rb.className='role-badge show';rb.textContent='\uD83D\uDC64 '+role.charAt(0).toUpperCase()+role.slice(1);}
+    // Show sign-out button now that user is authenticated
+    if(AUTH_REQUIRED){var sb=$('signOutBtn');if(sb)sb.className='signout-btn show';}
     refreshUI();loadLib('songs');loadLib('media');poll();
   });
 }
@@ -3390,7 +3422,8 @@ window.addEventListener('load',function(){
       if(status===200){
         token=data.token||'';pin=p;role=String(data.role||'admin').toLowerCase();caps=data.capabilities||capsFor(role);
         try{localStorage.setItem('acToken',token);localStorage.setItem('acPin',pin);localStorage.setItem('acRole',role);}catch(e){}
-        show($('authBox'),false);bootstrap();
+        var sb=$('signOutBtn');if(sb)sb.className='signout-btn show';
+        var _ab=$('authBox');if(_ab)_ab.style.display='none';bootstrap();
       }else{var m=$('authMsg');if(m)m.textContent='Wrong PIN — try again';}
     });
   };
@@ -3633,7 +3666,7 @@ function buildRegistrationStatusHtml(reg) {
       </div>
       <div class="btn-row">
         <button class="btn-paypal"
-          onclick="window.electronAPI?.openExternal('https://paypal.me/rommeltechdev')">
+          onclick="window.electronAPI?.openExternal('https://paypal.me/appdeveloper')">
           <span style="font-size:16px">💳</span> Donate via PayPal
         </button>
         <button class="btn-github"
