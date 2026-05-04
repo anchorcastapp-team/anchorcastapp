@@ -3475,7 +3475,7 @@ function _updateLiveDisplayRange(book, chapter, startVerse, endVerse, ref, verse
   const extraLS = sfs.scriptureAdditionalLineSpacing ? 0.4 : 0;
   const effLS = extraLS ? Math.min(ls + extraLS, 2.4) : ls;
   const vAlignMap = { top: 'flex-start', center: 'center', bottom: 'flex-end' };
-  const bodyStyle = `font-size:${scaledFs}px;font-weight:${fontWeight};font-style:${fontItalic};text-align:${sfAlign};line-height:${effLS};text-transform:${transform};max-width:none;${outline}${shadow}`;
+  const bodyStyle = `font-size:${scaledFs}px;font-weight:${fontWeight};font-style:${fontItalic};text-align:${sfAlign};line-height:${effLS};text-transform:${transform};max-width:100%;word-wrap:break-word;overflow-wrap:break-word;${outline}${shadow}`;
 
   textTarget.innerHTML = `
     ${refPos !== 'bottom' ? refHtml : ''}
@@ -4480,7 +4480,7 @@ function updateLiveDisplay(book, chapter, verse, ref) {
 
   const extraLS = sfs.scriptureAdditionalLineSpacing ? 0.4 : 0;
   const effLineH = extraLS ? Math.min(sfLineH + extraLS, 2.4) : sfLineH;
-  const bodyStyle = `font-size:${scaledFs}px;text-transform:${transform};font-family:'${sfFamily}',serif;font-weight:${sfWeight};font-style:${sfItalic};text-decoration:${sfUnderline};opacity:${sfOpacity};line-height:${effLineH};text-align:${sfAlign};color:${sfColor};max-width:none;${outlineCss}${shadowCss}`;
+  const bodyStyle = `font-size:${scaledFs}px;text-transform:${transform};font-family:'${sfFamily}',serif;font-weight:${sfWeight};font-style:${sfItalic};text-decoration:${sfUnderline};opacity:${sfOpacity};line-height:${effLineH};text-align:${sfAlign};color:${sfColor};max-width:100%;word-wrap:break-word;overflow-wrap:break-word;${outlineCss}${shadowCss}`;
 
   let refOutlineCss = '';
   const refOutSt = sfs.scriptureRefOutlineStyle || 'none';
