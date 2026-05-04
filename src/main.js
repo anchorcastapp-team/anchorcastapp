@@ -424,6 +424,7 @@ process.stdout.write = (chunk, encoding, cb) => {
 };
 
 let mainWindow=null, projectionWindow=null, historyWindow=null, themeWindow=null, splashWindow=null, countdownWindow=null;
+let _displayRemovalInProgress = false; // true during HDMI removal — prevents premature app quit
 let splashShownAt = 0;
 const MIN_SPLASH_MS = 2400;
 let httpServer=null;
@@ -961,6 +962,16 @@ ipcMain.on('quit-confirmed', () => { _transcriptUnsaved = false; app.quit(); });
 ipcMain.on('quit-cancelled', () => { /* do nothing — user changed mind */ });
 
 app.on('window-all-closed',()=>{
+  // GUARD: Do not quit if mainWindow still exists — it may be temporarily hidden
+  // during GPU teardown after an HDMI disconnect. Electron can fire window-all-closed
+  // the instant projectionWindow closes, before mainWindow finishes recovering.
+  if (mainWindow && !mainWindow.isDestroyed()) return;
+
+  // GUARD: Do not quit if a display removal is in progress.
+  // projectionWindow._lostTargetDisplay is true from removal until projection fully closes.
+  // Check the global flag set during display-removed handling.
+  if (_displayRemovalInProgress) return;
+
   stopNdi();
   stopHttpServer();
   stopWhisperServer();
@@ -1530,6 +1541,7 @@ function createProjectionWindow(displayId){
       if (!projectionWindow || projectionWindow.isDestroyed()) return;
       if (projectionWindow._targetDisplayId !== removedDisplay.id) return;
 
+      _displayRemovalInProgress = true; // prevent window-all-closed from quitting the app
       // Pause the guard interval immediately — it fighting setFullScreen
       // during GPU compositor teardown is what causes the white screen freeze
       _projGuardPaused = true;
@@ -1557,6 +1569,7 @@ function createProjectionWindow(displayId){
             }
           } catch(e) {}
           _projGuardPaused = false;
+          _displayRemovalInProgress = false;
         }, 800);
         mainWindow?.webContents.send('display-warning',
           { msg: 'Projection moved to another external display.' });
@@ -1634,7 +1647,7 @@ function createProjectionWindow(displayId){
         // Wait for projection window to fully close before recovering
         setTimeout(_recoverMainWindow, 600);
         // Unpause the guard after full recovery (projection is gone so guard will self-clear)
-        setTimeout(() => { _projGuardPaused = false; }, 2000);
+        setTimeout(() => { _projGuardPaused = false; _displayRemovalInProgress = false; }, 2000);
         mainWindow?.webContents.send('display-warning', {
           msg: 'External display disconnected — projection closed. Reconnect the display and press Project Live again.',
           level: 'error'
@@ -1646,6 +1659,7 @@ function createProjectionWindow(displayId){
       if (!projectionWindow || projectionWindow.isDestroyed()) return;
       if (!projectionWindow._lostTargetDisplay) return;
       if (newDisplay.id === screen.getPrimaryDisplay().id) return;
+      _displayRemovalInProgress = false; // display is back — safe to allow quit again
       projectionWindow._lostTargetDisplay = false;
       const b = newDisplay.bounds;
       projectionWindow._targetDisplayId = newDisplay.id;
