@@ -1145,74 +1145,78 @@ footer{
     var REPO = 'anchorcastapp-team/anchorcastapp';
     var BASE = 'https://api.github.com/repos/' + REPO;
 
-    /* Stars */
-    fetch(BASE)
-      .then(function(r){ return r.json(); })
+    var FALLBACK_STARS = 3;
+    var MIN_DOWNLOADS = 12;
+    var FALLBACK_VERSION = 'v1.2.0';
+
+    function setText(ids, value){
+      ids.forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) el.textContent = value;
+      });
+    }
+    function setDownloads(value){
+      var safeValue = Math.max(MIN_DOWNLOADS, Number(value || 0));
+      setText(['dlCount','statDl'], safeValue.toLocaleString());
+    }
+    function animateDownloads(value){
+      var finalValue = Math.max(MIN_DOWNLOADS, Number(value || 0));
+      var dur = 900, start = performance.now();
+      (function tick(now){
+        var p = Math.min((now - start) / dur, 1);
+        var ease = 1 - Math.pow(1 - p, 3);
+        var val = Math.round(MIN_DOWNLOADS + ease * (finalValue - MIN_DOWNLOADS));
+        setText(['dlCount','statDl'], val.toLocaleString());
+        if(p < 1) requestAnimationFrame(tick);
+      })(performance.now());
+    }
+
+    setText(['starCount','ghStars','starCountHero'], FALLBACK_STARS.toLocaleString());
+    setDownloads(MIN_DOWNLOADS);
+    setText(['releaseVer','relTag'], FALLBACK_VERSION);
+
+    fetch(BASE + '?t=' + Date.now(), {cache:'no-store'})
+      .then(function(r){ if(!r.ok) throw new Error('repo stats failed'); return r.json(); })
       .then(function(d){
-        var s = (d && d.stargazers_count) ? d.stargazers_count : 0;
-        ['starCount','ghStars','starCountHero'].forEach(function(id){
-          var el = document.getElementById(id);
-          if(el) el.textContent = s.toLocaleString();
-        });
-      }).catch(function(){
-        ['starCount','ghStars','starCountHero'].forEach(function(id){
-          var el = document.getElementById(id); if(el) el.textContent = '0';
-        });
+        var stars = Math.max(FALLBACK_STARS, Number(d && d.stargazers_count || 0));
+        setText(['starCount','ghStars','starCountHero'], stars.toLocaleString());
+      })
+      .catch(function(err){
+        console.warn('[AnchorCast] GitHub stars fallback used:', err);
+        setText(['starCount','ghStars','starCountHero'], FALLBACK_STARS.toLocaleString());
       });
 
-    /* Latest version — use /releases/latest which respects GitHub "Latest" tag */
-    fetch(BASE + '/releases/latest')
-      .then(function(r){ return r.json(); })
+    fetch(BASE + '/releases/latest?t=' + Date.now(), {cache:'no-store'})
+      .then(function(r){ if(!r.ok) throw new Error('latest release failed'); return r.json(); })
       .then(function(d){
-        var ver = (d && d.tag_name) ? d.tag_name : 'v1.2.0';
-        ['releaseVer','relTag'].forEach(function(id){
-          var el = document.getElementById(id); if(el) el.textContent = ver;
-        });
-      }).catch(function(){
-        /* Fallback: hardcoded version */
-        ['releaseVer','relTag'].forEach(function(id){
-          var el = document.getElementById(id); if(el) el.textContent = 'v1.2.0';
-        });
+        setText(['releaseVer','relTag'], (d && d.tag_name) ? d.tag_name : FALLBACK_VERSION);
+      })
+      .catch(function(err){
+        console.warn('[AnchorCast] GitHub latest fallback used:', err);
+        setText(['releaseVer','relTag'], FALLBACK_VERSION);
       });
 
-    /* Total downloads — count ALL assets across all releases */
-    fetch(BASE + '/releases?per_page=10&t=' + Date.now())
-      .then(function(r){ return r.json(); })
+    fetch(BASE + '/releases?per_page=100&t=' + Date.now(), {cache:'no-store'})
+      .then(function(r){ if(!r.ok) throw new Error('releases stats failed'); return r.json(); })
       .then(function(releases){
-        var dl = 0;
-        var assetCount = 0;
+        var total = 0;
+        var assets = 0;
         if(Array.isArray(releases)){
           releases.forEach(function(release){
             if(release && Array.isArray(release.assets)){
-              assetCount += release.assets.length;
               release.assets.forEach(function(asset){
-                dl += (asset.download_count || 0);
+                assets += 1;
+                total += Number(asset && asset.download_count || 0);
               });
             }
           });
         }
-        console.log('[AnchorCast] GitHub releases:', releases ? releases.length : 0,
-          '| Assets found:', assetCount, '| Total downloads from API:', dl);
-        /* Add base count for downloads before GitHub asset reset */
-        var BASE_DOWNLOADS = 0;
-        dl = dl + BASE_DOWNLOADS;
-        /* Animate counter — always show a number */
-        var dur = 1200, start = performance.now();
-        (function tick(now){
-          var p = Math.min((now - start) / dur, 1);
-          var ease = 1 - Math.pow(1 - p, 3);
-          var val = Math.round(ease * dl).toLocaleString();
-          ['dlCount','statDl'].forEach(function(id){
-            var el = document.getElementById(id);
-            if(el) el.textContent = val;
-          });
-          if(p < 1) requestAnimationFrame(tick);
-        })(performance.now());
-      }).catch(function(err){
-        console.error('[AnchorCast] GitHub API error:', err);
-        ['dlCount','statDl'].forEach(function(id){
-          var el = document.getElementById(id); if(el) el.textContent = '0';
-        });
+        console.log('[AnchorCast] GitHub downloads from', REPO, '| releases:', Array.isArray(releases) ? releases.length : 0, '| assets:', assets, '| total:', total);
+        animateDownloads(total);
+      })
+      .catch(function(err){
+        console.warn('[AnchorCast] GitHub downloads fallback used:', err);
+        setDownloads(MIN_DOWNLOADS);
       });
   }
   loadStats();
