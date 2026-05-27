@@ -109,6 +109,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--void);color:var(--text);d
 </div>
 <div class="toast" id="toast"></div>
 <script>
+  function escH(s) {
+    return String(s || '').replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
 let all=[], filtered=[], activeId=null;
 
 async function init(){
@@ -147,9 +151,9 @@ function renderList(){
     div.className='s-item'+(s.id===activeId?' active':'');
     div.innerHTML=`
       <div class="s-date">${dateStr} at ${timeStr}</div>
-      <div class="s-title">${s.title||'Sermon Session'}</div>
+      <div class="s-title">${escH(s.title||'Sermon Session')}</div>
       <div class="s-meta">${dur} · ${s.lineCount||0} lines · ${s.verseCount||0} verses</div>
-      ${(s.detectedVerses||[]).length?`<div class="s-tags">${(s.detectedVerses||[]).slice(0,4).map(v=>`<span class="tag">${v}</span>`).join('')}</div>`:''}
+      ${(s.detectedVerses||[]).length?`<div class="s-tags">${(s.detectedVerses||[]).slice(0,4).map(v=>`<span class="tag">${escH(v)}</span>`).join('')}</div>`:''}
     `;
     div.onclick=()=>select(s.id);
     el.appendChild(div);
@@ -184,7 +188,7 @@ function renderDetail(s){
 
   pane.innerHTML=`
     <div class="d-hdr">
-      <div class="d-title">${s.title||'Sermon Session'}</div>
+      <div class="d-title">${escH(s.title||'Sermon Session')}</div>
       <div class="d-meta">${date} at ${time}</div>
     </div>
     <div class="d-body">
@@ -204,15 +208,15 @@ function renderDetail(s){
       ${refs.length?`
         <div class="verses-sec">
           <div class="sec-title">Detected Verses</div>
-          ${refs.map(r=>`<div class="v-card"><div class="v-ref">${r}</div><div class="v-text">Referenced during this service</div></div>`).join('')}
+          ${refs.map(r=>`<div class="v-card"><div class="v-ref">${escH(r)}</div><div class="v-text">Referenced during this service</div></div>`).join('')}
         </div>`:''
       }
     </div>
     <div class="d-actions">
-      <button class="act-btn act-gold" onclick="exportS('${s.id}')">↓ Export</button>
-      <button class="act-btn act-ghost" onclick="copyS('${s.id}')">⎘ Copy</button>
+      <button class="act-btn act-gold" data-sid="${escH(s.id)}" onclick="exportS(this.dataset.sid)">↓ Export</button>
+      <button class="act-btn act-ghost" data-sid="${escH(s.id)}" onclick="copyS(this.dataset.sid)">⎘ Copy</button>
       <div style="flex:1"></div>
-      <button class="act-btn act-red" onclick="delS('${s.id}')">🗑 Delete</button>
+      <button class="act-btn act-red" data-sid="${escH(s.id)}" onclick="delS(this.dataset.sid)">🗑 Delete</button>
     </div>
   `;
 }

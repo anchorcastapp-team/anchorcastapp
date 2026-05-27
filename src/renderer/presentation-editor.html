@@ -245,6 +245,10 @@ button{font-family:var(--font);cursor:pointer}
   </div>
 </div>
 <script>
+  function escH(s) {
+    return String(s || '').replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
 const CW=1920,CH=1080;
 let presId=null,slides=[],cur=0,sel=null,sc=1,cvEl,cvRect;
 let dragging=false,resizing=false,dOff={x:0,y:0},dSlide=null;
@@ -745,8 +749,8 @@ function openScripturePicker() {
       <div data-idx="${i}" style="padding:8px 10px;border-radius:6px;border:1px solid var(--border);margin-bottom:4px;cursor:pointer;transition:background .1s"
         onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background=''"
         onclick="insertScripture(${JSON.stringify(r).replace(/"/g,'&quot;')})">
-        <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:2px">${r.ref} · ${transSelect.value}</div>
-        <div style="font-size:12px;color:var(--text);line-height:1.4;font-family:'Crimson Pro',Georgia,serif">${r.text}</div>
+        <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:2px">${escH(r.ref)} · ${escH(transSelect.value)}</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.4;font-family:'Crimson Pro',Georgia,serif">${escH(r.text)}</div>
       </div>`).join('');
   };
   

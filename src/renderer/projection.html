@@ -1278,10 +1278,19 @@ function showVerse(data, options = {}) {
 
 
   function sanitizeProjectionSongHtml(html) {
+    // [SEC-HTML1] Strip all tags except safe inline/block subset.
+    // Then strip ALL attribute values that could carry executable content:
+    //   on* handlers (quoted, unquoted, backtick), style=, href=, src=, xlink:href=
     return String(html || '')
-      .replace(/<(?!\/?(?:b|strong|i|em|u|span|div|p|br)\b)[^>]*>/gi, '')
-      .replace(/ on\w+="[^"]*"/gi, '')
-      .replace(/ on\w+='[^']*'/gi, '');
+      .replace(/<(?!\/? (?:b|strong|i|em|u|span|div|p|br)\b)[^>]*>/gi, '')
+      // Unquoted event handlers: onX=value
+      .replace(/\bon\w+\s*=\s*[^\s>]*/gi, '')
+      // Double-quoted: on*="..." and style="..."
+      .replace(/\b(?:on\w+|style|href|src|xlink:href|action|formaction|data)\s*=\s*"[^"]*"/gi, '')
+      // Single-quoted
+      .replace(/\b(?:on\w+|style|href|src|xlink:href|action|formaction|data)\s*=\s*'[^']*'/gi, '')
+      // Backtick-quoted (template literal abuse)
+      .replace(/\b(?:on\w+|style|href|src)\s*=\s*`[^`]*`/gi, '');
   }
 
   function showSong(data, options = {}) {

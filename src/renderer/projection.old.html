@@ -1213,9 +1213,11 @@ function showVerse(data, options = {}) {
 
   function sanitizeProjectionSongHtml(html) {
     return String(html || '')
-      .replace(/<(?!\/?(?:b|strong|i|em|u|span|div|p|br)\b)[^>]*>/gi, '')
-      .replace(/ on\w+="[^"]*"/gi, '')
-      .replace(/ on\w+='[^']*'/gi, '');
+      .replace(/<(?!\/? (?:b|strong|i|em|u|span|div|p|br)\b)[^>]*>/gi, '')
+      .replace(/\bon\w+\s*=\s*[^\s>]*/gi, '')
+      .replace(/\b(?:on\w+|style|href|src|xlink:href|action|formaction|data)\s*=\s*"[^"]*"/gi, '')
+      .replace(/\b(?:on\w+|style|href|src|xlink:href|action|formaction|data)\s*=\s*'[^']*'/gi, '')
+      .replace(/\b(?:on\w+|style|href|src)\s*=\s*`[^`]*`/gi, '');
   }
 
   function showSong(data, options = {}) {

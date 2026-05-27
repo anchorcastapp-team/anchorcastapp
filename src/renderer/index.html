@@ -41,6 +41,18 @@
   <link rel="stylesheet" href="css/app.css">
   <link rel="stylesheet" href="css/anchorcast-theme.css">
   <script src="js/electron-shim.js"></script>
+  <!-- Inject platform class early to prevent web menubar flash on Windows -->
+  <script>
+    (function(){
+      try {
+        var p = window.electronAPI?.platform || '';
+        if (!p && typeof process !== 'undefined') p = process.platform || '';
+        if (p === 'darwin') document.documentElement.classList.add('platform-mac');
+        else if (p === 'win32') document.documentElement.classList.add('platform-win');
+        else if (p === 'linux') document.documentElement.classList.add('platform-linux');
+      } catch(e) {}
+    })();
+  </script>
   <style>
     /* ── Mac traffic light spacing fix ──────────────────────────────────
        On macOS hiddenInset titlebar, traffic lights sit at x:16 y:12
@@ -77,6 +89,11 @@
       body.platform-mac .brand > div:last-child { display: none; }
       body.platform-mac .web-menubar { display: none; }
     }
+    /* Hide web menubar on Windows and Linux — use native menu bar instead */
+    body.platform-win .web-menubar,
+    html.platform-win .web-menubar { display: none !important; }
+    body.platform-linux .web-menubar,
+    html.platform-linux .web-menubar { display: none !important; }
     /* Go Live button — always visible, shrink gracefully */
     body.platform-mac .go-live-btn {
       flex-shrink: 0;
@@ -1902,7 +1919,11 @@
     const isMac = (typeof window !== 'undefined' && window.electronAPI?.platform === 'darwin')
       || (typeof process !== 'undefined' && process.platform === 'darwin')
       || navigator.userAgent.toLowerCase().includes('mac');
+    const isWin = (typeof window !== 'undefined' && window.electronAPI?.platform === 'win32')
+      || (typeof process !== 'undefined' && process.platform === 'win32')
+      || navigator.userAgent.toLowerCase().includes('windows');
     if (isMac) document.body.classList.add('platform-mac');
+    if (isWin) document.body.classList.add('platform-win');
   } catch(e) {}
 })();
 </script>

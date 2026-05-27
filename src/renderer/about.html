@@ -196,6 +196,10 @@
 </div>
 
 <script>
+  function escH(s) {
+    return String(s || '').replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
   function openUrl(url) {
     if (window.electronAPI?.openExternal) window.electronAPI.openExternal(url);
   }
@@ -226,9 +230,9 @@
         card.className = 'reg-card registered';
         card.innerHTML =
           '<div class="reg-badge" style="color:#2ecc71">✅ Registered</div>' +
-          '<div class="reg-name">' + (reg.fullName||'') + '</div>' +
-          '<div class="reg-email">' + (reg.email||'') + '</div>' +
-          (reg.churchName ? '<div class="reg-church">' + reg.churchName + '</div>' : '') +
+          '<div class="reg-name">' + escH(reg.fullName||'') + '</div>' +
+          '<div class="reg-email">' + escH(reg.email||'') + '</div>' +
+          (reg.churchName ? '<div class="reg-church">' + escH(reg.churchName) + '</div>' : '') +
           (date ? '<div class="reg-date">Registered on ' + date + '</div>' : '');
       } else {
         card.className = 'reg-card unregistered';

@@ -612,6 +612,10 @@
 </div>
 
 <script>
+  function escH(s) {
+    return String(s || '').replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
 // ── Section / tab switching ────────────────────────────────────
 
 const SECTION_TABS = {
@@ -789,12 +793,12 @@ async function processFile(file) {
     if (window.electronAPI?.importTranslation) {
       const r = await window.electronAPI.importTranslation({ abbrev, data });
       if (r?.ok || r?.success) {
-        status.innerHTML = `<div class="status-msg msg-ok">✓ ${abbrev} imported successfully</div>`;
+        status.innerHTML = `<div class="status-msg msg-ok">✓ ${escH(abbrev)} imported successfully</div>`;
         await loadBvmGrid();
       } else throw new Error(r?.error || 'Import failed');
     }
   } catch(e) {
-    status.innerHTML = `<div class="status-msg msg-err">⚠ ${e.message}</div>`;
+    status.innerHTML = `<div class="status-msg msg-err">⚠ ${escH(e.message || String(e))}</div>`;
   }
 }
 
@@ -809,12 +813,12 @@ async function importCustom() {
     if (window.electronAPI?.importTranslation) {
       const r = await window.electronAPI.importTranslation({ abbrev, data });
       if (r?.ok || r?.success) {
-        status.innerHTML = `<div class="status-msg msg-ok">✓ ${abbrev} imported successfully</div>`;
+        status.innerHTML = `<div class="status-msg msg-ok">✓ ${escH(abbrev)} imported successfully</div>`;
         await loadBvmGrid();
       } else throw new Error(r?.error || 'Import failed');
     }
   } catch(e) {
-    status.innerHTML = `<div class="status-msg msg-err">⚠ ${e.message}</div>`;
+    status.innerHTML = `<div class="status-msg msg-err">⚠ ${escH(e.message || String(e))}</div>`;
   }
 }
 
