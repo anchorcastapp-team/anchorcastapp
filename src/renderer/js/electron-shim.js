@@ -291,7 +291,15 @@
     showRemoteUrl: noop,
 
     getAppInfo: () => api('GET', '/api/app-info'),
-    openExternal: (url) => { window.open(url, '_blank'); return Promise.resolve(); },
+    openExternal: (url) => {
+      // [SEC-RJS5] Mirror main.js scheme validation — only allow safe schemes
+      try {
+        const u = new URL(String(url || ''));
+        if (!['https:','http:','mailto:'].includes(u.protocol)) return Promise.resolve();
+        window.open(u.href, '_blank', 'noopener,noreferrer');
+      } catch(_) {}
+      return Promise.resolve();
+    },
     copyToClipboard: (text) => navigator.clipboard.writeText(text).catch(() => {}),
 
     exportFile: noop,

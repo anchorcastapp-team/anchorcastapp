@@ -1281,23 +1281,30 @@ function setupElectronEvents() {
     toast('🎨 Themes updated');
   });
 
-  // Whisper local server status
-  window.electronAPI.on('whisper-status', (status) => {
-    State.whisperLocalReady = !!status?.ready;
-    updateSrcToggleUI();
-  });
-
   // Detailed whisper setup notification — fires when main process cannot find
   // a working Python + faster-whisper installation.
-  // Delay slightly to avoid flashing banner during post-update restart timing.
+  // Delay to avoid flashing banner during post-update restart timing.
+  let _whisperSetupTimer = null;
   window.electronAPI.on('whisper-setup-needed', (data) => {
-    // Small delay — prevents false banner during app restart after auto-update
-    setTimeout(() => {
-      // Only show if Whisper still isn't ready
+    // Cancel any pending banner
+    if (_whisperSetupTimer) clearTimeout(_whisperSetupTimer);
+    // Wait 6 seconds — if Whisper becomes ready in that time, suppress the banner
+    _whisperSetupTimer = setTimeout(() => {
+      _whisperSetupTimer = null;
       if (!State.whisperLocalReady) {
         _showWhisperSetupBanner(data);
       }
-    }, 3000);
+    }, 6000);
+  });
+
+  // If Whisper becomes ready, cancel any pending setup banner
+  window.electronAPI.on('whisper-status', (status) => {
+    State.whisperLocalReady = !!status?.ready;
+    if (State.whisperLocalReady && _whisperSetupTimer) {
+      clearTimeout(_whisperSetupTimer);
+      _whisperSetupTimer = null;
+    }
+    updateSrcToggleUI();
   });
 
   // Result from setup_whisper.bat — fires when main process detects flag file
@@ -2783,7 +2790,8 @@ function updateInterim(text) {
     el.className = 'transcript-interim';
     document.getElementById('transcriptBody').appendChild(el);
   }
-  el.innerHTML = text + '<span class="cursor-blink"></span>';
+  // [SEC-RJS2] Escape live transcript text before innerHTML insertion
+  el.innerHTML = escapeHtml(text) + '<span class="cursor-blink"></span>';
   document.getElementById('transcriptBody').scrollTop = 99999;
 }
 
@@ -5902,6 +5910,9 @@ function _wireMenuEvents() {
   });
 
   // ── Auto-updater events ──────────────────────────────────────────────────
+  window.electronAPI.on('update-available-mac', (info) => {
+    _showMacUpdateBanner(info.version, info.downloadUrl);
+  });
   window.electronAPI.on('update-available', (info) => {
     _showUpdateBanner(info.version);
   });
@@ -5914,6 +5925,35 @@ function _wireMenuEvents() {
     const lbl = document.getElementById('updateProgressLabel');
     if (lbl) lbl.textContent = `Downloading… ${data.percent}%`;
   });
+}
+
+function _showMacUpdateBanner(version, downloadUrl) {
+  const existing = document.getElementById('updateBanner');
+  if (existing) existing.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'updateBanner';
+  banner.style.cssText = `
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:#1a2035;border:1px solid #d4af37;border-radius:12px;
+    padding:14px 20px;z-index:9999;display:flex;align-items:center;
+    gap:14px;box-shadow:0 8px 32px rgba(0,0,0,.5);min-width:340px;max-width:500px;
+  `;
+  banner.innerHTML = `
+    <div style="font-size:20px">🆕</div>
+    <div style="flex:1">
+      <div style="font-weight:700;color:#d4af37;font-size:13px">Update Available — v${version}</div>
+      <div style="font-size:11px;color:#9aa4c7;margin-top:2px">Click Download to get the latest version.</div>
+    </div>
+    <button onclick="window.electronAPI?.openExternal('${downloadUrl}')" style="
+      background:#d4af37;border:none;color:#000;font-weight:700;font-size:11px;
+      padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap
+    ">⬇ Download</button>
+    <button onclick="document.getElementById('updateBanner').remove()" style="
+      background:transparent;border:none;color:#9aa4c7;cursor:pointer;font-size:16px;padding:4px
+    ">✕</button>
+  `;
+  document.body.appendChild(banner);
 }
 
 function _showUpdateBanner(version) {
@@ -11937,7 +11977,8 @@ function renderReplayTimelineList() {
     const row = document.createElement('button');
     row.type = 'button';
     row.style.cssText = `text-align:left;background:${idx===State.replayIndex ? 'rgba(212,175,55,.12)' : '#11131a'};border:1px solid ${idx===State.replayIndex ? '#d4af37' : '#232838'};color:#edf1ff;border-radius:8px;padding:8px;cursor:pointer`;
-    row.innerHTML = `<div style="font-size:11px;color:#9aa4c7">${buildReplaySummary(ev)}</div><div style="font-size:12px">${(ev.payload?.ref || ev.payload?.title || ev.payload?.text || ev.payload?.summary || '').toString().slice(0,90)}</div>`;
+    // [SEC-RJS1] Escape payload fields before injecting into innerHTML
+    row.innerHTML = `<div style="font-size:11px;color:#9aa4c7">${buildReplaySummary(ev)}</div><div style="font-size:12px">${escapeHtml((ev.payload?.ref || ev.payload?.title || ev.payload?.text || ev.payload?.summary || '').toString().slice(0,90))}</div>`;
     row.addEventListener('click', () => setReplayTimelineIndex(idx));
     list.appendChild(row);
   });
@@ -12853,7 +12894,8 @@ function savePresetDialog() {
   if (schedInfo) {
     const items = (State.queue || []).filter(q => q.type !== 'section');
     if (items.length > 0) {
-      schedInfo.innerHTML = 'Schedule: <strong>' + (State.scheduleName || 'Untitled') + '</strong> (' + items.length + ' items)';
+      // [SEC-RJS3] Escape schedule name
+      schedInfo.innerHTML = 'Schedule: <strong>' + escapeHtml(State.scheduleName || 'Untitled') + '</strong> (' + items.length + ' items)';
     } else {
       schedInfo.innerHTML = 'Schedule: <em>empty (will clear schedule on load)</em>';
     }
@@ -12862,12 +12904,14 @@ function savePresetDialog() {
   if (bgInfo) {
     const bgId = State.settings?.logoMediaId;
     const bgItem = bgId ? State.media.find(m => m.id === bgId) : null;
-    bgInfo.innerHTML = 'Background: ' + (bgItem ? `<strong>${bgItem.name || bgItem.fileName}</strong>` : '<em>none</em>');
+    // [SEC-RJS4] Escape media item name
+  bgInfo.innerHTML = 'Background: ' + (bgItem ? `<strong>${escapeHtml(bgItem.name || bgItem.fileName || '')}</strong>` : '<em>none</em>');
   }
   const logoInfo = document.getElementById('presetSaveLogoInfo');
   if (logoInfo) {
     const lo = State._logoOverlay;
-    logoInfo.innerHTML = 'Logo Overlay: ' + (lo?.src ? `<strong>${lo.fileName || 'image'}</strong> (${lo.sizePct || 15}%, ${lo.opacity || 100}% opacity)` : '<em>none</em>');
+    // [SEC-RJS6] Escape logo overlay filename
+  logoInfo.innerHTML = 'Logo Overlay: ' + (lo?.src ? `<strong>${escapeHtml(lo.fileName || 'image')}</strong> (${lo.sizePct || 15}%, ${lo.opacity || 100}% opacity)` : '<em>none</em>');
   }
 }
 
