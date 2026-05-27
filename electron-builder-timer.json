@@ -2,6 +2,7 @@
   "appId": "com.anchorcast.timer",
   "productName": "AnchorCast Timer",
   "copyright": "Copyright 2026 AnchorCast",
+  "asar": true,
   "files": [
     "src/timer-main.js",
     "src/preload.js",

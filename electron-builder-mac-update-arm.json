@@ -1,0 +1,67 @@
+{
+  "appId": "com.anchorcast.app",
+  "productName": "AnchorCast",
+  "copyright": "Copyright 2026 AnchorCast",
+  "asar": true,
+  "afterPack": "scripts/after-pack.js",
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "anchorcastapp-team",
+      "repo": "anchorcastapp",
+      "releaseType": "release",
+      "channel": "latest-mac-arm64-mac"
+    }
+  ],
+  "files": [
+    "src/**/*",
+    "assets/**/*",
+    "data/**/*",
+    "ndi-addon/index.js",
+    "ndi-addon/package.json",
+    "ndi-addon/build/Release/ndi_sender.node",
+    "src/timer-main.js",
+    "src/renderer/countdown-window.html",
+    "electron-builder-timer.json"
+  ],
+  "mac": {
+    "target": [
+      {
+        "target": "dmg",
+        "arch": [
+          "arm64"
+        ]
+      }
+    ],
+    "icon": "assets/icon.icns",
+    "category": "public.app-category.utilities",
+    "artifactName": "AnchorCastUpdate_v${version}_arm64.${ext}",
+    "extraResources": [
+      {
+        "from": "ndi-addon/build/Release/libndi.dylib",
+        "to": "libndi.dylib"
+      },
+      {
+        "from": "whisper_server.py",
+        "to": "whisper_server.py"
+      },
+      {
+        "from": "setup_whisper.sh",
+        "to": "setup_whisper.sh"
+      },
+      {
+        "from": "ndi-addon/build/Release/ndi_sender.node",
+        "to": "ndi_sender.node"
+      },
+      {
+        "from": "python",
+        "to": "python"
+      }
+    ]
+  },
+  "asarUnpack": [
+    "assets/Data/**",
+    "assets/Media/**",
+    "assets/Presentations/**"
+  ]
+}

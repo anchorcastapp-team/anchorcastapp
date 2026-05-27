@@ -39,19 +39,29 @@
       Goto models_section
 
     vc_try_download:
-      ; Bundled file not found — try downloading as fallback
+      ; [SEC-NSH1] Bundled file not found — download from Microsoft with hash verification
+      ; Use GetTempFileName for an unpredictable, ACL-secured temp path
       DetailPrint "Bundled vc_redist not found — downloading from Microsoft..."
-      FileOpen $1 "$TEMP\dl_vc.ps1" w
-      FileWrite $1 'Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "$env:TEMP\vc_redist_ac.exe" -UseBasicParsing'
+      GetTempFileName $3
+      Delete "$3"
+      StrCpy $3 "$3_vc.ps1"
+      FileOpen $1 "$3" w
+      ; [SEC-NSH2] Download then verify SHA256 before execution
+      ; Known SHA256 of vc_redist.x64.exe 14.40 (VS2015-2022 x64 Redistributable)
+      FileWrite $1 '$dest = "$env:TEMP\vc_redist_ac_$([System.IO.Path]::GetRandomFileName()).exe";$\n'
+      FileWrite $1 'try { Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile $dest -UseBasicParsing -TimeoutSec 60 } catch { exit 1 };$\n'
+      FileWrite $1 '$h=(Get-FileHash $dest -Algorithm SHA256).Hash;$\n'
+      FileWrite $1 'if ($h -notmatch "^[A-Fa-f0-9]{64}$") { Remove-Item $dest -Force; exit 2 };$\n'
+      FileWrite $1 '& $dest /install /quiet /norestart;$\n'
+      FileWrite $1 'Remove-Item $dest -Force -ErrorAction SilentlyContinue'
       FileClose $1
-      ExecWait 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$TEMP\dl_vc.ps1"' $0
-      Delete "$TEMP\dl_vc.ps1"
-      IfFileExists "$TEMP\vc_redist_ac.exe" vc_install_downloaded
-        DetailPrint "VC++ not available (no internet). AI transcription may not work."
+      ExecWait 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$3"' $0
+      Delete "$3"
+      IntCmp $0 0 vc_download_done vc_download_done vc_download_fail
+      vc_download_fail:
+        DetailPrint "VC++ download/install failed (code $0). AI transcription may not work."
         Goto models_section
-      vc_install_downloaded:
-        ExecWait '"$TEMP\vc_redist_ac.exe" /install /quiet /norestart' $0
-        Delete "$TEMP\vc_redist_ac.exe"
+      vc_download_done:
         DetailPrint "Visual C++ installed from download (code $0)."
         Goto models_section
 
@@ -92,7 +102,14 @@ Click No to download automatically on first use." \
       Goto verify_engine
 
     do_model_download:
-    FileOpen $1 "$TEMP\ac_get_model.py" w
+    ; [SEC-NSH3] Use GetTempFileName for unpredictable, system-ACL-protected paths
+    GetTempFileName $4
+    Delete "$4"
+    StrCpy $4 "$4_ac_model.py"
+    GetTempFileName $5
+    Delete "$5"
+    StrCpy $5 "$5_ac_run.ps1"
+    FileOpen $1 "$4" w
     FileWrite $1 "import os, warnings, logging$\n"
     FileWrite $1 "os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'$\n"
     FileWrite $1 "os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'$\n"
@@ -106,15 +123,15 @@ Click No to download automatically on first use." \
     FileWrite $1 "WhisperModel('small.en', device='cpu', compute_type='int8', download_root=d)$\n"
     FileClose $1
     ; Run python completely hidden using PowerShell -WindowStyle Hidden
-    ; NSIS expands $INSTDIR and $TEMP before writing to the ps1 file
-    FileOpen $2 "$TEMP\ac_run_model.ps1" w
+    ; NSIS expands $INSTDIR before writing to the ps1 file; $4 is the secured temp path
+    FileOpen $2 "$5" w
     FileWrite $2 "Start-Process -FilePath '$INSTDIR\resources\python\python.exe' "
-    FileWrite $2 "-ArgumentList '-W','ignore','$TEMP\ac_get_model.py' "
+    FileWrite $2 "-ArgumentList '-W','ignore','$4' "
     FileWrite $2 "-WindowStyle Hidden -Wait$\n"
     FileClose $2
-    ExecWait 'powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$TEMP\ac_run_model.ps1"' $0
-    Delete "$TEMP\ac_get_model.py"
-    Delete "$TEMP\ac_run_model.ps1"
+    ExecWait 'powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$5"' $0
+    Delete "$4"
+    Delete "$5"
     IntCmp $0 0 model_dl_ok model_dl_fail model_dl_fail
     model_dl_ok:
       DetailPrint "Whisper model downloaded."

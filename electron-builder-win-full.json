@@ -1,0 +1,102 @@
+{
+  "appId": "com.anchorcast.app",
+  "productName": "AnchorCast",
+  "copyright": "Copyright 2026 AnchorCast",
+  "asar": true,
+  "files": [
+    "src/**/*",
+    "assets/**/*",
+    "data/**/*",
+    "ndi-addon/index.js",
+    "ndi-addon/package.json",
+    "ndi-addon/build/Release/ndi_sender.node",
+    "src/timer-main.js",
+    "src/renderer/countdown-window.html",
+    "electron-builder-timer.json"
+  ],
+  "win": {
+    "target": [
+      "nsis"
+    ],
+    "icon": "assets/icon.ico",
+    "artifactName": "AnchorCastSetup_v${version}_full.${ext}",
+    "extraResources": [
+      {
+        "from": "ndi-addon/build/Release/Processing.NDI.Lib.x64.dll",
+        "to": "Processing.NDI.Lib.x64.dll"
+      },
+      {
+        "from": "vc_redist.x64.exe",
+        "to": "vc_redist.x64.exe"
+      },
+      {
+        "from": "python",
+        "to": "python"
+      },
+      {
+        "from": "models",
+        "to": "models"
+      },
+      {
+        "from": "whisper_server.py",
+        "to": "whisper_server.py"
+      },
+      {
+        "from": "setup_whisper.bat",
+        "to": "setup_whisper.bat"
+      },
+      {
+        "from": "setup_whisper.sh",
+        "to": "setup_whisper.sh"
+      },
+      {
+        "from": "ndi-addon/build/Release/ndi_sender.node",
+        "to": "ndi_sender.node"
+      },
+      {
+        "from": "install-dependencies.bat",
+        "to": "install-dependencies.bat"
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "allowElevation": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "unicode": true,
+    "language": "1033",
+    "warningsAsErrors": false,
+    "include": "installer.nsh"
+  },
+  "asarUnpack": [
+    "assets/Data/**",
+    "assets/Media/**",
+    "assets/Presentations/**"
+  ],
+  "fileAssociations": [
+    {
+      "ext": "acsch",
+      "name": "AnchorCast Schedule",
+      "description": "AnchorCast schedule file",
+      "role": "Editor",
+      "icon": "assets/icon.ico"
+    },
+    {
+      "ext": "anchorcast-license",
+      "name": "AnchorCast License File",
+      "description": "AnchorCast Registration File",
+      "role": "Viewer"
+    }
+  ],
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "anchorcastapp-team",
+      "repo": "anchorcastapp",
+      "releaseType": "release",
+      "channel": "latest"
+    }
+  ]
+}

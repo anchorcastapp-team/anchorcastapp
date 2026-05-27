@@ -47,7 +47,17 @@ parser.add_argument('--port',            type=int, default=7777)
 parser.add_argument('--device',          default='auto')
 parser.add_argument('--model_cache_dir', default=None,
                     help='Directory to store Whisper models (default: HuggingFace cache)')
+# [SEC-F8] Shared secret: main.js passes --secret <hex> at startup;
+# all /transcribe and /reinforce requests must include X-Whisper-Secret header.
+parser.add_argument('--secret',          default='',
+                    help='Shared secret for request authentication (hex string)')
 args = parser.parse_args()
+
+# [SEC-F8] Secret enforcement
+WHISPER_SECRET = args.secret or os.environ.get('WHISPER_SECRET', '')
+
+# [SEC-F9] Max audio payload (10 MB)
+MAX_AUDIO_BYTES = 10 * 1024 * 1024
 
 IS_EN_MODEL  = args.model.endswith('.en')
 IS_SMALL_UP  = any(x in args.model for x in ('small', 'medium', 'large'))
@@ -734,10 +744,23 @@ class WhisperHandler(BaseHTTPRequestHandler):
         else:
             self._json(404, {'error': 'not found'})
 
+    def _check_secret(self):
+        """[SEC-F8] Verify X-Whisper-Secret header when a secret is configured."""
+        if not WHISPER_SECRET:
+            return True  # dev mode — no secret set
+        return self.headers.get('X-Whisper-Secret', '') == WHISPER_SECRET
+
     def do_POST(self):
+        # [SEC-F8] Authenticate every POST request
+        if not self._check_secret():
+            self._json(401, {'error': 'unauthorized'}); return
+
         # /reinforce — receive detected verse text from the app for context priming
         if self.path == '/reinforce':
             length = int(self.headers.get('Content-Length', 0))
+            # [SEC-F9] Reject oversized reinforce payloads
+            if length > 4096:
+                self._json(413, {'error': 'payload too large'}); return
             if length:
                 body = self.rfile.read(length)
                 try:
@@ -762,35 +785,43 @@ class WhisperHandler(BaseHTTPRequestHandler):
         if not length:
             self._json(400, {'error': 'no audio data'}); return
 
+        # [SEC-F9] Reject payloads over 10 MB — prevents memory exhaustion
+        if length > MAX_AUDIO_BYTES:
+            self._json(413, {'error': f'audio too large (max {MAX_AUDIO_BYTES // 1048576} MB)'}); return
+
         audio_data = self.rfile.read(length)
         transcript  = ''
 
+        # [SEC-F9] Lock already acquired with timeout above — run transcription
         try:
-            with _lock:
-                buf  = io.BytesIO(audio_data)
-                params = _transcribe_params()
-                segments, _info = model.transcribe(buf, **params)
+            buf  = io.BytesIO(audio_data)
+            params = _transcribe_params()
+            segments, _info = model.transcribe(buf, **params)
 
-                # Collect high-quality segments only
-                parts = []
-                for seg in segments:
-                    t = seg.text.strip()
-                    if t and _good_segment(seg):
-                        parts.append(t)
+            # Collect high-quality segments only
+            parts = []
+            for seg in segments:
+                t = seg.text.strip()
+                if t and _good_segment(seg):
+                    parts.append(t)
 
-                raw = ' '.join(parts).strip()
-                if raw:
-                    transcript = process_transcript(raw)
-                    transcript = _dedup_context(transcript)
-                    if transcript and len(transcript) > 8:
-                        add_to_context(transcript)
+            raw = ' '.join(parts).strip()
+            if raw:
+                transcript = process_transcript(raw)
+                transcript = _dedup_context(transcript)
+                if transcript and len(transcript) > 8:
+                    add_to_context(transcript)
 
         except Exception as e:
             print(f'[Whisper] Transcription error: {e}', flush=True)
             try:
+                _lock.release()
                 self._json(500, {'error': str(e)}); return
             except OSError:
                 return
+        finally:
+            try: _lock.release()
+            except RuntimeError: pass  # already released in except block
 
         if transcript:
             print(f'[Whisper] "{transcript[:100]}"', flush=True)
