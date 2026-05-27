@@ -828,6 +828,20 @@ app.whenReady().then(async ()=>{
     // Normalize separators
     filePath = filePath.replace(/\//g, path.sep);
 
+    // [SEC-F7] Restrict to allowed directories — prevent arbitrary file read
+    const ALLOWED_MEDIA_DIRS = [
+      APPDATA_ROOT,
+      path.join(os.homedir(), '.anchorcast'),
+      // Allow serving from the app's own assets (for bundled presentation images etc.)
+      path.join(__dirname, 'assets'),
+    ].map(d => d.endsWith(path.sep) ? d : d + path.sep);
+    const normalizedPath = path.resolve(filePath);
+    const allowed = ALLOWED_MEDIA_DIRS.some(d => normalizedPath.startsWith(d));
+    if (!allowed) {
+      console.warn('[Security] media:// blocked path outside allowed dirs:', normalizedPath);
+      return new Response('Forbidden', { status: 403 });
+    }
+
     try {
       const stat  = fs.statSync(filePath);
       const total = stat.size;
@@ -916,8 +930,9 @@ app.whenReady().then(async ()=>{
       let _whisperStartAttempts = 0;
       const _tryStartWhisper = () => {
         _whisperStartAttempts++;
-        startWhisperServer(whisperModel).then(ok => {
-          if (!ok && _whisperStartAttempts < 4) {
+        const isFinalAttempt = _whisperStartAttempts >= 4;
+        startWhisperServer(whisperModel, { suppressBanner: !isFinalAttempt }).then(ok => {
+          if (!ok && !isFinalAttempt) {
             // Retry after 3s — old server may still be shutting down after update
             console.log(`[Whisper] Start attempt ${_whisperStartAttempts} failed — retrying in 3s...`);
             setTimeout(_tryStartWhisper, 3000);
@@ -1439,7 +1454,7 @@ function createSplashWindow(){
     width: 520, height: 520, frame: false, transparent: true, resizable: false,
     show: false, alwaysOnTop: true, backgroundColor: '#00000000',
     icon: APP_ICON,
-    webPreferences:{ nodeIntegration:false, contextIsolation:true, backgroundThrottling:false }
+    webPreferences:{ nodeIntegration:false, contextIsolation:true, preload:path.join(__dirname,'preload.js'), backgroundThrottling:false }
   });
   if (rendererPort) {
     splashWindow.loadURL(`http://127.0.0.1:${rendererPort}/splash.html`);
@@ -1469,7 +1484,7 @@ function createMainWindow(){
       nodeIntegration:false,
       contextIsolation:true,
       preload:path.join(__dirname,'preload.js'),
-      webSecurity: false,
+      // [SEC-F4] webSecurity enabled — SOP enforced; cross-origin media served via media:// protocol
     },
     titleBarStyle:process.platform==='darwin'?'hiddenInset':'default',
     trafficLightPosition:{x:16,y:12},
@@ -1582,7 +1597,7 @@ function createProjectionWindow(displayId){
       contextIsolation:true,
       preload:path.join(__dirname,'preload.js'),
       backgroundThrottling:false,
-      webSecurity:false,
+      // [SEC-F4] webSecurity enabled — SOP enforced; media served via media:// protocol
     },
   });
   projectionWindow._targetDisplayId = target.id;
@@ -1998,6 +2013,69 @@ ipcMain.on('presentation-add-to-schedule', (_evt, payload) => {
 
 // ── Auto-updater ──────────────────────────────────────────────────────────────
 let _manualUpdateCheck = false;
+const GITHUB_OWNER = 'anchorcastapp-team';
+const GITHUB_REPO  = 'anchorcastapp';
+
+// ── Mac update check — fetches yml from GitHub, shows download link ──────────
+async function checkForUpdatesMac(isManual = false) {
+  const arch    = process.arch; // 'arm64' or 'x64'
+  // electron-builder appends '-mac' to channel names on Mac builds
+  const channel = arch === 'arm64' ? 'latest-mac-arm64-mac' : 'latest-mac-x64-mac';
+  const ymlUrl  = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest/download/${channel}.yml`;
+
+  if (isManual) mainWindow?.webContents.send('update-checking');
+
+  try {
+    const res = await fetch(ymlUrl, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+
+    // Parse version from yml
+    const versionMatch = text.match(/^version:\s*(.+)$/m);
+    if (!versionMatch) throw new Error('Could not parse version from yml');
+    const latestVersion = versionMatch[1].trim();
+    const currentVersion = app.getVersion();
+
+    console.log(`[Updater] Current: v${currentVersion} | Latest: v${latestVersion}`);
+
+    // Compare versions using semver logic
+    const parseVer = v => v.replace(/^v/, '').split('.').map(Number);
+    const [lMaj, lMin, lPat] = parseVer(latestVersion);
+    const [cMaj, cMin, cPat] = parseVer(currentVersion);
+    const isNewer = lMaj > cMaj || (lMaj === cMaj && lMin > cMin) || (lMaj === cMaj && lMin === cMin && lPat > cPat);
+
+    if (isNewer) {
+      // Build download URL for the dmg
+      const dmgName = `AnchorCastUpdate_v${latestVersion}_${arch}.dmg`;
+      const downloadUrl = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest/download/${dmgName}`;
+      mainWindow?.webContents.send('update-available-mac', {
+        version: latestVersion,
+        downloadUrl,
+      });
+    } else if (isManual) {
+      _manualUpdateCheck = false;
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'AnchorCast is up to date',
+        message: `You're running the latest version.`,
+        detail: `AnchorCast v${currentVersion} is the latest version available.`,
+        buttons: ['OK'],
+      });
+    }
+  } catch(err) {
+    console.warn('[Updater] Mac check failed:', err.message);
+    if (isManual) {
+      _manualUpdateCheck = false;
+      dialog.showMessageBox(mainWindow, {
+        type: 'warning',
+        title: 'Update Check Failed',
+        message: 'Could not check for updates.',
+        detail: `Please check your internet connection and try again.\n\n${err.message}`,
+        buttons: ['OK'],
+      });
+    }
+  }
+}
 
 function checkForUpdatesManual() {
   if (!app.isPackaged) {
@@ -2010,6 +2088,14 @@ function checkForUpdatesManual() {
     });
     return;
   }
+
+  if (process.platform === 'darwin') {
+    _manualUpdateCheck = true;
+    checkForUpdatesMac(true);
+    return;
+  }
+
+  // Windows
   try {
     const { autoUpdater } = require('electron-updater');
     _manualUpdateCheck = true;
@@ -2029,40 +2115,34 @@ function checkForUpdatesManual() {
     console.warn('[Updater] Manual check failed:', e.message);
   }
 }
+
 function initAutoUpdater() {
-  if (!app.isPackaged) return; // only run in production builds
+  if (!app.isPackaged) return;
+  const isMac = process.platform === 'darwin';
+
+  if (isMac) {
+    // Mac: manual check only — no silent install (requires code signing)
+    // Check 5s after launch and every 6 hours
+    setTimeout(() => checkForUpdatesMac(false), 5000);
+    setInterval(() => checkForUpdatesMac(false), 6 * 60 * 60 * 1000);
+    return;
+  }
+
+  // Windows: full auto-update via electron-updater
   try {
     const { autoUpdater } = require('electron-updater');
 
-    // Smart channel detection:
-    // - Full build (has bundled model in Resources): use light channel for updates
-    //   because the model already exists in userData and doesn't need re-bundling
-    // - Light build: use light channel (model either not downloaded or in userData)
-    // Result: ALL users after first install use the light update channel
-    // which contains Python but no model — small update, model persists in userData
     const bundledModelsPath = path.join(process.resourcesPath, 'models');
     const hasBundledModel = fs.existsSync(bundledModelsPath) &&
       fs.readdirSync(bundledModelsPath).some(f => f.startsWith('models--Systran'));
-    const isMac = process.platform === 'darwin';
 
     if (hasBundledModel) {
-      // First run of full version — write flag to userData so we know model exists
       const modelFlag = path.join(DATA_DIR, 'whisper_model_installed.flag');
       try { if (!fs.existsSync(modelFlag)) fs.writeFileSync(modelFlag, 'full', 'utf8'); } catch(_) {}
     }
 
-    // Check if user has ever had the full version (model flag exists in userData)
-    const modelFlag = path.join(DATA_DIR, 'whisper_model_installed.flag');
-    const hasModelFlag = fs.existsSync(modelFlag);
-
-    // Set channel based on platform and architecture
-    const arch = process.arch; // 'arm64' or 'x64'
-    if (isMac) {
-      autoUpdater.channel = arch === 'arm64' ? 'latest-mac-arm64' : 'latest-mac-x64';
-    } else {
-      autoUpdater.channel = 'latest';
-    }
-    console.log(`[Updater] Channel: ${autoUpdater.channel} | arch: ${arch}`);
+    autoUpdater.channel = 'latest';
+    console.log(`[Updater] Channel: ${autoUpdater.channel}`);
 
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
@@ -2081,7 +2161,6 @@ function initAutoUpdater() {
 
     autoUpdater.on('update-not-available', () => {
       console.log('[Updater] App is up to date');
-      // Only show dialog if triggered by manual check
       if (_manualUpdateCheck) {
         _manualUpdateCheck = false;
         dialog.showMessageBox(mainWindow, {
@@ -2101,16 +2180,13 @@ function initAutoUpdater() {
 
     autoUpdater.on('update-downloaded', (info) => {
       console.log(`[Updater] Update downloaded: v${info.version}`);
-      mainWindow?.webContents.send('update-downloaded', {
-        version: info.version,
-      });
+      mainWindow?.webContents.send('update-downloaded', { version: info.version });
     });
 
     autoUpdater.on('error', (err) => {
       console.warn('[Updater] Error:', err.message);
     });
 
-    // Check for updates 5 seconds after app starts, then every 6 hours
     setTimeout(() => {
       autoUpdater.checkForUpdates().catch(e => console.warn('[Updater]', e.message));
     }, 5000);
@@ -2118,7 +2194,6 @@ function initAutoUpdater() {
       autoUpdater.checkForUpdates().catch(e => console.warn('[Updater]', e.message));
     }, 6 * 60 * 60 * 1000);
 
-    // IPC handlers
     ipcMain.handle('updater-install-now', () => {
       autoUpdater.quitAndInstall(false, true);
     });
@@ -2314,6 +2389,24 @@ function localIp(){
 }
 
 
+// [SEC-F6] PIN hashing — store/compare PINs using PBKDF2, never plaintext
+// Salt is stored alongside hash as "salt:hash" in settings (both hex-encoded).
+function hashPin(pin) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(String(pin), salt, 100000, 32, 'sha256').toString('hex');
+  return `${salt}:${hash}`;
+}
+function verifyPin(pin, stored) {
+  try {
+    if (!stored || !stored.includes(':')) return false;
+    const [salt, expectedHash] = stored.split(':');
+    const hash = crypto.pbkdf2Sync(String(pin), salt, 100000, 32, 'sha256').toString('hex');
+    // Constant-time compare to prevent timing attacks
+    return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(expectedHash, 'hex'));
+  } catch (_) { return false; }
+}
+function isPinHashed(v) { return typeof v === 'string' && /^[0-9a-f]{32}:[0-9a-f]{64}$/.test(v); }
+
 const remoteAuthState = { failures: new Map() };
 const remoteRuntimeStatus = { lastSeenAt: 0, lastRole: null, lastIp: null };
 
@@ -2479,16 +2572,19 @@ function roleCapabilities(role){
 function remoteRoleForPin(pin){
   const p = normalizeRemotePinValue(pin);
   if(!p) return null;
-  const adminPin = normalizeRemotePinValue(currentSettings.remoteAdminPin || currentSettings.remotePin || '');
-  const scripturePin = normalizeRemotePinValue(currentSettings.remoteScripturePin || '');
-  const songsPin = normalizeRemotePinValue(currentSettings.remoteSongsPin || '');
-  const mediaPin = normalizeRemotePinValue(currentSettings.remoteMediaPin || '');
-  const monitorPin = normalizeRemotePinValue(currentSettings.remoteMonitorPin || '');
-  if(adminPin && p === adminPin) return 'admin';
-  if(scripturePin && p === scripturePin) return 'scripture';
-  if(songsPin && p === songsPin) return 'songs';
-  if(mediaPin && p === mediaPin) return 'media';
-  if(monitorPin && p === monitorPin) return 'monitor';
+  // [SEC-F6] Use PBKDF2 hash comparison. If stored value is plaintext (legacy/migration),
+  // fall back to direct compare and hash it on next save.
+  function checkPin(stored, inputPin) {
+    if (!stored) return false;
+    if (isPinHashed(stored)) return verifyPin(inputPin, stored);
+    // Legacy plaintext fallback — migrate on next settings save
+    return normalizeRemotePinValue(stored) === inputPin;
+  }
+  if(checkPin(currentSettings.remoteAdminPin || currentSettings.remotePin, p)) return 'admin';
+  if(checkPin(currentSettings.remoteScripturePin, p)) return 'scripture';
+  if(checkPin(currentSettings.remoteSongsPin, p)) return 'songs';
+  if(checkPin(currentSettings.remoteMediaPin, p)) return 'media';
+  if(checkPin(currentSettings.remoteMonitorPin, p)) return 'monitor';
   return null;
 }
 
@@ -3326,9 +3422,9 @@ function signOut(){
   // Revoke server-side session first, then clear local state
   xhr('POST','/api/signout',{},function(){
     token='';pin='';role='admin';caps=[];
-    try{localStorage.removeItem('acToken');}catch(e){}
-    try{localStorage.removeItem('acPin');}catch(e){}
-    try{localStorage.removeItem('acRole');}catch(e){}
+    try{sessionStorage.removeItem('acToken');}catch(e){}
+    try{sessionStorage.removeItem('acPin');}catch(e){}
+    try{sessionStorage.removeItem('acRole');}catch(e){}
     var sb=$('signOutBtn');if(sb)sb.className='signout-btn';
     var rb=$('roleBadge');if(rb){rb.className='role-badge';rb.textContent='';}
     var em=$('authMsg');if(em)em.textContent='';
@@ -3387,7 +3483,7 @@ function poll(){
       if(status===401){
         setStatus('\uD83D\uDD12 Locked','Enter PIN','\uD83D\uDD10');
         // Clear stale token so subsequent polls don't keep triggering auth failures
-        if(token){token='';try{localStorage.removeItem('acToken');}catch(e){}}
+        if(token){token='';try{sessionStorage.removeItem('acToken');}catch(e){}}
         var _ab=$('authBox');if(_ab)_ab.style.display='';
       }
       else setStatus('No connection','Check WiFi','\u26A0');
@@ -3554,7 +3650,7 @@ function bootstrap(){
       // If we keep sending it, every background poll records an auth failure → 429.
       if(status===401){
         token='';
-        try{localStorage.removeItem('acToken');}catch(e){}
+        try{sessionStorage.removeItem('acToken');}catch(e){}
         var sb=$('signOutBtn');if(sb)sb.className='signout-btn';
       }
       return;
@@ -3562,7 +3658,7 @@ function bootstrap(){
     // If server says auth is required but returned no role, force re-auth
     if(data.authRequired && !data.role){
       token='';pin='';role='';caps=[];
-      try{localStorage.removeItem('acToken');localStorage.removeItem('acPin');localStorage.removeItem('acRole');}catch(e){}
+      try{sessionStorage.removeItem('acToken');sessionStorage.removeItem('acPin');sessionStorage.removeItem('acRole');}catch(e){}
       var _ab=$('authBox');if(_ab)_ab.style.display='';
       var em=$('authMsg');if(em)em.textContent='';
       return;
@@ -3579,11 +3675,11 @@ function bootstrap(){
 }
 
 window.addEventListener('load',function(){
-  try{token=localStorage.getItem('acToken')||'';}catch(e){}
-  try{pin=localStorage.getItem('acPin')||'';}catch(e){}
+  try{token=sessionStorage.getItem('acToken')||'';}catch(e){}
+  try{pin=sessionStorage.getItem('acPin')||'';}catch(e){}
   // Always start with auth box visible — bootstrap() will hide it if auth passes
   // This prevents stale tokens from bypassing the PIN screen on fresh open
-  try{var r=localStorage.getItem('acRole');if(r&&(token||pin)){role=r;caps=capsFor(role);}}catch(e){}
+  try{var r=sessionStorage.getItem('acRole');if(r&&(token||pin)){role=r;caps=capsFor(role);}}catch(e){}
 
   $('modeScripture').onclick=function(){setMode('scripture');};
   $('modeSongs').onclick=function(){setMode('songs');};
@@ -3611,7 +3707,7 @@ window.addEventListener('load',function(){
     xhr('POST','/api/auth',{pin:p},function(status,data){
       if(status===200){
         token=data.token||'';pin=p;role=String(data.role||'admin').toLowerCase();caps=data.capabilities||capsFor(role);
-        try{localStorage.setItem('acToken',token);localStorage.setItem('acPin',pin);localStorage.setItem('acRole',role);}catch(e){}
+        try{sessionStorage.setItem('acToken',token);sessionStorage.setItem('acPin',pin);sessionStorage.setItem('acRole',role);}catch(e){}
         var sb=$('signOutBtn');if(sb)sb.className='signout-btn show';
         var _ab=$('authBox');if(_ab)_ab.style.display='none';bootstrap();
       }else{var m=$('authMsg');if(m)m.textContent='Wrong PIN — try again';}
@@ -4382,6 +4478,15 @@ ipcMain.handle('get-displays',()=>
 ipcMain.handle('get-settings',()=>({ ...defaultSettings(), ...loadSettings() }));
 ipcMain.handle('save-settings',(_,s,opts)=>{
   try{
+    // [SEC-F6] Hash any plaintext PINs before persisting
+    const PIN_FIELDS = ['remoteAdminPin','remotePin','remoteScripturePin','remoteSongsPin','remoteMediaPin','remoteMonitorPin'];
+    for (const field of PIN_FIELDS) {
+      const val = s[field];
+      if (val && !isPinHashed(val)) {
+        const normalized = normalizeRemotePinValue(val);
+        if (normalized) s[field] = hashPin(normalized);
+      }
+    }
     // If PIN or auth settings changed, invalidate all existing remote sessions
     const pinChanged = (
       String(s.remoteAdminPin||'') !== String(currentSettings.remoteAdminPin||'') ||
@@ -5471,6 +5576,10 @@ ipcMain.handle('open-history',()=>{ createHistoryWindow(); return{success:true};
 // ── Whisper Local Server ──────────────────────────────────────────────────────
 const WHISPER_PORT   = 7777;
 const WHISPER_URL    = `http://127.0.0.1:${WHISPER_PORT}`;
+// [SEC-F8] Per-run shared secret — generated fresh at startup, passed to whisper_server.py
+// and included in every request header (X-Whisper-Secret). Prevents other local processes
+// from injecting context into the Whisper reinforcement endpoint.
+const WHISPER_SECRET = crypto.randomBytes(20).toString('hex');
 function resolveRuntimeResource(...parts) {
   const candidates = [
     path.join(process.resourcesPath || '', ...parts),
@@ -5521,7 +5630,7 @@ function _runAfterWindowReady(fn, extraDelay = 0) {
   }
 }
 
-async function startWhisperServer(model = 'small.en') {
+async function startWhisperServer(model = 'small.en', { suppressBanner = false } = {}) {
   // Already running?
   if (await checkWhisperRunning()) {
     whisperReady = true;
@@ -5657,11 +5766,12 @@ async function startWhisperServer(model = 'small.en') {
       } catch { /* candidate not found at all */ }
     }
     console.log(`[Whisper] Setup needed — reason: ${whisperFailReason}`);
-    // Send detailed status to renderer so it can show a specific message
-    mainWindow?.webContents.send('whisper-setup-needed', {
-      reason: whisperFailReason,
-      setupBatExists: fs.existsSync(resolveRuntimeResource('setup_whisper.bat')),
-    });
+    if (!suppressBanner) {
+      mainWindow?.webContents.send('whisper-setup-needed', {
+        reason: whisperFailReason,
+        setupBatExists: fs.existsSync(resolveRuntimeResource('setup_whisper.bat')),
+      });
+    }
     return false;
   }
 
@@ -5724,6 +5834,7 @@ async function startWhisperServer(model = 'small.en') {
     '--model',           model,
     '--port',            String(WHISPER_PORT),
     '--model_cache_dir', WHISPER_MODEL_DIR,
+    '--secret',          WHISPER_SECRET,   // [SEC-F8] shared secret
   ], {
     stdio:       ['ignore', 'pipe', 'pipe'],
     detached:    false,
@@ -5840,7 +5951,7 @@ ipcMain.handle('whisper-reinforce', async (_, { text, ttl = 30 } = {}) => {
   try {
     const res = await fetch(`${WHISPER_URL}/reinforce`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Whisper-Secret': WHISPER_SECRET },
       body: JSON.stringify({ text: String(text).slice(0, 400), ttl }),
       signal: AbortSignal.timeout(2000),
     });
@@ -6398,7 +6509,7 @@ async function processNextChunk() {
         const timeoutMs = Math.ceil(Math.max(25000, audioDurationMs * 4 + 8000));
         const res = await fetch(`${WHISPER_URL}/transcribe`, {
           method: 'POST',
-          headers: { 'Content-Type': 'audio/wav', 'Content-Length': wavBuffer.length },
+          headers: { 'Content-Type': 'audio/wav', 'Content-Length': wavBuffer.length, 'X-Whisper-Secret': WHISPER_SECRET },
           body: wavBuffer,
           signal: AbortSignal.timeout(timeoutMs),
         });
@@ -8735,7 +8846,24 @@ ipcMain.handle('import-presentation', async (_, { filePath }) => {
   const util = require('util');
   const execFileAsync = util.promisify(execFile);
 
-  const ext    = path.extname(filePath).toLowerCase();
+  // [SEC-F5] Validate input path — must be absolute, must exist, must be allowed extension
+  const ALLOWED_PRES_EXTS = ['.pptx', '.ppt', '.pdf'];
+  const resolvedPath = path.resolve(String(filePath || ''));
+  const ext = path.extname(resolvedPath).toLowerCase();
+  if (!ALLOWED_PRES_EXTS.includes(ext)) {
+    return { success: false, error: 'Unsupported file type' };
+  }
+  if (!fs.existsSync(resolvedPath)) {
+    return { success: false, error: 'File not found' };
+  }
+  // Reject paths with shell metacharacters as an extra safety layer
+  if (/[;&|`$<>]/.test(resolvedPath)) {
+    console.warn('[Security] import-presentation blocked suspicious path:', resolvedPath);
+    return { success: false, error: 'Invalid file path' };
+  }
+  // Use the resolved path going forward — never the raw caller-supplied string
+  filePath = resolvedPath;
+
   const id     = Date.now().toString();
   const outDir = path.join(PRES_DIR, id);
   fs.mkdirSync(outDir, { recursive: true });
@@ -9230,7 +9358,22 @@ ipcMain.handle('get-theme-designer-params', () => {
   return d;
 });
 ipcMain.handle('show-remote-url',()=>{ showRemoteUrl(); return{success:true}; });
-ipcMain.handle('open-external',(_, url)=>{ shell.openExternal(url); return{success:true}; });
+ipcMain.handle('open-external',(_, url)=>{
+  // [SEC-F3] Only allow safe URL schemes — blocks file://, ms-msdt://, custom protocol abuse
+  try {
+    const u = new URL(String(url || ''));
+    const SAFE = ['https:','http:','mailto:'];
+    if (!SAFE.includes(u.protocol)) {
+      console.warn(`[Security] open-external blocked scheme: ${u.protocol}`);
+      return { success:false, error:'Blocked: unsafe URL scheme' };
+    }
+    shell.openExternal(u.href);
+    return { success:true };
+  } catch(e) {
+    console.warn('[Security] open-external invalid URL:', url);
+    return { success:false, error:'Invalid URL' };
+  }
+});
 ipcMain.handle('copy-to-clipboard', (_, text) => { try { clipboard.writeText(String(text || '')); return { success:true }; } catch (e) { return { success:false, error: e?.message || 'Copy failed' }; } });
 
 // Remote server info and toggle
