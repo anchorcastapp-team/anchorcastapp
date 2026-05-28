@@ -1096,7 +1096,7 @@ app.on('before-quit', (e) => {
   stopWhisperServer();
   stopNdi();
   stopHttpServer();
-  if(rendererServer){ rendererServer.close(); rendererServer=null; }
+  if(rendererServer){ rendererServer.close(); rendererServer=null; rendererPort=0; }
 
   if (!_transcriptUnsaved) return;
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -1116,10 +1116,21 @@ app.on('window-all-closed',()=>{
   stopNdi();
   stopHttpServer();
   stopWhisperServer();
-  if(rendererServer){ rendererServer.close(); rendererServer=null; }
+  if(rendererServer){ rendererServer.close(); rendererServer=null; rendererPort=0; }
   if(process.platform!=='darwin') app.quit();
 });
-app.on('activate',()=>{ if(!BrowserWindow.getAllWindows().length) createMainWindow(); });
+app.on('activate', async () => {
+  // macOS: clicking the Dock icon when all windows are closed re-creates the main window.
+  // Guard: if the renderer server is not running (port == 0), restart it first —
+  // otherwise mainWindow.loadURL() hits an empty port and the window stays black.
+  if (!BrowserWindow.getAllWindows().length) {
+    if (!rendererPort) {
+      try { await startRendererServer(); } catch(e) { console.warn('[Activate] renderer server restart failed:', e.message); }
+    }
+    createSplashWindow();
+    createMainWindow();
+  }
+});
 
 // ── Windows ───────────────────────────────────────────────────────────────────
 let rendererServer = null;
@@ -2019,8 +2030,8 @@ const GITHUB_REPO  = 'anchorcastapp';
 // ── Mac update check — fetches yml from GitHub, shows download link ──────────
 async function checkForUpdatesMac(isManual = false) {
   const arch    = process.arch; // 'arm64' or 'x64'
-  // electron-builder appends '-mac' to channel names on Mac builds
-  const channel = arch === 'arm64' ? 'latest-mac-arm64-mac' : 'latest-mac-x64-mac';
+  // electron-builder on this project generates: latest-mac-arm64-mac-mac.yml / latest-mac-x64-mac-mac.yml
+  const channel = arch === 'arm64' ? 'latest-mac-arm64-mac-mac' : 'latest-mac-x64-mac-mac';
   const ymlUrl  = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest/download/${channel}.yml`;
 
   if (isManual) mainWindow?.webContents.send('update-checking');
@@ -2128,7 +2139,8 @@ function initAutoUpdater() {
     return;
   }
 
-  // Windows: full auto-update via electron-updater
+  // Windows: user-consent update flow — detect silently, user decides when to download and install
+  // This matches the Mac behaviour: no background downloads, no surprise restarts mid-service.
   try {
     const { autoUpdater } = require('electron-updater');
 
@@ -2144,8 +2156,9 @@ function initAutoUpdater() {
     autoUpdater.channel = 'latest';
     console.log(`[Updater] Channel: ${autoUpdater.channel}`);
 
-    autoUpdater.autoDownload = true;
-    autoUpdater.autoInstallOnAppQuit = true;
+    // [UX] Never download or install without explicit user action
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoInstallOnAppQuit = false;
 
     autoUpdater.on('checking-for-update', () => {
       console.log('[Updater] Checking for updates…');
@@ -2153,6 +2166,7 @@ function initAutoUpdater() {
 
     autoUpdater.on('update-available', (info) => {
       console.log(`[Updater] Update available: v${info.version}`);
+      // Show the gold "Update Available" banner — user clicks Download to start
       mainWindow?.webContents.send('update-available', {
         version: info.version,
         releaseNotes: info.releaseNotes || '',
@@ -2180,11 +2194,22 @@ function initAutoUpdater() {
 
     autoUpdater.on('update-downloaded', (info) => {
       console.log(`[Updater] Update downloaded: v${info.version}`);
+      // Show the green "Ready to Install" banner — user clicks Restart & Install
       mainWindow?.webContents.send('update-downloaded', { version: info.version });
     });
 
     autoUpdater.on('error', (err) => {
       console.warn('[Updater] Error:', err.message);
+      if (_manualUpdateCheck) {
+        _manualUpdateCheck = false;
+        dialog.showMessageBox(mainWindow, {
+          type: 'warning',
+          title: 'Could not check for updates.',
+          message: 'Please check your internet connection and try again.',
+          detail: err.message,
+          buttons: ['OK'],
+        });
+      }
     });
 
     setTimeout(() => {
@@ -2194,6 +2219,11 @@ function initAutoUpdater() {
       autoUpdater.checkForUpdates().catch(e => console.warn('[Updater]', e.message));
     }, 6 * 60 * 60 * 1000);
 
+    // Renderer triggers download only when user clicks the Download button
+    ipcMain.handle('updater-start-download', () => {
+      autoUpdater.downloadUpdate().catch(e => console.warn('[Updater] Download failed:', e.message));
+    });
+    // Renderer triggers install only when user clicks Restart & Install
     ipcMain.handle('updater-install-now', () => {
       autoUpdater.quitAndInstall(false, true);
     });
