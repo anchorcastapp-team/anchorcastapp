@@ -5957,7 +5957,6 @@ function _showMacUpdateBanner(version, downloadUrl) {
 }
 
 function _showUpdateBanner(version) {
-  // Remove existing if any
   const existing = document.getElementById('updateBanner');
   if (existing) existing.remove();
 
@@ -5973,11 +5972,21 @@ function _showUpdateBanner(version) {
     <div style="font-size:20px">🆕</div>
     <div style="flex:1">
       <div style="font-weight:700;color:#d4af37;font-size:13px">Update Available — v${version}</div>
-      <div id="updateProgressLabel" style="font-size:11px;color:#9aa4c7;margin-top:2px">Downloading in background…</div>
-      <div style="background:#0d1422;border-radius:4px;height:4px;margin-top:6px;overflow:hidden">
+      <div id="updateProgressLabel" style="font-size:11px;color:#9aa4c7;margin-top:2px">Click Download to get the latest version.</div>
+      <div style="background:#0d1422;border-radius:4px;height:4px;margin-top:6px;overflow:hidden;display:none" id="updateProgressTrack">
         <div id="updateProgressBar" style="height:100%;background:#d4af37;width:0%;transition:width .3s"></div>
       </div>
     </div>
+    <button id="updateDownloadBtn" onclick="(function(){
+      var btn = document.getElementById('updateDownloadBtn');
+      btn.disabled = true; btn.textContent = 'Starting…';
+      document.getElementById('updateProgressLabel').textContent = 'Downloading…';
+      document.getElementById('updateProgressTrack').style.display = 'block';
+      window.electronAPI?.updaterStartDownload?.();
+    })()" style="
+      background:#d4af37;border:none;color:#000;font-weight:700;font-size:11px;
+      padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap
+    ">⬇ Download</button>
     <button onclick="document.getElementById('updateBanner').remove()" style="
       background:transparent;border:none;color:#9aa4c7;cursor:pointer;font-size:16px;padding:4px
     ">✕</button>
