@@ -220,13 +220,17 @@ contextBridge.exposeInMainWorld('electronAPI',{
       'logo-overlay-drag-update',
       'theme-designer-open',
       'themes-updated',
-      'song-manager-new-song','song-manager-open-song','license-file-opened','registration-complete','display-warning','timer-state-sync','timer-stopped','timer-flash-speed','set-projection-bg','show-clock','hide-clock','confirm-quit-with-transcript',
+      'song-manager-new-song','song-manager-open-song','license-file-opened','registration-complete','display-warning','timer-state-sync','timer-stopped','timer-flash-speed','set-projection-bg','show-clock','hide-clock','confirm-quit-with-transcript','update-available','update-downloaded','update-download-progress','update-checking','update-available-mac',
     ];
     if(!allowed.includes(channel)) return()=>{};
     const sub=(_,...args)=>cb(...args);
     ipcRenderer.on(channel,sub);
     return()=>ipcRenderer.removeListener(channel,sub);
   },
+  updaterInstallNow:    () => ipcRenderer.invoke('updater-install-now'),
+  updaterCheckNow:      () => ipcRenderer.invoke('updater-check-now'),
+  updaterStartDownload: () => ipcRenderer.invoke('updater-start-download'),
+  appVersion: ipcRenderer.sendSync('get-app-version'),
   platform:process.platform,
   isElectron:true,
 });
