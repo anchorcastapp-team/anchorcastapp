@@ -4,6 +4,19 @@ All notable changes to **AnchorCast** are documented here.
 
 ---
 
+## [1.6.0] — 2026-08
+
+### Fixed
+- **"Save handler not registered" error on Bible upload/import** — the `save-bible-version` IPC handler was accidentally dropped during earlier refactoring, breaking both the General tab's manual Upload and the Custom Translation (Advanced) paste-JSON import. Restored.
+- **"Clear all" on the AI Detections panel silently wiping the live transcript** — clicking Clear all on the Detections panel was also erasing the entire in-progress sermon transcript with no warning, so anything transcribed before that click never made it into the saved history. The two are now fully independent.
+- **Projection window opening on the main screen instead of the external display** — a timing race between positioning the window and transitioning to fullscreen could cause the projection window to land on the wrong display. The window is now positioned and verified on the target display before going fullscreen, with an automatic self-correct if it still lands wrong.
+
+### Added
+- **Live transcript autosave** — the in-progress transcript is now periodically saved to a recovery file while recording. If AnchorCast is interrupted mid-service (crash, force-quit, power loss), the transcript is automatically recovered into History on next launch instead of being lost.
+- **Per-translation default on import** — importing 21st Century King James (KJ21) now automatically activates it as your default translation and remembers that choice for future launches, the same way manually switching translations already does. (KJ21 is copyrighted and must still be imported manually — see Bible Setup docs.)
+
+---
+
 ## [1.5.0] — 2026-07
 
 ### Added
