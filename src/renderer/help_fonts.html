@@ -216,7 +216,7 @@ mark.help-mark{background:rgba(201,168,76,.18);color:var(--gold-b);padding:0 2px
     <!-- OVERVIEW -->
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div class="section active" id="sec-overview" data-topics="setup bible songs themes display remote output intelligence service">
-      <h1>AnchorCast <span class="version-badge">v1.2.0</span></h1>
+      <h1>AnchorCast <span class="version-badge">v1.6.0</span></h1>
       <div class="jump-links"><a href="#" onclick="showSection('quickstart');return false">Quick Start</a><a href="#" onclick="showSection('songs');return false">Songs</a><a href="#" onclick="showSection('presentations');return false">Presentations</a><a href="#" onclick="showSection('sermon-notes');return false">Sermon Notes</a><a href="#" onclick="showSection('countdown-timer');return false">Timer</a><a href="#" onclick="showSection('alerts-panel');return false">Alerts</a><a href="#" onclick="showSection('ndi');return false">NDI Output</a><a href="#" onclick="showSection('adaptive');return false">Adaptive AI</a><a href="#" onclick="showSection('archive');return false">Service Archive</a><a href="#" onclick="showSection('settings');return false">Settings</a><a href="#" onclick="showSection('troubleshoot');return false">Troubleshooting</a></div>
       <p class="lead">AI-powered worship presentation, live sermon transcription, and Bible verse display for churches. AnchorCast listens to your preacher in real time, automatically detects Bible verses being referenced, and displays them on a projection screen for the congregation.</p>
 
@@ -317,7 +317,7 @@ mark.help-mark{background:rgba(201,168,76,.18);color:var(--gold-b);padding:0 2px
           <div class="step-num">1</div>
           <div class="step-body">
             <div class="step-title">Upload the Bible database</div>
-            <div class="step-desc">Go to <strong>Settings → Bible Versions</strong>. Download <code>kjv.json</code> from the link shown, then click <strong>Upload</strong> next to KJV. This loads all 31,102 verses. You can also run <code>data/download-bible.bat</code> (Windows) or <code>./data/download-bible.sh</code> (Mac/Linux).</div>
+            <div class="step-desc">KJV is built in and loads automatically. For more translations, go to <strong>Settings → Bible Versions → Download Bible</strong> and click <strong>Download</strong> next to any public domain / free license translation — it's fetched, converted, and imported automatically. For copyrighted translations, obtain the file from an authorized source and use <strong>Import File…</strong>.</div>
           </div>
         </div>
         <div class="step">
@@ -364,20 +364,25 @@ mark.help-mark{background:rgba(201,168,76,.18);color:var(--gold-b);padding:0 2px
       <p class="lead">AnchorCast comes with 223 built-in key verses but requires a full Bible JSON file for complete access to all 31,102 verses.</p>
 
       <h2>Installing a Translation</h2>
+      <p>The easiest way — no downloads or file handling required:</p>
       <ol>
-        <li>Open <strong>Settings → Bible Versions</strong></li>
-        <li>Click <strong>Upload</strong> next to any translation (e.g. KJV)</li>
-        <li>Select the JSON file from your computer</li>
-        <li>Restart AnchorCast — the translation loads automatically</li>
+        <li>Open <strong>Settings → Bible Versions → Download Bible</strong></li>
+        <li>Search for a translation (e.g. YLT, KJV, WEB) and click <strong>Download</strong></li>
+        <li>AnchorCast downloads, converts, and imports it automatically — no restart needed</li>
       </ol>
-
-      <h2>Downloading Free Bible Data</h2>
-      <p>Run the one-click script in the <code>anchorcast/data/</code> folder:</p>
+      <p>Each translation is labeled by license status:</p>
       <ul>
-        <li><strong>Windows:</strong> Double-click <code>download-bible.bat</code></li>
-        <li><strong>Mac/Linux:</strong> Run <code>./download-bible.sh</code> in Terminal</li>
+        <li>🟢 <strong>Public Domain</strong> and 🔵 <strong>Free License</strong> translations download and import automatically with one click.</li>
+        <li>🟡 <strong>License Required</strong> translations (most modern translations, e.g. NIV, ESV, NASB) are copyrighted — AnchorCast will not download these automatically. Click the button to see where to obtain the translation from an authorized source, then use <strong>Import File…</strong> to bring in the file you've legally obtained.</li>
       </ul>
-      <p>Or download manually from <strong>github.com/scrollmapper/bible_databases</strong></p>
+      <p>You can also install a translation manually at any time if you already have a JSON file:</p>
+      <ol>
+        <li>Open <strong>Settings → Bible Versions → General</strong></li>
+        <li>Click <strong>Upload</strong> next to any translation (e.g. KJV)</li>
+        <li>Select the JSON file from your computer — AnchorCast converts it automatically if it isn't already in AnchorCast's format</li>
+        <li>The translation loads immediately — no restart needed</li>
+      </ol>
+      <p class="tip"><strong>Note:</strong> Bible translations are owned by their respective copyright holders. AnchorCast only provides access to publicly available resources and does not claim ownership of any translation. You're responsible for complying with the applicable license terms for any translation you download or import.</p>
 
       <h2>Supported Translations</h2>
       <p>AnchorCast accepts <strong>any translation</strong> — not just the ones listed. To upload a custom translation:</p>
@@ -1874,14 +1879,15 @@ mark.help-mark{background:rgba(201,168,76,.18);color:var(--gold-b);padding:0 2px
       <h2>Bible Versions</h2>
       <p>Manage which Bible translations are available in AnchorCast.</p>
       <ul>
+        <li><strong>Download Bible (tab)</strong> — Search the free translation catalog. Public domain and free license translations show a colored <strong>Download</strong> button and install automatically; copyrighted translations show <strong>License Required</strong> instead and must be sourced and imported manually.</li>
         <li><strong>Installed Translations</strong> — Shows all translations with their installed/not-installed status. KJV is bundled by default.</li>
-        <li><strong>Upload New Translation</strong> — Upload any Bible JSON file. Standard translations (NIV, ESV, NASB, etc.) or custom ones are accepted. Any abbreviation works.</li>
+        <li><strong>Upload New Translation</strong> — Upload any Bible JSON file (standard or custom). AnchorCast converts it automatically if it isn't already in AnchorCast's format. Any abbreviation works.</li>
         <li><strong>Custom Translation (Advanced)</strong> — Create your own Bible translation JSON file for specialised needs (e.g. a local language translation).</li>
       </ul>
 
       <div class="tip">
         <div class="tip-icon">💡</div>
-        <div class="tip-text"><strong>Free Bible data:</strong> You can download free public-domain translations using the scripts in the <code>data/</code> folder: <code>download-bible.bat</code> (Windows) or <code>download-bible.sh</code> (Mac/Linux).</div>
+        <div class="tip-text"><strong>Copyright:</strong> Bible translations are owned by their respective copyright holders. AnchorCast only provides access to publicly available resources and does not claim ownership of any translation. You're responsible for complying with the applicable license terms for any translation you download or import.</div>
       </div>
 
       <!-- ── ALERTS ───────────────────────────────────────────────────── -->
@@ -2204,22 +2210,6 @@ document.addEventListener('keydown', (e) => {
 
 showSection('overview');
 setChipFilter('all');
-</script>
-<script>
-(function(){
-  var v = window.electronAPI && window.electronAPI.appVersion;
-  if (!v) return;
-  document.querySelectorAll('[id*="version"],[id*="Version"],[class*="version"],[class*="Version"]').forEach(function(el) {
-    if (el.textContent.includes('v1.')) {
-      el.textContent = el.textContent.replace(/v1\.\d+\.\d+/g, 'v' + v);
-    }
-  });
-  document.querySelectorAll('*').forEach(function(el) {
-    if (el.children.length === 0 && el.textContent.match(/v1\.\d+\.\d+/)) {
-      el.textContent = el.textContent.replace(/v1\.\d+\.\d+/g, 'v' + v);
-    }
-  });
-})();
 </script>
 </body>
 </html>
