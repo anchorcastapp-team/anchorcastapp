@@ -580,6 +580,12 @@ const PRESETS_ASSETS  = path.join(APPDATA_ROOT, 'PresetAssets');
 
 const SETTINGS_FILE    = path.join(DATA_DIR, 'settings.json');
 const TRANSCRIPTS_FILE = path.join(DATA_DIR, 'transcripts.json');
+// Written periodically WHILE recording is active — a live crash-recovery
+// buffer, separate from TRANSCRIPTS_FILE (which only gets a completed
+// session on clean Stop). If AnchorCast is interrupted mid-service (crash,
+// power loss, force-quit, or any future bug that clears the in-memory
+// transcript), this file lets that session's text survive the interruption.
+const TRANSCRIPT_AUTOSAVE_FILE = path.join(DATA_DIR, 'transcript-autosave.json');
 const THEMES_FILE      = path.join(DATA_DIR, 'themes.json');
 const SONGS_FILE       = path.join(DATA_DIR, 'songs.json');
 const SONG_BACKUP_DIR  = path.join(DATA_DIR, 'song-library-backups');
@@ -1560,7 +1566,15 @@ function createProjectionWindow(displayId){
   const isSameDisplayAsMain = (target.id === primaryId);
   projectionWindow=new BrowserWindow({
     icon: APP_ICON,
-    x,y,width,height,fullscreen:true,frame:false,
+    x,y,width,height,frame:false,
+    // IMPORTANT: fullscreen is intentionally NOT set here. Setting
+    // fullscreen:true in the constructor together with x/y for a
+    // non-primary display is a known Electron/Chromium race on Windows —
+    // the fullscreen transition can occur before the window's position on
+    // the target display has actually been committed by the OS, causing it
+    // to fullscreen on whichever display it started on (usually the
+    // primary) instead of the one specified. Position first, confirm it
+    // landed on the right display, THEN transition to fullscreen below.
     alwaysOnTop: !isSameDisplayAsMain,
     // Hide from taskbar and Win+Tab Task View on external display.
     // This prevents the operator accidentally selecting/minimising the
@@ -1580,10 +1594,34 @@ function createProjectionWindow(displayId){
   projectionWindow._displayScaleFactor = scaleFactor;
   projectionWindow._displayWidth  = width;
   projectionWindow._displayHeight = height;
+  // Explicitly commit the position on the target display BEFORE going
+  // fullscreen, and verify it actually landed there.
+  projectionWindow.setBounds({ x, y, width, height });
   projectionWindow.loadFile(path.join(__dirname,'renderer','projection.html'));
   projectionWindow.once('ready-to-show',()=>{
     try{
+      // Re-assert position immediately before fullscreen — on some Windows
+      // configs the window can drift back toward the primary display
+      // between creation and ready-to-show, especially right after a
+      // display was connected/reconfigured.
+      projectionWindow?.setBounds({ x, y, width, height });
+      projectionWindow?.setFullScreen(true);
       projectionWindow?.show();
+      // Verify it actually ended up on the intended display; if not,
+      // force it back — this is the concrete fix for projection opening
+      // on the main screen instead of the external one.
+      setTimeout(() => {
+        try {
+          if (!projectionWindow || projectionWindow.isDestroyed()) return;
+          const actualDisplay = screen.getDisplayMatching(projectionWindow.getBounds());
+          if (actualDisplay.id !== target.id) {
+            console.warn('[Projection] Window landed on wrong display, correcting...');
+            projectionWindow.setFullScreen(false);
+            projectionWindow.setBounds({ x, y, width, height });
+            projectionWindow.setFullScreen(true);
+          }
+        } catch(e) {}
+      }, 400);
       // On Windows: use the highest alwaysOnTop level so the projection
       // screen stays above the taskbar and is immune to Win+Tab / Task View
       if (!isSameDisplayAsMain && process.platform === 'win32') {
@@ -2147,7 +2185,15 @@ function buildMenu(){
     // ── Display ───────────────────────────────────────────────────────────
     {label:'Display',submenu:[
       {label:'Open Projection',accelerator:'CmdOrCtrl+P',click:()=>{
-        createProjectionWindow(screen.getAllDisplays()[0].id);
+        // Match the toolbar button's logic: prefer a non-primary (external)
+        // display. Previously this hardcoded displays[0], which is just
+        // whichever display Electron happens to list first — not
+        // necessarily the external one — and could open projection on the
+        // main screen instead.
+        const displays = screen.getAllDisplays();
+        const primaryId = screen.getPrimaryDisplay().id;
+        const externalDisplay = displays.find(d => d.id !== primaryId);
+        createProjectionWindow((externalDisplay || displays[0]).id);
       }},
       {label:'Close Projection',click:()=>{if(projectionWindow)projectionWindow.close();}},
       {type:'separator'},
@@ -4391,6 +4437,29 @@ ipcMain.handle('delete-transcript',(_,id)=>{
   }catch(e){return{success:false,error:e.message};}
 });
 
+// ── Live transcript crash-recovery buffer ──────────────────────────────────
+// Written periodically while State.isRecording is true. Overwritten each
+// time (it only ever holds the CURRENT in-progress session, not history).
+// Cleared once that session ends cleanly via save-transcript.
+ipcMain.handle('autosave-transcript', (_, data) => {
+  try {
+    fs.mkdirSync(path.dirname(TRANSCRIPT_AUTOSAVE_FILE), { recursive: true });
+    fs.writeFileSync(TRANSCRIPT_AUTOSAVE_FILE, JSON.stringify({ ...data, savedAt: new Date().toISOString() }));
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+ipcMain.handle('check-transcript-autosave', () => {
+  try {
+    if (!fs.existsSync(TRANSCRIPT_AUTOSAVE_FILE)) return { found: false };
+    const data = JSON.parse(fs.readFileSync(TRANSCRIPT_AUTOSAVE_FILE, 'utf-8'));
+    return { found: true, data };
+  } catch (e) { return { found: false }; }
+});
+ipcMain.handle('clear-transcript-autosave', () => {
+  try { if (fs.existsSync(TRANSCRIPT_AUTOSAVE_FILE)) fs.unlinkSync(TRANSCRIPT_AUTOSAVE_FILE); return { success: true }; }
+  catch (e) { return { success: false, error: e.message }; }
+});
+
 // Themes
 ipcMain.handle('get-themes',()=>loadThemes());
 ipcMain.handle('save-themes',(_,themes)=>{
@@ -5375,12 +5444,19 @@ async function _saveBibleVersionCore(translation, data) {
     let count = 0;
     try { count = Array.isArray(data) ? data.length : JSON.parse(payload).length; } catch(_) {}
     console.log(`[BibleDB] Saved ${count} ${translation} verses to ${file}`);
-    if (mainWindow) mainWindow.webContents.send('bible-versions-updated');
+    if (mainWindow) mainWindow.webContents.send('bible-versions-updated', { justImported: translation });
     return { success: true, count, verseCount: count };
   } catch(e) {
     return { success: false, error: e.message };
   }
 }
+
+// Save a Bible translation uploaded from the settings UI (drag/drop upload
+// and the Custom Translation paste-JSON flow both call this via
+// window.electronAPI.importTranslation).
+ipcMain.handle('save-bible-version', async (_, translation, data) => {
+  return _saveBibleVersionCore(translation, data);
+});
 
 // ── In-app "Download Bible" feature ────────────────────────────────────────
 // Fetches the translation catalog and downloads/flattens a translation
