@@ -213,6 +213,7 @@ async function init() {
     try { await loadBibleData(); } catch (_) {}
     if (!BibleDB?.translations?.[State.currentTranslation]) State.currentTranslation = 'KJV';
     await loadDefaultBibleReference();
+    _checkTranscriptAutosaveOnStartup(); // recover any transcript left over from an interrupted session
   } else {
     try {
       const r = await fetch('/api/settings');
@@ -1197,9 +1198,25 @@ function setupElectronEvents() {
     }
     toast('✓ Settings applied');
   });
-  window.electronAPI.on('bible-versions-updated', async () => {
+  window.electronAPI.on('bible-versions-updated', async (payload) => {
     try { await loadBibleData(); } catch(_) {}
     await refreshTranslationDropdowns();
+    // Requested default: 21st Century King James (KJ21) is copyrighted and
+    // can't be bundled or auto-downloaded, so it can only become available
+    // once the user imports it themselves. When that import succeeds, make
+    // it the active translation immediately (rather than requiring a manual
+    // dropdown switch), and persist the choice so it stays the default on
+    // every future launch — same as any other translation choice would.
+    if (payload?.justImported && String(payload.justImported).toUpperCase() === 'KJ21' && BibleDB?.translations?.['KJ21']) {
+      State.currentTranslation = 'KJ21';
+      if (window.electronAPI?.getSettings && window.electronAPI?.saveSettings) {
+        try {
+          const s = await window.electronAPI.getSettings();
+          await window.electronAPI.saveSettings({ ...s, translation: 'KJ21' });
+        } catch(_) {}
+      }
+      toast('✓ KJ21 imported and set as your default translation');
+    }
     if (!BibleDB?.translations?.[State.currentTranslation]) State.currentTranslation = 'KJV';
     const gt = document.getElementById('globalTranslation');
     const st = document.getElementById('searchTranslation');
@@ -1207,7 +1224,9 @@ function setupElectronEvents() {
     if (st) st.value = State.currentTranslation;
     try { renderBibleSearch(); } catch (_) {}
     try { refreshCanvases(); } catch (_) {}
-    toast('✓ Bible versions refreshed');
+    if (!(payload?.justImported && String(payload.justImported).toUpperCase() === 'KJ21')) {
+      toast('✓ Bible versions refreshed');
+    }
   });
   window.electronAPI.on('ndi-status', (info) => {
     updateNdiPanel(info);
@@ -1943,6 +1962,7 @@ function startRecording() {
   const btn = document.getElementById('recordBtn');
   btn.textContent = '⏹ Stop Transcript';
   btn.classList.add('active');
+  _startTranscriptAutosave();
 
   // Clear empty state
   const body = document.getElementById('transcriptBody');
@@ -2342,6 +2362,7 @@ function stopRecording() {
   fileTranscribeAbort = true; // abort any in-progress file transcription
   State.isRecording = false;
   _stopSilenceDetection();
+  _stopTranscriptAutosave(false); // stop the timer now; file is removed once saveTranscriptHistory() succeeds below
   const btn = document.getElementById('recordBtn');
   btn.textContent = '▶ Start Transcript';
   btn.classList.remove('active');
@@ -2606,6 +2627,67 @@ async function saveTranscriptHistory() {
     detectedVerses: State.detections.map(d => d.ref),
     date: new Date().toISOString(),
   });
+  // The session is now safely captured in permanent history — the live
+  // crash-recovery buffer is no longer needed.
+  await _stopTranscriptAutosave(true);
+}
+
+// ─── Live transcript crash-recovery (autosave) ────────────────────────────
+// Periodically writes the in-progress transcript to disk WHILE recording,
+// completely separate from saveTranscriptHistory() (which only fires once,
+// on a clean Stop). This means a crash, force-quit, power loss, or any bug
+// that clears the in-memory transcript mid-service loses at most the last
+// autosave interval's worth of text, not the whole service.
+let _transcriptAutosaveTimer = null;
+const TRANSCRIPT_AUTOSAVE_INTERVAL_MS = 20000; // 20s — frequent enough to matter, infrequent enough to be cheap
+
+function _startTranscriptAutosave() {
+  _stopTranscriptAutosave(false); // clear any stale timer first, don't delete the file yet
+  _transcriptAutosaveTimer = setInterval(_writeTranscriptAutosave, TRANSCRIPT_AUTOSAVE_INTERVAL_MS);
+}
+
+async function _stopTranscriptAutosave(deleteFile) {
+  if (_transcriptAutosaveTimer) { clearInterval(_transcriptAutosaveTimer); _transcriptAutosaveTimer = null; }
+  if (deleteFile && window.electronAPI?.clearTranscriptAutosave) {
+    try { await window.electronAPI.clearTranscriptAutosave(); } catch(_) {}
+  }
+}
+
+async function _writeTranscriptAutosave() {
+  if (!State.isRecording || !window.electronAPI?.autosaveTranscript) return;
+  const text = State.transcriptLines.map(l => l.text).join('\n');
+  if (!text) return; // nothing recorded yet — don't write an empty recovery file
+  try {
+    await window.electronAPI.autosaveTranscript({
+      text,
+      lineCount: State.transcriptLines.length,
+      recordingStartTime: State.recordingStartTime,
+    });
+  } catch(_) { /* best-effort — a failed autosave shouldn't interrupt the service */ }
+}
+
+// On launch, check for a leftover autosave file. Its presence means the
+// last session never reached a clean Stop (crash, force-quit, power loss,
+// etc.) — recover it into History automatically so nothing is lost silently.
+async function _checkTranscriptAutosaveOnStartup() {
+  if (!window.electronAPI?.checkTranscriptAutosave) return;
+  try {
+    const r = await window.electronAPI.checkTranscriptAutosave();
+    if (!r?.found || !r.data?.text) return;
+    const words = r.data.text.split(/\s+/).filter(Boolean).length;
+    await window.electronAPI.saveTranscript({
+      title: `Recovered Session — ${new Date(r.data.savedAt || Date.now()).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`,
+      text: r.data.text,
+      lineCount: r.data.lineCount || 0,
+      verseCount: 0,
+      wordCount: words,
+      duration: 0,
+      detectedVerses: [],
+      date: r.data.savedAt || new Date().toISOString(),
+    });
+    await window.electronAPI.clearTranscriptAutosave();
+    toast('🛟 Recovered a transcript from an interrupted session — check History');
+  } catch(_) { /* non-critical */ }
 }
 
 // ─── MIC ANIMATION ────────────────────────────────────────────────────────────
@@ -2757,9 +2839,14 @@ function renderDetections() {
 
 function clearDetections() {
   State.detections = [];
-  // Clear transcriptLines too so old text can't re-trigger detections
-  // when transcription restarts
-  State.transcriptLines = [];
+  // NOTE: this used to also clear State.transcriptLines ("so old text can't
+  // re-trigger detections when transcription restarts"), but that silently
+  // wiped the entire sermon transcript — including everything saved to
+  // History — any time someone clicked "Clear all" on the Detections panel,
+  // producing a saved transcript that was missing lines with no warning.
+  // Re-detection prevention is already handled independently by
+  // AIDetection.clearCache() below, so clearing the transcript here was
+  // both unnecessary and harmful. Removed.
   renderDetections();
   // Clear the AI detection engine cache
   if (window.AIDetection) AIDetection.clearCache();
