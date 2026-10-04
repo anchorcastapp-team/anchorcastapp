@@ -992,20 +992,38 @@ function loadBgImage(input) {
   input.value = '';
 }
 
-function loadBgVideo(input) {
+async function loadBgVideo(input) {
   const file = input.files?.[0]; if (!file) return;
   let t = getTheme(); if (!t) return;
   if (t.builtIn) { cloneTheme(); t = getTheme(); }
   snap();
-  const path = file.path;
-  if (path) {
-    const vPath = path.replace(/\\/g, '/'); t.bgType = 'video'; t.bgVideo = 'media:///' + (vPath.startsWith('/') ? vPath.slice(1) : vPath);
+  // file.path is unreliable/undefined in modern Electron (a security change
+  // removed it from File objects) — webUtils.getPathForFile() is the
+  // correct replacement.
+  const rawPath = file.path || (window.electronAPI?.getPathForFile ? window.electronAPI.getPathForFile(file) : '');
+  // IMPORTANT: media:// is only served for files under AnchorCast's own data
+  // folder (a security restriction) — pointing it at the original path
+  // (e.g. Downloads/Desktop) gets silently 403'd, so the background never
+  // displays even here in the Theme Editor. Import the file into the
+  // allowed ThemeBackgrounds folder first, then build media:// from THAT.
+  let importedPath = '';
+  if (rawPath && window.electronAPI?.importThemeBgFile) {
+    try {
+      const r = await window.electronAPI.importThemeBgFile(rawPath);
+      if (r?.filePath) importedPath = r.filePath;
+      else if (r?.error) toast('⚠ ' + r.error);
+    } catch (e) { toast('⚠ Could not import video: ' + e.message); }
+  }
+  if (importedPath) {
+    const vPath = importedPath.replace(/\\/g, '/'); t.bgType = 'video'; t.bgVideo = 'media:///' + (vPath.startsWith('/') ? vPath.slice(1) : vPath);
     t.bgImage = null; refresh(); renderBgInspectorEl();
     toast('▶ Video background set');
   } else {
+    // Last-resort fallback: still a blob: URL, so only reliable within
+    // this Theme Editor window itself, not once applied elsewhere.
     t.bgType = 'video'; t.bgVideo = URL.createObjectURL(file);
     t.bgImage = null; refresh(); renderBgInspectorEl();
-    toast('▶ Video background set');
+    toast('▶ Video background set (preview only — reopen with the Choose File dialog for a version that displays everywhere)');
   }
   input.value = '';
 }
@@ -1018,7 +1036,7 @@ function clearBg() {
   refresh();
 }
 
-function handleDrop(e) {
+async function handleDrop(e) {
   e.preventDefault();
   const file = e.dataTransfer.files?.[0]; if (!file) return;
   let t = getTheme(); if (!t) return;
@@ -1029,7 +1047,26 @@ function handleDrop(e) {
     reader.onload = ev => { t.bgType='image'; t.bgImage=ev.target.result; t.bgVideo=null; refresh(); };
     reader.readAsDataURL(file);
   } else if (file.type.startsWith('video/')) {
-    t.bgType='video'; t.bgVideo=file.path||URL.createObjectURL(file); t.bgImage=null;
+    // Same fix as loadBgVideo: import into the allowed ThemeBackgrounds
+    // folder first — media:// 403s any path outside AnchorCast's own data
+    // folder, which is why dropped videos never displayed even in this
+    // Theme Editor window.
+    const rawPath = file.path || (window.electronAPI?.getPathForFile ? window.electronAPI.getPathForFile(file) : '');
+    let importedPath = '';
+    if (rawPath && window.electronAPI?.importThemeBgFile) {
+      try {
+        const r = await window.electronAPI.importThemeBgFile(rawPath);
+        if (r?.filePath) importedPath = r.filePath;
+        else if (r?.error) toast('⚠ ' + r.error);
+      } catch (e2) { toast('⚠ Could not import video: ' + e2.message); }
+    }
+    if (importedPath) {
+      const vPath = importedPath.replace(/\\/g, '/');
+      t.bgVideo = 'media:///' + (vPath.startsWith('/') ? vPath.slice(1) : vPath);
+    } else {
+      t.bgVideo = URL.createObjectURL(file);
+    }
+    t.bgType='video'; t.bgImage=null;
     refresh();
   }
   toast('📂 Background set from drop');
