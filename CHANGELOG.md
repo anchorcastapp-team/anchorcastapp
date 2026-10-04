@@ -4,6 +4,13 @@ All notable changes to **AnchorCast** are documented here.
 
 ---
 
+## [1.7.0] — 2026-09
+
+### Fixed
+- **Theme Editor background image/video not displaying** — the `media://` protocol used to serve local background files only allows files inside AnchorCast's own data folder; any picture or video picked from outside it (Downloads, Desktop, etc.) was silently rejected with a 403, so the background never rendered — even in the Theme Editor's own preview. Background files are now automatically copied into AnchorCast's data folder on pick/drop before being referenced, for both the file picker and drag-and-drop.
+
+---
+
 ## [1.6.0] — 2026-08
 
 ### Fixed
