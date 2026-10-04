@@ -106,6 +106,7 @@ contextBridge.exposeInMainWorld('electronAPI',{
   openThemeDesigner:(d)  =>ipcRenderer.invoke('open-theme-designer', d),
   getThemeDesignerParams:()=>ipcRenderer.invoke('get-theme-designer-params'),
   pickBgMedia:       (d) =>ipcRenderer.invoke('pick-bg-media', d),
+  importThemeBgFile: (filePath) =>ipcRenderer.invoke('import-theme-bg-file', { filePath }),
   // Export
   exportFile:     (opts) =>ipcRenderer.invoke('export-file',opts),
   exportTranscript:(opts)=>ipcRenderer.invoke('export-transcript',opts),

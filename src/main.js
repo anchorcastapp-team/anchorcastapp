@@ -526,6 +526,11 @@ const ASSETS_DIR = app.isPackaged
 const APPDATA_ROOT       = path.join(UD, 'AnchorCastData');
 const DATA_DIR           = path.join(APPDATA_ROOT, 'Data');
 const BIBLE_DIR          = path.join(APPDATA_ROOT, 'Bibles');
+// Theme Editor background images/videos are copied here when chosen, because
+// the media:// protocol handler only serves files under APPDATA_ROOT (a v1.4.0
+// security restriction). Serving the original file from Downloads/Desktop/etc.
+// returned 403 and the background silently never displayed.
+const THEME_BG_DIR       = path.join(APPDATA_ROOT, 'ThemeBackgrounds');
 const PRES_ASSETS        = path.join(APPDATA_ROOT, 'Presentation');
 const VIDEO_ASSETS       = path.join(APPDATA_ROOT, 'videos');
 const AUDIO_ASSETS       = path.join(APPDATA_ROOT, 'Audio');
@@ -2033,8 +2038,52 @@ ipcMain.handle('pick-bg-media', async (_, { type = 'image' } = {}) => {
     filters, properties: ['openFile'],
   });
   if (result.canceled || !result.filePaths.length) return { canceled: true };
-  return { filePath: result.filePaths[0] };
+  try {
+    return { filePath: await _importThemeBgMedia(result.filePaths[0]) };
+  } catch (e) {
+    console.warn('[ThemeBG] import failed:', e.message);
+    return { error: e.message };
+  }
 });
+
+// Same import, for files the Theme Editor received via drag-drop or a file
+// input (the renderer resolves the real path with webUtils.getPathForFile).
+ipcMain.handle('import-theme-bg-file', async (_, { filePath } = {}) => {
+  try {
+    if (!filePath || typeof filePath !== 'string') throw new Error('No file specified');
+    return { filePath: await _importThemeBgMedia(filePath) };
+  } catch (e) {
+    return { error: e.message };
+  }
+});
+
+const THEME_BG_EXT = new Set(['jpg','jpeg','png','gif','webp','bmp','mp4','mov','webm','avi','mkv','m4v']);
+async function _importThemeBgMedia(srcPath) {
+  const resolved = path.resolve(srcPath);
+  const ext = path.extname(resolved).toLowerCase().slice(1);
+  if (!THEME_BG_EXT.has(ext)) throw new Error(`Unsupported file type: .${ext || '(none)'}`);
+  const st = await fs.promises.stat(resolved);
+  if (!st.isFile()) throw new Error('Not a file');
+
+  // Already inside the app's data folder (e.g. from the media library) —
+  // the media:// handler can serve it as-is, no need to duplicate it.
+  const root = path.resolve(APPDATA_ROOT) + path.sep;
+  if (resolved.startsWith(root)) return resolved;
+
+  await fs.promises.mkdir(THEME_BG_DIR, { recursive: true });
+  // Stable name derived from source path + size + mtime, so choosing the same
+  // file twice reuses the existing copy instead of piling up duplicates.
+  const tag = crypto.createHash('sha1').update(`${resolved}|${st.size}|${st.mtimeMs}`).digest('hex').slice(0, 10);
+  const base = (path.basename(resolved, path.extname(resolved)).replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 60)) || 'background';
+  const dest = path.join(THEME_BG_DIR, `${base}-${tag}.${ext}`);
+
+  let needCopy = true;
+  try { needCopy = (await fs.promises.stat(dest)).size !== st.size; } catch (_) {}
+  // Async copy: background videos can be hundreds of MB, and a synchronous
+  // copy would freeze the whole app while it runs.
+  if (needCopy) await fs.promises.copyFile(resolved, dest);
+  return dest;
+}
 
 ipcMain.handle('open-pres-editor', (_, data) => {
   createPresentationEditorWindow(data);
