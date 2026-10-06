@@ -8,6 +8,21 @@ All notable changes to **AnchorCast** are documented here.
 
 ### Fixed
 - **Theme Editor background image/video not displaying** — the `media://` protocol used to serve local background files only allows files inside AnchorCast's own data folder; any picture or video picked from outside it (Downloads, Desktop, etc.) was silently rejected with a 403, so the background never rendered — even in the Theme Editor's own preview. Background files are now automatically copied into AnchorCast's data folder on pick/drop before being referenced, for both the file picker and drag-and-drop.
+- **Remote Control and NDI registration locks** — both controls are greyed out for unregistered devices and explain the restriction with **Register now** / **Not now** rather than silently toggling or doing nothing. Covers the toolbar, Remote popover, Settings and External Output panel. Registration status is rechecked before enabling; activation refreshes controls without automatically starting a service.
+- **Remote Control false ON state** — the UI now waits for successful server binding and checks blocked/error responses before changing the switch. Failed or repeated requests no longer misleadingly show Remote Control as active.
+- **Network feature startup bypass** — registration is checked inside the desktop Remote/NDI service start functions, including startup, saved-settings and network-adapter restart paths. Unregistered settings cannot persist enable flags through the settings-save flow; unavailable registration status denies access. Remote URLs/role links and NDI stream URLs are not returned while locked.
+- **Register from Settings** — the registration form can now be opened from the trusted Settings window; sender validation is retained. The registration prompt supports mouse/keyboard operation, focus return and Escape dismissal.
+- **AI Transcription still available after skipping registration** — Start Transcript now checks verified registration before microphone access and offers **Register now** / **Not now**. The same check covers Local Whisper, Deepgram Live, cloud transcription, audio-file import, and legacy/manual transcript start paths. PCM submission and processing now also enforce registration in the main process; a running model or configured API key does not grant access.
+- **Repeated/cancelled transcript starts** — concurrent Start clicks share an in-flight registration check; stopping during microphone permission or a pending Deepgram connection prevents a late start. A registration-status failure blocks transcription with an actionable message instead of silently allowing it. Existing transcript contents are not cleared.
+- **Registration failure blocking first launch** — dismissing the registration form no longer quits AnchorCast. A persistent **Continue without registering** button works before, during and after an email request. It reveals the basic app without activating the device or removing registration-required feature restrictions.
+- **Invisible main window after activation** — successful email activation, registration dismissal and normal startup share a per-window reveal path that restores opacity and sends `app-ready` once. Late startup callbacks cannot affect replacement windows. Update initialization is not duplicated on subsequent reveals.
+- **Registration email error handling** — the existing 20-second socket idle timeout remains; the TLS socket now has its own idle timeout, unexpected disconnects settle immediately, and a separate 45-second total request deadline prevents unbounded waits. The form supports retry and shows a clear failure message. Concurrent email-send requests are rejected while one is in progress.
+- **False email failure after SMTP acceptance** — success is recognized when the SMTP server accepts the message after DATA; it no longer depends on the later QUIT response. Server acceptance is not proof of delivery to an inbox.
+- **Help → Registration → Open registration form** — the button now opens the form instead of only closing the status window.
+- **Quit during registration** — deliberate Quit/Cmd+Q is not treated as Skip. Cancelling the existing unsaved-transcript quit prompt no longer stops the application's servers prematurely.
+
+### Added
+- Reproducible registration regression tests and patch verification script.
 
 ---
 
