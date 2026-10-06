@@ -70,6 +70,9 @@ contextBridge.exposeInMainWorld('electronAPI',{
   saveTranscript: (d)    =>ipcRenderer.invoke('save-transcript',d),
   getTranscripts: ()     =>ipcRenderer.invoke('get-transcripts'),
   deleteTranscript:(id)  =>ipcRenderer.invoke('delete-transcript',id),
+  autosaveTranscript: (d)       => ipcRenderer.invoke('autosave-transcript', d),
+  checkTranscriptAutosave: ()   => ipcRenderer.invoke('check-transcript-autosave'),
+  clearTranscriptAutosave: ()   => ipcRenderer.invoke('clear-transcript-autosave'),
   openHistory:    ()     =>ipcRenderer.invoke('open-history'),
   loadDetectionReviewData: () => ipcRenderer.invoke('load-detection-review-data'),
   saveDetectionFeedback: (d) => ipcRenderer.invoke('save-detection-feedback', d),
@@ -103,6 +106,7 @@ contextBridge.exposeInMainWorld('electronAPI',{
   openThemeDesigner:(d)  =>ipcRenderer.invoke('open-theme-designer', d),
   getThemeDesignerParams:()=>ipcRenderer.invoke('get-theme-designer-params'),
   pickBgMedia:       (d) =>ipcRenderer.invoke('pick-bg-media', d),
+  importThemeBgFile: (filePath) =>ipcRenderer.invoke('import-theme-bg-file', { filePath }),
   // Export
   exportFile:     (opts) =>ipcRenderer.invoke('export-file',opts),
   exportTranscript:(opts)=>ipcRenderer.invoke('export-transcript',opts),
@@ -110,6 +114,9 @@ contextBridge.exposeInMainWorld('electronAPI',{
   // Bible data
   loadBibleData:        ()              => ipcRenderer.invoke('load-bible-data'),
   getInstalledVersions: ()              => ipcRenderer.invoke('get-installed-versions'),
+  fetchBibleCatalog:    ()              => ipcRenderer.invoke('bible-fetch-catalog'),
+  flattenBibleJson:     (data)          => ipcRenderer.invoke('bible-flatten-json', data),
+  downloadBibleTranslation: (slug, fullName) => ipcRenderer.invoke('bible-download-translation', { slug, fullName }),
   saveBibleVersion:     (trans, data)   => ipcRenderer.invoke('save-bible-version', trans, data),
   deleteBibleVersion:   (trans)         => ipcRenderer.invoke('delete-bible-version', trans),
   importTranslation:    ({abbrev, data})=> ipcRenderer.invoke('save-bible-version', abbrev, data),
@@ -143,6 +150,8 @@ contextBridge.exposeInMainWorld('electronAPI',{
   getLicenseStatus: () => ipcRenderer.invoke('get-license-status'), // legacy compat
   sendRegistrationEmail: (fullName, email, church) => ipcRenderer.invoke('send-registration-email', fullName, email, church),
   getEmailSentState:     () => ipcRenderer.invoke('get-email-sent-state'),
+  skipRegistration:     () => ipcRenderer.invoke('skip-registration'),
+  openRegistrationWindow: () => ipcRenderer.invoke('open-registration-window'),
   getTimerState:     ()     => ipcRenderer.invoke('get-timer-state'),
   timerFlashSpeed: (data)  => ipcRenderer.invoke('timer-flash-speed', data),
   isTimerStandalone: ()    => ipcRenderer.invoke('is-timer-standalone'),
@@ -205,6 +214,7 @@ contextBridge.exposeInMainWorld('electronAPI',{
       'open-settings-modal','settings-saved','bible-versions-updated','ndi-status','open-ndi-panel','open-sermon-notes',
       'songs-saved',
       'transcript-result','transcript-no-key','whisper-status','whisper-setup-needed','whisper-setup-result','whisper-model-progress','whisper-model-downloaded',
+      'bible-download-progress','bible-download-complete',
       'menu-schedule-new','menu-schedule-save','menu-schedule-save-as',
       'menu-schedule-open','menu-schedule-export','menu-schedule-import',
       'menu-schedule-load-file',
@@ -220,16 +230,25 @@ contextBridge.exposeInMainWorld('electronAPI',{
       'logo-overlay-drag-update',
       'theme-designer-open',
       'themes-updated',
-      'song-manager-new-song','song-manager-open-song','license-file-opened','registration-complete','display-warning','timer-state-sync','timer-stopped','timer-flash-speed','set-projection-bg','show-clock','hide-clock','confirm-quit-with-transcript','update-available','update-downloaded','update-download-progress',
+      'song-manager-new-song','song-manager-open-song','license-file-opened','registration-complete','display-warning','timer-state-sync','timer-stopped','timer-flash-speed','set-projection-bg','show-clock','hide-clock','confirm-quit-with-transcript','update-available','update-available-mac','update-downloaded','update-download-progress','update-checking',
     ];
     if(!allowed.includes(channel)) return()=>{};
     const sub=(_,...args)=>cb(...args);
     ipcRenderer.on(channel,sub);
     return()=>ipcRenderer.removeListener(channel,sub);
   },
-  updaterInstallNow: () => ipcRenderer.invoke('updater-install-now'),
-  updaterCheckNow:   () => ipcRenderer.invoke('updater-check-now'),
+  updaterInstallNow:   () => ipcRenderer.invoke('updater-install-now'),
+  updaterDownloadNow:  () => ipcRenderer.invoke('updater-download-now'),
+  updaterCheckNow:     () => ipcRenderer.invoke('updater-check-now'),
   appVersion: ipcRenderer.sendSync('get-app-version'),
   platform:process.platform,
   isElectron:true,
+  // F4 fix: webSecurity:true means file.path is no longer populated on File objects.
+  // Use webUtils.getPathForFile() instead — the correct Electron API for this.
+  getPathForFile: (file) => {
+    try {
+      const { webUtils } = require('electron');
+      return webUtils.getPathForFile(file);
+    } catch(_) { return file?.path || ''; }
+  },
 });
