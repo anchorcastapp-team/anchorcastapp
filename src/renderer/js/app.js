@@ -646,10 +646,7 @@ function wmAction(id) {
       else window.open('/help.html', '_blank');
       break;
     case 'remote-url':      openRemotePopover(); break;
-    case 'external-output':
-      if (window.electronAPI?.send) window.electronAPI.send('open-ndi-panel');
-      else toast('External Output requires the desktop app');
-      break;
+    case 'external-output': openNdiPanel(); break;
     case 'open-projection': openProjection(); break;
     case 'close-projection':
       if (window.electronAPI?.closeProjection) window.electronAPI.closeProjection();
@@ -787,7 +784,8 @@ function bindEvents() {
   document.getElementById('transcriptReviewSearch')?.addEventListener('input', renderTranscriptReviewList);
 
   // Audio file upload — transcribe a recorded sermon file
-  document.getElementById('audioUploadBtn')?.addEventListener('click', () => {
+  document.getElementById('audioUploadBtn')?.addEventListener('click', async () => {
+    if (!await ensureTranscriptionRegistration()) return;
     document.getElementById('audioFileInput')?.click();
   });
   document.getElementById('audioFileInput')?.addEventListener('change', async (e) => {
@@ -800,8 +798,10 @@ function bindEvents() {
   // Manual text input — type sermon text to test AI detection
   const manualInput = document.getElementById('manualInput');
   if (manualInput) {
-    manualInput.addEventListener('keydown', (e) => {
+    manualInput.addEventListener('keydown', async (e) => {
       if (e.key === 'Enter' && manualInput.value.trim()) {
+        e.preventDefault();
+        if (!await ensureTranscriptionRegistration()) return;
         const text = manualInput.value.trim();
         manualInput.value = '';
         // Ensure recording state is active
@@ -930,12 +930,7 @@ function bindEvents() {
   // NDI panel
   document.getElementById('ndiClose')?.addEventListener('click', () => closeModal('ndiOverlay'));
   document.getElementById('ndiCloseFooter')?.addEventListener('click', () => closeModal('ndiOverlay'));
-  document.getElementById('ndiStartBtn')?.addEventListener('click', async () => {
-    if (!window.electronAPI) return;
-    document.getElementById('ndiStatusLabel').textContent = '⏳ Starting NDI…';
-    const result = await window.electronAPI.ndiStart();
-    updateNdiPanel(result);
-  });
+  document.getElementById('ndiStartBtn')?.addEventListener('click', startNdiFromPanel);
   document.getElementById('ndiStopBtn')?.addEventListener('click', async () => {
     if (!window.electronAPI) return;
     await window.electronAPI.ndiStop();
@@ -1126,6 +1121,12 @@ function setupElectronEvents() {
   // BUG-16 FIX: register transcript-no-key ONCE here instead of inside
   // startPcmCapture() — which ran on every recording start and stacked
   // duplicate listeners (after 3 restarts the toast fired 3 times).
+  window.electronAPI.on('registration-complete', () => {
+    const dialog = document.getElementById('transcriptionRegistrationDialog');
+    if (dialog?.open) dialog.close();
+    // Do not start a microphone automatically after activating a device.
+    toast('✓ Registration complete — registered features are now available.');
+  });
   window.electronAPI.on('transcript-no-key', () => {
     toast('⚠ Invalid API key, missing API key, or billing/fund issue. Check Settings and your provider account.');
   });
@@ -1586,6 +1587,9 @@ function syncBibleListHighlightAndScroll() {
 
 
 function handleKeyboard(e) {
+  // Dialog buttons and locked feature controls keep their own keyboard behavior.
+  if (document.querySelector('dialog[open]') ||
+      e.target.closest?.('[data-registration-feature]')) return;
   const tag = document.activeElement?.tagName;
   const isInput = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
 
@@ -1745,25 +1749,29 @@ function navigateSearchVerses(direction) {
 function updateRemoteBtn(info) {
   const btn = document.getElementById('remoteBtn');
   if (!btn) return;
-  const enabled = !info?.disabled && info?.ip;
+  const enabled = !info?.blocked && !info?.disabled && info?.enabled !== false && !!info?.ip;
   btn.classList.toggle('remote-active', !!enabled);
   btn.title = enabled
     ? `Remote: http://${info.ip}:${info.port}/remote (Click to manage)`
-    : 'Remote Control (disabled)';
+    : (info?.blocked ? 'Remote Control requires registration. Click to register.' : 'Remote Control (disabled)');
+  window.RegistrationAccess?.apply();
 }
 
 async function openRemotePopover() {
   if (!window.electronAPI) { toast('ℹ Remote Control requires the desktop app'); return; }
+  if (!window.RegistrationAccess || !await window.RegistrationAccess.ensure('remote')) return;
 
   // Fetch fresh info
   const info = await window.electronAPI.getRemoteInfo().catch(() => null);
+  if (window.RegistrationAccess.handleBlocked('remote', info)) return;
+  if (!info) { toast('Remote status unavailable. Please try again.'); return; }
   if (info) { State.remoteInfo = info; }
   const data = State.remoteInfo || info || { ip: null, port: 8080, enabled: false };
 
   // Remove any existing popover
   document.getElementById('remotePopover')?.remove();
 
-  const enabled = data.enabled !== false && data.ip;
+  const enabled = data.running === true && !!data.ip;
   const url = enabled ? `http://${data.ip}:${data.port}/remote` : null;
 
   const pop = document.createElement('div');
@@ -1786,7 +1794,7 @@ async function openRemotePopover() {
         <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:2px">Remote Server</div>
         <div style="font-size:10px;color:var(--text-dim)">Allow phones on same WiFi to control the app</div>
       </div>
-      <div id="remoteToggle" class="remote-toggle ${enabled ? 'on' : 'off'}" title="${enabled ? 'Click to disable' : 'Click to enable'}">
+      <div id="remoteToggle" data-registration-feature="remote" role="switch" aria-label="Remote Control" aria-checked="${!!enabled}" tabindex="0" class="remote-toggle ${enabled ? 'on' : 'off'}" title="${enabled ? 'Click to disable' : 'Click to enable'}">
         <div class="remote-toggle-knob"></div>
       </div>
     </div>
@@ -1824,33 +1832,38 @@ async function openRemotePopover() {
   `;
 
   document.body.appendChild(pop);
+  window.RegistrationAccess.apply(pop);
 
   // Toggle switch
   const toggle = pop.querySelector('#remoteToggle');
+  let remoteToggleBusy = false;
   toggle.addEventListener('click', async () => {
-    const nowEnabled = !toggle.classList.contains('on');
-    toggle.classList.toggle('on', nowEnabled);
-    toggle.classList.toggle('off', !nowEnabled);
-    const result = await window.electronAPI.toggleRemote(nowEnabled);
-    State.remoteInfo = { ...data, ...result, enabled: nowEnabled };
-
-    const urlSection = pop.querySelector('#remoteUrlSection');
-    const offSection = pop.querySelector('#remoteOffSection');
-    const urlEl = pop.querySelector('div[style*="Courier"]');
-
-    if (nowEnabled && result.ip) {
-      const newUrl = `http://${result.ip}:${result.port}/remote`;
-      if (urlEl) urlEl.textContent = newUrl;
-      urlSection.style.display = 'block';
-      offSection.style.display = 'none';
-      updateRemoteBtn({ ip: result.ip, port: result.port, disabled: false });
-      toast(`📱 Remote ON — http://${result.ip}:${result.port}/remote`);
-    } else {
-      urlSection.style.display = 'none';
-      offSection.style.display = 'block';
-      updateRemoteBtn({ ip: null, disabled: true });
-      toast('📵 Remote control disabled');
-    }
+    if (remoteToggleBusy) return;
+    remoteToggleBusy = true;
+    toggle.setAttribute('aria-busy','true');
+    try {
+      if (!await window.RegistrationAccess.ensure('remote')) return;
+      const nowEnabled = !toggle.classList.contains('on');
+      const result = await window.electronAPI.toggleRemote(nowEnabled);
+      if (window.RegistrationAccess.handleBlocked('remote', result)) return;
+      if (!result || result.success !== true) {
+        toast(result?.error || 'Could not change Remote Control. Please try again.'); return;
+      }
+      const on = result.running === true && result.enabled === true;
+      toggle.classList.toggle('on', on);
+      toggle.classList.toggle('off', !on);
+      toggle.setAttribute('aria-checked',String(on));
+      State.remoteInfo = { ...data, ...result };
+      const urlSection = pop.querySelector('#remoteUrlSection');
+      const offSection = pop.querySelector('#remoteOffSection');
+      const urlEl = pop.querySelector('#remoteUrlText');
+      if (urlEl) urlEl.textContent = on && result.ip ? `http://${result.ip}:${result.port}/remote` : '—';
+      urlSection.style.display = on ? 'block' : 'none';
+      offSection.style.display = on ? 'none' : 'block';
+      updateRemoteBtn(result);
+      toast(on ? '📱 Remote control enabled' : '📵 Remote control disabled');
+    } catch (error) { toast(error?.message || 'Could not change Remote Control.'); }
+    finally { remoteToggleBusy=false; toggle.removeAttribute('aria-busy'); }
   });
 
   // Adapter change
@@ -1932,52 +1945,155 @@ const SERMON_DEMO = [
 ];
 let demoIdx = 0;
 
-function toggleRecording() {
-  if (State.isRecording) stopRecording();
-  else startRecording();
+// TRANSCRIPTION_REGISTRATION_UI_BEGIN
+let _transcriptionRegistrationCheck = null;
+let _recordingStartInFlight = false;
+let _recordingStartGeneration = 0;
+let _pcmCaptureGeneration = 0;
+
+function showTranscriptionRegistrationPrompt(unavailable = false) {
+  let dialog = document.getElementById('transcriptionRegistrationDialog');
+  if (!dialog) {
+    dialog = document.createElement('dialog');
+    dialog.id = 'transcriptionRegistrationDialog';
+    dialog.setAttribute('aria-labelledby', 'transcriptionRegistrationTitle');
+    dialog.setAttribute('aria-describedby', 'transcriptionRegistrationMessage');
+    dialog.style.cssText = 'max-width:480px;width:calc(100% - 40px);box-sizing:border-box;margin:auto;padding:26px;border:1px solid #a88a41;border-radius:14px;background:#151821;color:#f3f4f6;box-shadow:0 18px 80px #0009;font-family:inherit';
+    dialog.innerHTML = `
+      <h2 id="transcriptionRegistrationTitle" style="font-size:20px;margin:0 0 12px">Registration required</h2>
+      <p id="transcriptionRegistrationMessage" style="font-size:14px;line-height:1.7;margin:0 0 12px"></p>
+      <p style="font-size:13px;line-height:1.6;color:#cbd0de;margin:0 0 20px">You can continue using the basic features and register later from <strong>Help → Registration</strong>.</p>
+      <p id="transcriptionRegistrationStatus" role="status" aria-live="polite" style="font-size:13px;line-height:1.6;color:#edca75;margin:0 0 12px"></p>
+      <div style="display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px">
+        <button id="transcriptionRegistrationDismiss" type="button" style="min-height:42px;padding:10px 16px;border:1px solid #626b7e;border-radius:7px;background:#252a38;color:#fff;cursor:pointer">Not now</button>
+        <button id="transcriptionRegistrationOpen" type="button" style="min-height:42px;padding:10px 16px;border:1px solid #c9a84c;border-radius:7px;background:#c9a84c;color:#16130a;font-weight:700;cursor:pointer">Register now</button>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector('#transcriptionRegistrationDismiss').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('close', () => {
+      // The originating button remains enabled so it can explain the restriction.
+      if (dialog._returnFocus?.isConnected) dialog._returnFocus.focus();
+    });
+    dialog.querySelector('#transcriptionRegistrationOpen').addEventListener('click', async () => {
+      const button = dialog.querySelector('#transcriptionRegistrationOpen');
+      const status = dialog.querySelector('#transcriptionRegistrationStatus');
+      button.disabled = true;
+      try {
+        if (typeof window.electronAPI?.openRegistrationWindow !== 'function') {
+          throw new Error('Open the desktop app and use Help → Registration. If already in the desktop app, restart it after applying the complete patch.');
+        }
+        const result = await window.electronAPI.openRegistrationWindow();
+        if (!result || result.success !== true) throw new Error(result?.error || 'Could not open registration. Use Help → Registration.');
+        dialog.close();
+      } catch (error) {
+        status.textContent = error.message || 'Could not open registration. Use Help → Registration.';
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+  dialog.querySelector('#transcriptionRegistrationTitle').textContent = unavailable ? 'Unable to check registration' : 'Registration required';
+  dialog.querySelector('#transcriptionRegistrationMessage').textContent = unavailable
+    ? 'AnchorCast could not verify this device’s registration. Transcription has not started. Restart the desktop app and try again, or open Help → Registration.'
+    : 'AI Transcription requires registration. Please register AnchorCast and complete activation before starting a transcript. This applies to Local Whisper, Deepgram Live, online transcription, and audio-file transcription.';
+  dialog.querySelector('#transcriptionRegistrationStatus').textContent = '';
+  if (!dialog.open) {
+    dialog._returnFocus = document.activeElement;
+    dialog.showModal();
+    dialog.querySelector('#transcriptionRegistrationOpen').focus();
+  }
 }
 
-function startRecording() {
-  // Before starting mic — check if a transcription source is actually available
-  const hasSrc = {
-    local:    !!State.whisperLocalReady,
-    deepgram: !!State.settings?.deepgramKey,
-    cloud:    !!State.settings?.openAiKey,
-  };
-  if (!hasSrc[State.whisperSource]) {
-    if (State.whisperSource === 'local') {
-      // Show the detailed setup banner with a "Set Up Now" button
-      _showWhisperSetupBanner({ reason: 'no_python', setupBatExists: true });
-    } else if (State.whisperSource === 'deepgram') {
-      toast('⚠️ No Deepgram API key — add one in Settings → Audio, or set up Local Whisper.');
-    } else {
-      toast('⚠️ No OpenAI API key — add one in Settings → Audio, or set up Local Whisper.');
+async function ensureTranscriptionRegistration() {
+  // Share only an IN-FLIGHT check, never a cached permission. The next attempt
+  // queries the verified main-process status again, including after activation.
+  if (_transcriptionRegistrationCheck) return _transcriptionRegistrationCheck;
+  _transcriptionRegistrationCheck = (async () => {
+    let timeout;
+    try {
+      if (typeof window.electronAPI?.getRegistrationStatus !== 'function') throw new Error('Registration bridge unavailable');
+      const status = await Promise.race([
+        window.electronAPI.getRegistrationStatus(),
+        new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error('Registration check timed out')), 8000); }),
+      ]);
+      if (status?.registered === true) return true;
+      showTranscriptionRegistrationPrompt(!status || status.registered !== false);
+      return false;
+    } catch (_) {
+      // Never treat a missing bridge, failed check, or unknown result as access.
+      showTranscriptionRegistrationPrompt(true);
+      return false;
+    } finally {
+      clearTimeout(timeout);
     }
-    // Don't start recording with no working source
-    return;
+  })();
+  try { return await _transcriptionRegistrationCheck; }
+  finally { _transcriptionRegistrationCheck = null; }
+}
+
+function handleTranscriptionRegistrationBlock(result) {
+  if (!result?.blocked) return false;
+  if (State.isRecording) stopRecording();
+  showTranscriptionRegistrationPrompt(result.code === 'REGISTRATION_STATUS_UNAVAILABLE');
+  return true;
+}
+// TRANSCRIPTION_REGISTRATION_UI_END
+
+function toggleRecording() {
+  if (State.isRecording) return stopRecording();
+  return startRecording();
+}
+
+async function startRecording() {
+  if (State.isRecording || _recordingStartInFlight) return;
+  _recordingStartInFlight = true;
+  const generation = _recordingStartGeneration;
+  try {
+    if (!await ensureTranscriptionRegistration()) return;
+    if (generation !== _recordingStartGeneration || State.isRecording) return;
+    // Before starting mic — check if a transcription source is actually available
+    const hasSrc = {
+      local:    !!State.whisperLocalReady,
+      deepgram: !!State.settings?.deepgramKey,
+      cloud:    !!State.settings?.openAiKey,
+    };
+    if (!hasSrc[State.whisperSource]) {
+      if (State.whisperSource === 'local') {
+        // Show the detailed setup banner with a "Set Up Now" button
+        _showWhisperSetupBanner({ reason: 'no_python', setupBatExists: true });
+      } else if (State.whisperSource === 'deepgram') {
+        toast('⚠️ No Deepgram API key — add one in Settings → Audio, or set up Local Whisper.');
+      } else {
+        toast('⚠️ No OpenAI API key — add one in Settings → Audio, or set up Local Whisper.');
+      }
+      // Don't start recording with no working source
+      return;
+    }
+
+    State.isRecording = true;
+    State.recordingStartTime = Date.now();
+    const btn = document.getElementById('recordBtn');
+    btn.textContent = '⏹ Stop Transcript';
+    btn.classList.add('active');
+    _startTranscriptAutosave();
+
+    // Clear empty state
+    const body = document.getElementById('transcriptBody');
+    const empty = body.querySelector('.empty-state');
+    if (empty) empty.remove();
+
+    // Start adaptive memory session
+    if (window.TranscriptMemory) {
+      const profileSel = document.getElementById('tmSpeakerSelect');
+      const profileId  = profileSel?.value || null;
+      TranscriptMemory.startSession(profileId);
+    }
+
+    // Always use AudioWorklet PCM pipeline — works in Electron without Google
+    await startPcmCapture();
+  } finally {
+    _recordingStartInFlight = false;
   }
-
-  State.isRecording = true;
-  State.recordingStartTime = Date.now();
-  const btn = document.getElementById('recordBtn');
-  btn.textContent = '⏹ Stop Transcript';
-  btn.classList.add('active');
-  _startTranscriptAutosave();
-
-  // Clear empty state
-  const body = document.getElementById('transcriptBody');
-  const empty = body.querySelector('.empty-state');
-  if (empty) empty.remove();
-
-  // Start adaptive memory session
-  if (window.TranscriptMemory) {
-    const profileSel = document.getElementById('tmSpeakerSelect');
-    const profileId  = profileSel?.value || null;
-    TranscriptMemory.startSession(profileId);
-  }
-
-  // Always use AudioWorklet PCM pipeline — works in Electron without Google
-  startPcmCapture();
 }
 
 // ── AudioWorklet PCM capture pipeline ────────────────────────────────────────
@@ -2020,6 +2136,12 @@ function downsampleBuffer(input, inputRate, targetRate) {
 }
 
 async function startPcmCapture() {
+  const generation = ++_pcmCaptureGeneration;
+  if (!await ensureTranscriptionRegistration()) {
+    if (generation === _pcmCaptureGeneration && State.isRecording) stopRecording();
+    return false;
+  }
+  if (!State.isRecording || generation !== _pcmCaptureGeneration) return false;
   try {
     const audioConstraints = {
       channelCount: 1,
@@ -2031,17 +2153,24 @@ async function startPcmCapture() {
     if (savedMicId && savedMicId !== 'default') {
       audioConstraints.deviceId = { exact: savedMicId };
     }
-    pcmStream = await navigator.mediaDevices.getUserMedia({
+    const stream = await navigator.mediaDevices.getUserMedia({
       audio: audioConstraints,
       video: false,
     });
+    // Stop pressed while permission was pending: do not keep the microphone on.
+    if (!State.isRecording || generation !== _pcmCaptureGeneration) {
+      stream.getTracks().forEach(track => track.stop());
+      return false;
+    }
+    pcmStream = stream;
 
     toast('🎙 Microphone active — speak now');
 
     // Start Deepgram WebSocket if that's the selected source
     if (State.whisperSource === 'deepgram') {
-      startDeepgramStream();
+      await startDeepgramStream();
     }
+    if (!State.isRecording || generation !== _pcmCaptureGeneration) return false;
 
     // Create AudioContext
     pcmAudioContext = new AudioContext({ latencyHint: 'interactive' });
@@ -2051,6 +2180,7 @@ async function startPcmCapture() {
     // It needs to be served as a URL — our renderer server handles this
     const workletUrl = '/pcm-worklet-processor.js';
     await pcmAudioContext.audioWorklet.addModule(workletUrl);
+    if (!State.isRecording || generation !== _pcmCaptureGeneration) return false;
 
     // Create nodes
     pcmSourceNode  = pcmAudioContext.createMediaStreamSource(pcmStream);
@@ -2066,13 +2196,15 @@ async function startPcmCapture() {
       const downsampled = downsampleBuffer(floatChunk, nativeRate, TARGET_SAMPLE_RATE);
       const pcm16       = float32ToInt16(downsampled);
 
-      if (State.whisperSource === 'deepgram' && deepgramConnected) {
-        // Deepgram: send raw PCM directly over WebSocket — ~300ms latency
-        sendPcmToDeepgram(pcm16.buffer);
+      if (State.whisperSource === 'deepgram') {
+        // Never feed a disconnected Live stream into a different provider.
+        if (deepgramConnected) sendPcmToDeepgram(pcm16.buffer);
       } else {
         // Local Whisper or OpenAI: accumulate in main process via IPC
         if (window.electronAPI?.pushAudioPcm) {
-          window.electronAPI.pushAudioPcm(pcm16.buffer);
+          window.electronAPI.pushAudioPcm(pcm16.buffer).then(handleTranscriptionRegistrationBlock).catch(() => {
+            handleTranscriptionRegistrationBlock({ blocked: true, code: 'REGISTRATION_STATUS_UNAVAILABLE' });
+          });
         }
       }
     };
@@ -2092,6 +2224,7 @@ async function startPcmCapture() {
     _startSilenceDetection(pcmAudioContext, pcmSourceNode);
 
   } catch(err) {
+    if (generation !== _pcmCaptureGeneration || !State.isRecording) return false;
     if (err.name === 'NotAllowedError') {
       toast('⚠ Microphone denied — check OS Settings → Privacy → Microphone');
     } else if (err.name === 'NotFoundError') {
@@ -2155,6 +2288,8 @@ function _stopSilenceDetection() {
 }
 
 async function startSpeechAPI() {
+  if (!await ensureTranscriptionRegistration()) return;
+  if (!State.isRecording) return;
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     startDemoMode();
@@ -2207,7 +2342,9 @@ async function startSpeechAPI() {
   try { recognition.start(); } catch(e) { startDemoMode(); }
 }
 
-function startDemoMode() {
+async function startDemoMode() {
+  if (!await ensureTranscriptionRegistration()) return;
+  if (!State.isRecording) return;
   demoIdx = 0;
   toast('▶ Demo mode — simulating live sermon');
   demoInterval = setInterval(() => {
@@ -2224,6 +2361,7 @@ function startDemoMode() {
 let fileTranscribeAbort = false;
 
 async function transcribeAudioFile(file) {
+  if (!await ensureTranscriptionRegistration()) return;
   if (!window.electronAPI?.pushAudioPcm) {
     toast('⚠ Audio file transcription requires the desktop app');
     return;
@@ -2321,7 +2459,8 @@ async function transcribeAudioFile(file) {
         b.style.height = (progress / 100 > bi / 5 ? 12 : 4) + 'px';
       });
 
-      await window.electronAPI.pushAudioPcm(int16.buffer);
+      const result = await window.electronAPI.pushAudioPcm(int16.buffer);
+      if (handleTranscriptionRegistrationBlock(result)) return;
 
       // Pace the chunks — don't send faster than real-time to avoid queue flood
       await new Promise(r => setTimeout(r, 400));
@@ -2359,6 +2498,8 @@ async function transcribeAudioFile(file) {
 }
 
 function stopRecording() {
+  ++_recordingStartGeneration;
+  ++_pcmCaptureGeneration;
   fileTranscribeAbort = true; // abort any in-progress file transcription
   State.isRecording = false;
   _stopSilenceDetection();
@@ -9103,6 +9244,7 @@ function refreshThemeSwatches() {
 // Deepgram streams directly from the renderer — no IPC needed
 // Local/Cloud go through the existing PCM → main process pipeline
 
+let _deepgramStartGeneration = 0;
 let deepgramSocket    = null;
 let dgQuickFailCount  = 0; // tracks consecutive rejected-connection closes for diagnostics
 let deepgramConnected = false;
@@ -9114,7 +9256,8 @@ const SRC_CONFIG = {
   cloud:    { label: 'CLOUD', color: '#f39c12', title: 'OpenAI Whisper API (cloud)'            },
 };
 
-function cycleTranscriptSource() {
+async function cycleTranscriptSource() {
+  if (State.isRecording && !await ensureTranscriptionRegistration()) { stopRecording(); return; }
   const sources = SRC_ORDER; // ['deepgram', 'local', 'cloud']
 
   // Which sources are currently available
@@ -9208,11 +9351,16 @@ function updateSrcToggleUI() {
 // Sends raw PCM directly to Deepgram over WebSocket — ~300ms latency
 // No chunking, no IPC, results stream back word-by-word
 
-function startDeepgramStream() {
+async function startDeepgramStream() {
+  stopDeepgramSocket(); // also invalidates a pending connection attempt
+  const generation = _deepgramStartGeneration;
+  if (!await ensureTranscriptionRegistration()) {
+    if (generation === _deepgramStartGeneration && State.isRecording) stopRecording();
+    return false;
+  }
+  if (generation !== _deepgramStartGeneration || !State.isRecording || State.whisperSource !== 'deepgram') return false;
   const key = State.settings?.deepgramKey;
-  if (!key) return;
-
-  stopDeepgramSocket(); // close any existing
+  if (!key) return false;
 
   // Deepgram streaming URL — Nova-3 model, English, smart formatting
   const params = new URLSearchParams({
@@ -9269,7 +9417,9 @@ function startDeepgramStream() {
     return;
   }
 
+  const streamSocket = deepgramSocket;
   deepgramSocket.onopen = () => {
+    if (streamSocket !== deepgramSocket) return;
     deepgramConnected = true;
     dgOpenedAt = Date.now();
     dgReceivedAnyMessage = false;
@@ -9279,6 +9429,7 @@ function startDeepgramStream() {
   };
 
   deepgramSocket.onmessage = (evt) => {
+    if (streamSocket !== deepgramSocket || !State.isRecording) return;
     try {
       const msg = JSON.parse(evt.data);
       dgReceivedAnyMessage = true;
@@ -9303,11 +9454,13 @@ function startDeepgramStream() {
   };
 
   deepgramSocket.onerror = (e) => {
+    if (streamSocket !== deepgramSocket) return;
     console.warn('[Deepgram] WebSocket error');
     deepgramConnected = false;
   };
 
   deepgramSocket.onclose = (evt) => {
+    if (streamSocket !== deepgramSocket) return;
     deepgramConnected = false;
     console.log(`[Deepgram] Closed (code=${evt.code}, reason="${evt.reason || ''}")`);
 
@@ -9338,13 +9491,14 @@ function startDeepgramStream() {
     if (State.isRecording && State.whisperSource === 'deepgram') {
       // Auto-reconnect after 2s if still recording
       setTimeout(() => {
-        if (State.isRecording && State.whisperSource === 'deepgram') startDeepgramStream();
+        if (generation === _deepgramStartGeneration && State.isRecording && State.whisperSource === 'deepgram') startDeepgramStream();
       }, 2000);
     }
   };
 }
 
 function stopDeepgramSocket() {
+  ++_deepgramStartGeneration;
   if (deepgramSocket) {
     try {
       // Send KeepAlive close signal to Deepgram
@@ -10096,14 +10250,46 @@ function _parseTextNotes(text) {
 
 // ─── NDI PANEL ────────────────────────────────────────────────────────────────
 async function openNdiPanel() {
+  if (!window.RegistrationAccess || !await window.RegistrationAccess.ensure('ndi')) return;
   showModal('ndiOverlay');
   if (!window.electronAPI) return;
   const info = await window.electronAPI.ndiStatus().catch(() => ({}));
   updateNdiPanel(info);
 }
 
+let _ndiPanelStartBusy = false;
+async function startNdiFromPanel() {
+  if (_ndiPanelStartBusy) return;
+  _ndiPanelStartBusy = true;
+  try {
+    if (!window.RegistrationAccess || !await window.RegistrationAccess.ensure('ndi')) return;
+    const result = await window.electronAPI.ndiStart();
+    if (window.RegistrationAccess.handleBlocked('ndi', result)) {
+      updateNdiPanel(result); return;
+    }
+    if (!result || result.success === false || result.error) {
+      toast(result?.error || 'Could not start External Output. Please try again.');
+      return;
+    }
+    updateNdiPanel(result);
+  } catch (error) { toast(error?.message || 'Could not start External Output.'); }
+  finally { _ndiPanelStartBusy=false; }
+}
+
 function updateNdiPanel(info) {
   if (!info) return;
+  if (info.blocked || info.registrationRequired) {
+    const label=document.getElementById('ndiStatusLabel');
+    if(label) label.textContent='🔒 Registration required';
+    const method=document.getElementById('ndiMethodLabel');
+    if(method) method.textContent='Register AnchorCast and complete activation to use External Output.';
+    ['ndiGrandioseOk','ndiStreamUrls','ndiStopBtn'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.style.display='none';
+    });
+    const start=document.getElementById('ndiStartBtn');if(start)start.style.display='';
+    window.RegistrationAccess?.apply();
+    return;
+  }
   const statusLabel = document.getElementById('ndiStatusLabel');
   const methodLabel = document.getElementById('ndiMethodLabel');
   const startBtn    = document.getElementById('ndiStartBtn');
