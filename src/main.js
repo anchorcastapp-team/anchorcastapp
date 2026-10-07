@@ -199,6 +199,8 @@ function sendSmtpEmail({ to, subject, html, text }) {
     let state   = 'banner';
     let tlsSock = null;
     let done    = false;
+    // The socket idle timer is not a total deadline (traffic resets it).
+    const overallTimer = setTimeout(() => fail('SMTP request timed out', 'SMTP_TIMEOUT'), 45000);
 
     function writeSock(s) { (tlsSock || sock).write(s); }
 
@@ -241,11 +243,16 @@ function sendSmtpEmail({ to, subject, html, text }) {
           if (code !== '220') return fail('STARTTLS failed: ' + line);
           // Upgrade to TLS
           state = 'ehlo2';
+          sock.setTimeout(0);
           tlsSock = tls.connect({ socket: sock, servername: SMTP_HOST }, () => {
-            tlsSock.on('data', d => onData(d));
+            if (done) return;
             writeSock(`EHLO anchorcastapp.com${CRLF}`);
           });
-          tlsSock.on('error', err => fail(err.message));
+          tlsSock.on('data', onData);
+          tlsSock.on('error', err => fail(err.message, err.code));
+          tlsSock.on('end', onPrematureClose);
+          tlsSock.on('close', onPrematureClose);
+          tlsSock.setTimeout(20000, () => fail('SMTP TLS connection timed out', 'SMTP_TIMEOUT'));
           break;
 
         case 'ehlo2':
@@ -255,7 +262,7 @@ function sendSmtpEmail({ to, subject, html, text }) {
           break;
 
         case 'auth':
-          if (code !== '235') return fail('AUTH failed: ' + line + ' — check Gmail App Password');
+          if (code !== '235') return fail('SMTP authentication failed', 'SMTP_AUTH_FAILED');
           state = 'mailfrom';
           writeSock(`MAIL FROM:<${FROM_EMAIL}>${CRLF}`);
           break;
@@ -275,26 +282,33 @@ function sendSmtpEmail({ to, subject, html, text }) {
         case 'data':
           if (code !== '354') return fail('DATA failed: ' + line);
           state = 'body';
-          writeSock(msgLines + `.${CRLF}`);
+          // Dot-stuff message lines so body text cannot end DATA early.
+          writeSock(msgLines.replace(/^\./gm, '..') + `.${CRLF}`);
           break;
 
         case 'body':
           if (code !== '250') return fail('Message rejected: ' + line);
-          state = 'quit';
-          writeSock(`QUIT${CRLF}`);
-          break;
-
-        case 'quit':
-          // 221 = bye, anything = still ok (email was sent)
+          // Acceptance is the 250 after DATA, not the later QUIT reply.
+          // A missing 221 must not turn an accepted email into a false failure.
           done = true;
-          try { (tlsSock||sock).destroy(); } catch(_) {}
+          clearTimeout(overallTimer);
+          const active = tlsSock || sock;
+          active.setTimeout(0);
+          const closeTimer = setTimeout(() => {
+            try { active.destroy(); sock.destroy(); } catch(_) {}
+          }, 1000);
+          closeTimer.unref?.();
+          active.once('close', () => clearTimeout(closeTimer));
+          try { active.end(`QUIT${CRLF}`); } catch(_) { active.destroy(); }
           resolve({ ok: true });
           break;
       }
     }
 
     function onData(data) {
+      if (done) return;
       rawBuf += data.toString();
+      if (rawBuf.length > 65536) return fail('SMTP response too large', 'SMTP_PROTOCOL_ERROR');
       const lines = rawBuf.split(/\r?\n/);
       rawBuf = lines.pop(); // keep incomplete line in buffer
       for (const line of lines) {
@@ -303,17 +317,30 @@ function sendSmtpEmail({ to, subject, html, text }) {
       }
     }
 
-    function fail(msg) {
+    function fail(msg, code = 'SMTP_ERROR') {
       if (done) return;
       done = true;
-      try { (tlsSock||sock).destroy(); } catch(_) {}
-      reject(new Error(msg));
+      clearTimeout(overallTimer);
+      for (const connection of [tlsSock, sock]) {
+        try { connection?.setTimeout(0); connection?.destroy(); } catch(_) {}
+      }
+      const error = new Error(msg);
+      error.code = code;
+      error.stage = state;
+      reject(error);
+    }
+    function onPrematureClose() {
+      fail('SMTP connection closed before the email was accepted', 'SMTP_CONNECTION_CLOSED');
     }
 
-    sock = net.connect(SMTP_PORT, SMTP_HOST, () => {});
-    sock.on('data', d => { if (!tlsSock) onData(d); }); // before TLS upgrade
-    sock.on('error', err => fail(err.message));
-    sock.setTimeout(20000, () => fail('SMTP connection timed out'));
+    try {
+      sock = net.connect(SMTP_PORT, SMTP_HOST, () => {});
+      sock.on('data', d => { if (!tlsSock) onData(d); }); // before TLS upgrade
+      sock.on('error', err => fail(err.message, err.code));
+      sock.on('end', onPrematureClose);
+      sock.on('close', onPrematureClose);
+      sock.setTimeout(20000, () => fail('SMTP connection timed out', 'SMTP_TIMEOUT'));
+    } catch (err) { fail(err.message, err.code); }
   });
 }
 
@@ -323,8 +350,22 @@ async function sendRegistrationEmail(fullName, email, churchName) {
   const name  = encodeURIComponent(fullName);
   const mail  = encodeURIComponent(email);
   const church = encodeURIComponent(churchName || '');
-  const link  = `${APP_PROTOCOL}://register?token=${token}&name=${name}&email=${mail}&church=${church}&hwId=${encodeURIComponent(hwId)}`;
+  const params = `token=${token}&name=${name}&email=${mail}&church=${church}&hwId=${encodeURIComponent(hwId)}`;
+  // IMPORTANT: do NOT put the anchorcast:// link directly in the email.
+  // Gmail (web and Android app) strips href="anchorcast://..." from
+  // clickable links entirely, and the same scheme pasted into a browser
+  // only works if the OS already has it registered (requires the app to
+  // have been launched at least once) — so the plain-text fallback isn't
+  // reliable either. A real https:// page is never stripped by any email
+  // client; it redirects into anchorcast:// via JavaScript once loaded,
+  // and can show clear instructions if the redirect doesn't fire.
+  const link  = `https://anchorcastapp.com/activate.html?${params}`;
 
+  const escapeEmailHtml = value => String(value).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+  const safeFullName = escapeEmailHtml(fullName);
+  const safeChurchName = escapeEmailHtml(churchName || '');
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="font-family:-apple-system,sans-serif;background:#f5f5f5;padding:30px;margin:0">
@@ -336,9 +377,9 @@ async function sendRegistrationEmail(fullName, email, churchName) {
     <div style="color:#888;font-size:11px;letter-spacing:2px;margin-top:4px">LIVE SERMON DISPLAY</div>
   </div>
   <div style="padding:30px">
-    <h2 style="color:#1a1a2e;font-size:18px;margin:0 0 12px">Hi ${fullName},</h2>
+    <h2 style="color:#1a1a2e;font-size:18px;margin:0 0 12px">Hi ${safeFullName},</h2>
     <p style="color:#444;font-size:14px;line-height:1.7;margin:0 0 20px">
-      Thank you for registering AnchorCast${churchName ? ' at <strong>' + churchName + '</strong>' : ''}!
+      Thank you for registering AnchorCast${churchName ? ' at <strong>' + safeChurchName + '</strong>' : ''}!
       Click the button below to complete your registration and unlock the app.
     </p>
     <div style="text-align:center;margin:28px 0">
@@ -379,6 +420,20 @@ function requiresRegistration(featureName) {
   if (isRegistered()) return null;
   return { blocked: true, reason: `${featureName} requires registration. Please register AnchorCast to continue.` };
 }
+// TRANSCRIPTION_REGISTRATION_GATE_BEGIN
+// Registration is verified in the main process, not inferred from an API key,
+// a running Whisper model, or the session-only "Continue" flag.
+function getTranscriptionRegistrationBlock() {
+  try {
+    const gate = requiresRegistration('AI Transcription');
+    if (!gate) return null;
+    return { ...gate, code: 'REGISTRATION_REQUIRED', error: gate.reason };
+  } catch (_) {
+    const reason = 'Unable to verify registration. Restart AnchorCast or open Help → Registration, then try again.';
+    return { blocked: true, code: 'REGISTRATION_STATUS_UNAVAILABLE', reason, error: reason };
+  }
+}
+// TRANSCRIPTION_REGISTRATION_GATE_END
 // ─── END REGISTRATION SYSTEM ──────────────────────────────────────────────────
 // (spawnSync required at top — BUG-A fix)
 // (spawn required at top — BUG-A fix)
@@ -425,6 +480,14 @@ process.stdout.write = (chunk, encoding, cb) => {
 };
 
 let mainWindow=null, projectionWindow=null, historyWindow=null, themeWindow=null, splashWindow=null, countdownWindow=null;
+// Registration must not strand an invisible main window. Keep startup state per
+// BrowserWindow, so a delayed callback from a closed window cannot reveal a new one.
+const _mainWindowStartup = new WeakMap();
+let _registrationDeferredForSession = false;
+let _registrationAppQuitting = false;
+let _registrationUpdaterStarted = false;
+let _registrationShortcutsReady = false;
+let _registrationEmailInFlight = false;
 let _projectionLostDisplay = false; // true when HDMI removed — restored on display-added
 let splashShownAt = 0;
 const MIN_SPLASH_MS = 2400;
@@ -728,9 +791,7 @@ if (!gotSingleInstanceLock) {
     const scheduleArg = _extractScheduleArg(argv);
     if (scheduleArg) _queueScheduleOpen(scheduleArg);
     if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      if (!mainWindow.isVisible()) mainWindow.show();
-      mainWindow.focus();
+      focusMainOrRegistration();
       _consumePendingScheduleOpen();
     }
   });
@@ -995,15 +1056,18 @@ ipcMain.on('transcript-unsaved-state', (_, unsaved) => { _transcriptUnsaved = un
 
 // Before closing: if there's an unsaved transcript, ask the user
 app.on('before-quit', (e) => {
-  // Always stop Whisper on quit — prevents orphaned process on Mac relaunch
+  if (_transcriptUnsaved && mainWindow && !mainWindow.isDestroyed()) {
+    e.preventDefault();
+    _registrationAppQuitting = false;
+    mainWindow.webContents.send('confirm-quit-with-transcript');
+    return;
+  }
+  // A deliberate Quit/Cmd+Q must not be mistaken for dismissing registration.
+  _registrationAppQuitting = true;
   stopWhisperServer();
   stopNdi();
   stopHttpServer();
   if(rendererServer){ rendererServer.close(); rendererServer=null; rendererPort=0; }
-  if (!_transcriptUnsaved) return;
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  e.preventDefault(); // block quit temporarily
-  mainWindow.webContents.send('confirm-quit-with-transcript');
 });
 
 // Renderer confirmed: save then quit, or just quit
@@ -1031,9 +1095,7 @@ app.on('activate', async () => {
     return;
   }
 
-  if (mainWindow.isMinimized()) mainWindow.restore();
-  mainWindow.show();
-  mainWindow.focus();
+  focusMainOrRegistration();
 });
 
 // ── Windows ───────────────────────────────────────────────────────────────────
@@ -1127,14 +1189,11 @@ function _handleProtocolUrl(url) {
         registrationWindow.close();
         registrationWindow = null;
       }
-      // Show main app if not shown yet
-      if (mainWindow && !mainWindow.isVisible()) {
-        mainWindow.maximize();
-        mainWindow.show();
-        mainWindow.webContents.send('app-ready');
-      }
+      // Use the same startup path as Skip and normal launch (including opacity).
+      revealMainWindow();
       // Notify renderer
       mainWindow?.webContents.send('registration-complete', result);
+      if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.webContents.send('registration-complete', result);
       dialog.showMessageBox(mainWindow || undefined, {
         type:'info', title:'Registration Complete',
         message:'🎉 AnchorCast is now registered!',
@@ -1157,9 +1216,10 @@ function showRegistrationWindow() {
     registrationWindow.focus();
     return;
   }
+  const owner = mainWindow;
   const win = new BrowserWindow({
     icon: APP_ICON,
-    width: 520, height: 720,
+    width: 520, height: 780,
     title: 'Register AnchorCast',
     backgroundColor: '#0a0a1a',
     resizable: false,
@@ -1174,14 +1234,23 @@ function showRegistrationWindow() {
   });
   registrationWindow = win;
   win.setMenu(null);
-  win.loadURL(`http://127.0.0.1:${rendererPort}/registration.html`);
-  win.once('ready-to-show', () => win.show());
+  const registrationFile = path.join(__dirname, 'renderer', 'registration.html');
+  const loaded = rendererPort
+    ? win.loadURL(`http://127.0.0.1:${rendererPort}/registration.html`)
+    : win.loadFile(registrationFile);
+  loaded.catch(err => {
+    console.warn('[Registration] Form could not load:', err.message);
+    if (!win.isDestroyed()) win.close();
+  });
+  win.once('ready-to-show', () => {
+    if (!_registrationAppQuitting && !win.isDestroyed()) win.show();
+  });
   win.on('closed', () => {
-    registrationWindow = null;
-    // If still not registered and main window never shown, quit
-    if (!isRegistered() && (!mainWindow || !mainWindow.isVisible())) {
-      app.quit();
-    }
+    if (registrationWindow === win) registrationWindow = null;
+    if (_registrationAppQuitting) return;
+    // Closing the form is a session-only deferral, NOT registration or activation.
+    _registrationDeferredForSession = true;
+    if (owner === mainWindow) revealMainWindow(owner);
   });
 }
 
@@ -1386,9 +1455,7 @@ async function createSplashAndMain() {
   try {
     // If the main window still exists, just bring it forward.
     if (mainWindow && !mainWindow.isDestroyed()) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.show();
-      mainWindow.focus();
+      focusMainOrRegistration();
       return;
     }
 
@@ -1450,11 +1517,75 @@ function createSplashWindow(){
   return splashWindow;
 }
 
+// REGISTRATION_STARTUP_FIX_BEGIN
+function completeMainWindowStartup(win) {
+  const state = win && _mainWindowStartup.get(win);
+  if (_registrationAppQuitting || !state || !state.revealed || state.notified ||
+      win !== mainWindow || win.isDestroyed() || win.webContents.isDestroyed()) return;
+  // The 12s emergency reveal may precede did-finish-load. Notify only after load.
+  if (win.webContents.isLoadingMainFrame()) return;
+  state.notified = true;
+  win.webContents.send('app-ready');
+  if (!_registrationUpdaterStarted) {
+    _registrationUpdaterStarted = true;
+    try { initAutoUpdater(); } catch(err) { console.warn('[Updater]', err.message); }
+  }
+  if (!_registrationShortcutsReady) {
+    _registrationShortcutsReady = true;
+    const { globalShortcut } = require('electron');
+    for (const accelerator of ['F12', 'CmdOrCtrl+Shift+I']) {
+      if (!globalShortcut.isRegistered(accelerator)) {
+        globalShortcut.register(accelerator, () => {
+          BrowserWindow.getFocusedWindow()?.webContents.toggleDevTools();
+        });
+      }
+    }
+  }
+  if (isDev) win.webContents.openDevTools({ mode: 'detach' });
+}
+
+function revealMainWindow(win = mainWindow) {
+  if (_registrationAppQuitting || !win || win !== mainWindow || win.isDestroyed()) return false;
+  let state = _mainWindowStartup.get(win);
+  if (!state) {
+    state = { revealed: false, notified: false, fallback: null, revealTimer: null };
+    _mainWindowStartup.set(win, state);
+  }
+  clearTimeout(state.fallback);
+  clearTimeout(state.revealTimer);
+  const firstReveal = !state.revealed;
+  state.revealed = true;
+  if (win.isMinimized()) win.restore();
+  if (firstReveal) win.maximize();
+  // The window was created at opacity: 0. show() alone cannot make it visible.
+  win.setOpacity(1);
+  win.show();
+  win.focus();
+  const splash = splashWindow;
+  if (splash && !splash.isDestroyed()) {
+    try { splash.close(); } catch(_) {}
+    if (splashWindow === splash) splashWindow = null;
+  }
+  completeMainWindowStartup(win);
+  return true;
+}
+
+function focusMainOrRegistration() {
+  if (_registrationAppQuitting) return;
+  if (registrationWindow && !registrationWindow.isDestroyed() &&
+      mainWindow && !mainWindow.isVisible()) {
+    if (registrationWindow.isMinimized()) registrationWindow.restore();
+    registrationWindow.show();
+    registrationWindow.focus();
+    return;
+  }
+  revealMainWindow();
+}
+// REGISTRATION_STARTUP_FIX_END
+
 function createMainWindow(){
   if (mainWindow && !mainWindow.isDestroyed()) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.show();
-    mainWindow.focus();
+    focusMainOrRegistration();
     return mainWindow;
   }
   if (!rendererPort) {
@@ -1478,80 +1609,53 @@ function createMainWindow(){
     titleBarStyle:process.platform==='darwin'?'hiddenInset':'default',
     trafficLightPosition:{x:16,y:12},
   });
-  let mainWindowRevealed = false;
-  mainWindow.loadURL(`http://127.0.0.1:${rendererPort}/index.html`).catch(err => {
-    console.error('[App] mainWindow loadURL failed:', err);
-    try { mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html')); } catch(e) { console.error('[App] mainWindow loadFile fallback failed:', e); }
-  });
+  const win = mainWindow;
+  const startup = { revealed: false, notified: false, fallback: null, revealTimer: null };
+  _mainWindowStartup.set(win, startup);
 
-  // Fail-safe: if did-finish-load is missed or renderer hangs, do not leave
-  // users stuck on the splash forever. Show the main window after a grace period.
-  const revealMainFallback = setTimeout(() => {
-    if (mainWindowRevealed) return;
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    console.warn('[App] Main window reveal fallback fired');
-    mainWindowRevealed = true;
-    try { mainWindow.maximize(); mainWindow.setOpacity(1); mainWindow.show(); mainWindow.focus(); } catch(_) {}
-    if (splashWindow && !splashWindow.isDestroyed()) {
-      try { splashWindow.close(); } catch(_) {}
-      splashWindow = null;
-    }
-  }, 12000);
-
-  mainWindow.webContents.once('did-finish-load',()=>{
-    const elapsed = Date.now() - splashShownAt;
+  win.webContents.once('did-finish-load', () => {
+    // Completes app-ready after an early activation/fallback reveal.
+    completeMainWindowStartup(win);
     const reveal = () => {
-      if (mainWindowRevealed) return;
-      mainWindowRevealed = true;
-      clearTimeout(revealMainFallback);
-      if (!isRegistered()) {
-        if(splashWindow && !splashWindow.isDestroyed()){
-          try { splashWindow.close(); } catch(e) {}
+      if (_registrationAppQuitting || win !== mainWindow || win.isDestroyed() || startup.revealed) return;
+      clearTimeout(startup.fallback);
+      if (!isRegistered() && !_registrationDeferredForSession) {
+        if (splashWindow && !splashWindow.isDestroyed()) {
+          try { splashWindow.close(); } catch(_) {}
           splashWindow = null;
         }
+        // Do not set revealed here: showing registration has not revealed the app.
         showRegistrationWindow();
         return;
       }
-      // Show main window first (still at opacity:0 — fully invisible to user)
-      mainWindow.maximize();
-      mainWindow.show();
-      mainWindow.webContents.send('app-ready');
-      initAutoUpdater();
-      // Fade main window in 0→1 over ~100ms
-      let op = 0;
-      const tick = () => {
-        op = Math.min(1, op + 0.15);
-        try { mainWindow.setOpacity(op); } catch(_) {}
-        if(op < 1) setTimeout(tick, 16);
-      };
-      tick();
-      // Fade splash OUT 1→0 simultaneously then destroy
-      if(splashWindow && !splashWindow.isDestroyed()){
-        let sop = 1;
-        const stk = () => {
-          sop = Math.max(0, sop - 0.15);
-          try { splashWindow.setOpacity(sop); } catch(_) {}
-          if(sop > 0) setTimeout(stk, 16);
-          else { try { splashWindow.close(); } catch(e) {} splashWindow = null; }
-        };
-        stk();
-      }
-      if(isDev) mainWindow.webContents.openDevTools({mode:'detach'});
-  const { globalShortcut } = require('electron');
-  globalShortcut.register('F12', () => { BrowserWindow.getFocusedWindow()?.webContents.toggleDevTools(); });
-  globalShortcut.register('CmdOrCtrl+Shift+I', () => { BrowserWindow.getFocusedWindow()?.webContents.toggleDevTools(); });
+      revealMainWindow(win);
     };
-    const wait = Math.max(0, MIN_SPLASH_MS - elapsed);
-    setTimeout(reveal, wait);
+    startup.revealTimer = setTimeout(reveal, Math.max(0, MIN_SPLASH_MS - (Date.now() - splashShownAt)));
   });
-  mainWindow.on('closed',()=>{
-    clearTimeout(revealMainFallback);
-    mainWindow=null;
-    if(projectionWindow){projectionWindow.close();projectionWindow=null;}
-    // Close timer window when main app closes
-    if(countdownWindow && !countdownWindow.isDestroyed()){
+
+  startup.fallback = setTimeout(() => {
+    if (_registrationAppQuitting || win !== mainWindow || win.isDestroyed() || startup.revealed) return;
+    console.warn('[App] Main window reveal fallback fired');
+    revealMainWindow(win);
+  }, 12000);
+
+  win.loadURL(`http://127.0.0.1:${rendererPort}/index.html`).catch(err => {
+    console.error('[App] mainWindow loadURL failed:', err);
+    if (win.isDestroyed() || win !== mainWindow) return;
+    win.loadFile(path.join(__dirname, 'renderer', 'index.html')).catch(e => {
+      console.error('[App] mainWindow loadFile fallback failed:', e);
+    });
+  });
+  win.on('closed', () => {
+    clearTimeout(startup.fallback);
+    clearTimeout(startup.revealTimer);
+    _mainWindowStartup.delete(win);
+    if (mainWindow !== win) return;
+    mainWindow = null;
+    if (projectionWindow) { projectionWindow.close(); projectionWindow = null; }
+    if (countdownWindow && !countdownWindow.isDestroyed()) {
       countdownWindow.close();
-      countdownWindow=null;
+      countdownWindow = null;
     }
   });
 }
@@ -2331,6 +2435,56 @@ function _touchRecentSchedule(filePath, name){
   _refreshRecentSchedulesMenu();
 }
 
+// NETWORK_REGISTRATION_GATE_BEGIN
+// Enforce activation at service entry points as well as renderer controls.
+function networkRegistrationGate(feature) {
+  let reason, code = 'REGISTRATION_REQUIRED';
+  try {
+    const gate = requiresRegistration(feature);
+    if (!gate) return null;
+    reason = gate.reason;
+  } catch (_) {
+    code = 'REGISTRATION_UNAVAILABLE';
+    reason = 'Unable to verify registration. Restart AnchorCast or open Help → Registration.';
+  }
+  return { success:false, blocked:true, registrationRequired:true, registered:false,
+    code, feature, reason, error:reason, enabled:false, running:false, disabled:true,
+    status:'disabled' };
+}
+function restrictNetworkFeatureSettings(settings) {
+  const result = { ...settings };
+  if (networkRegistrationGate('Remote Control')) result.remoteEnabled = false;
+  if (networkRegistrationGate('External Output (NDI)')) result.ndiEnabled = false;
+  return result;
+}
+function getRemoteFeatureStatus() {
+  const port = currentSettings.httpPort || 8080;
+  const gate = networkRegistrationGate('Remote Control');
+  if (gate) return { ...gate, port, ip:null, url:null, roleLinks:{} };
+  const enabled = currentSettings.remoteEnabled !== false;
+  const running = enabled && !!httpServer?.listening;
+  const ip = running ? localIp() : null;
+  return { registered:true, registrationRequired:false, enabled, running,
+    disabled:!running, port, ip, url:ip ? `http://${ip}:${port}/remote` : null,
+    authRequired:isRemoteAuthRequired(currentSettings.remoteRequireAuth),
+    selectedAdapter:currentSettings.networkAdapter || null,
+    adapters:getAllNetworkAdapters(), roleLinks:running ? makeRoleRemoteLinks() : {} };
+}
+function getNdiFeatureStatus() {
+  const gate = networkRegistrationGate('External Output (NDI)');
+  if (gate) return { ...gate, method:'none', ndiSdkActive:false, obsUrl:null,
+    vmixUrl:null, clientCount:0 };
+  const addonSt = ndiAddonStatus();
+  const active = ndiStatus === 'running' || ndiStatus === 'fallback';
+  return { registered:true, registrationRequired:false, status:ndiStatus,
+    method:ndiSdkActive ? 'ndi-sdk' : 'mjpeg', ndiSdkActive,
+    obsUrl:active ? `http://localhost:${NDI_MJPEG_PORT}/stream` : null,
+    vmixUrl:active ? `http://${localIp()}:${NDI_MJPEG_PORT}/stream` : null,
+    clientCount:mjpegClients.length, addonState:addonSt.state, addonLabel:addonSt.label,
+    sourceName:currentSettings.ndiSourceName || 'AnchorCast' };
+}
+// NETWORK_REGISTRATION_GATE_END
+
 // ── HTTP Remote Control Server ────────────────────────────────────────────────
 
 // Returns all usable IPv4 adapters, scored and labeled for the UI picker
@@ -2597,6 +2751,7 @@ function markRemoteActivity(req, role='admin'){
 }
 
 function getAuthorizedRemoteRole(req){
+  if (networkRegistrationGate('Remote Control')) return null;
   if(currentSettings.remoteEnabled === false) return null;
   // Session token check (QR code / URL token)
   const roleFromToken = remoteRoleForToken(getRemoteTokenFromReq(req));
@@ -2670,6 +2825,11 @@ function buildRemotePreviewPayload(){
 
 function startHttpServer(port){
   stopHttpServer();
+  const gate = networkRegistrationGate('Remote Control');
+  if (gate) {
+    mainWindow?.webContents.send('http-server-started', { ...gate, port, ip:null });
+    return gate;
+  }
   // Respect remoteEnabled setting
   if(currentSettings.remoteEnabled === false){
     console.log('[AnchorCast] Remote control disabled in settings.');
@@ -2693,6 +2853,9 @@ function startHttpServer(port){
       "connect-src 'self' http://127.0.0.1:* https://api.deepgram.com wss://api.deepgram.com wss://*.deepgram.com https://api.openai.com https://api.anthropic.com https://lrclib.net https://api.genius.com https://genius.com",
       "worker-src 'self' blob:",
     ].join('; '));
+    const access = networkRegistrationGate('Remote Control');
+    if (access) return json(res,403,access);
+    if (currentSettings.remoteEnabled === false) return json(res,403,{error:'Remote control is disabled.'});
     if(req.method==='OPTIONS'){res.writeHead(204);res.end();return;}
     const url=req.url.split('?')[0];
     if(req.method==='GET'){
@@ -2833,20 +2996,41 @@ function startHttpServer(port){
     }
     json(res,404,{error:'Not found'});
   });
-  httpServer.listen(port,'0.0.0.0',()=>{
-    const ip=localIp();
-    console.log(`[AnchorCast] Remote: http://${ip}:${port}/remote`);
-    mainWindow?.webContents.send('http-server-started',{port,ip,disabled:false});
-  });
-  httpServer.on('error',e=>{
-    console.warn('[HTTP]',e.message);
-    mainWindow?.webContents.send('http-server-started',{port,ip:null,error:e.message});
+  const server = httpServer;
+  // Resolve only once the listener is bound; never report ON optimistically.
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = value => { if (!settled) { settled=true; resolve(value); } };
+    server.once('close', () => finish({ success:false, enabled:false, running:false,
+      error:'Remote start was cancelled.' }));
+    server.on('error', e => {
+      console.warn('[HTTP]',e.message);
+      if (httpServer === server) httpServer = null;
+      const result = { success:false, enabled:false, running:false, disabled:true,
+        port, ip:null, error:e.message };
+      mainWindow?.webContents.send('http-server-started',result);
+      finish(result);
+    });
+    server.listen(port,'0.0.0.0',()=>{
+      const access = networkRegistrationGate('Remote Control');
+      if (access || server !== httpServer || currentSettings.remoteEnabled === false) {
+        if (server === httpServer) stopHttpServer();
+        else { try { server.close(); } catch (_) {} }
+        return finish(access || { success:false, enabled:false, running:false, error:'Remote start was cancelled.' });
+      }
+      console.log(`[AnchorCast] Remote: http://${localIp()}:${port}/remote`);
+      const result = { success:true, ...getRemoteFeatureStatus() };
+      mainWindow?.webContents.send('http-server-started',result);
+      finish(result);
+    });
   });
 }
 function stopHttpServer(){ if(httpServer){httpServer.close();httpServer=null;} }
 function json(res,code,data){ res.writeHead(code,{'Content-Type':'application/json'});res.end(JSON.stringify(data)); }
 
 function handleRemoteCmd(cmd,res,role='admin'){
+  const access = networkRegistrationGate('Remote Control');
+  if (access) return json(res,403,access);
   if(!mainWindow || (typeof mainWindow.isDestroyed === 'function' && mainWindow.isDestroyed())) return json(res,503,{error:'App not ready'});
   const action = (cmd && cmd.action) || '';
   const data = (cmd && cmd.data) || null;
@@ -3728,6 +3912,14 @@ function showNdiInfo(){
 }
 
 function showRemoteUrl(){
+  const gate = networkRegistrationGate('Remote Control');
+  if (gate) {
+    return dialog.showMessageBox(mainWindow, {
+      type:'info', title:'Registration required', message:'Remote Control requires registration.',
+      detail:'Register AnchorCast and complete activation to use this feature. You can continue using the basic features and register later from Help → Registration.',
+      buttons:['Register now','Not now'], defaultId:0, cancelId:1,
+    }).then(result => { if (result.response === 0) showRegistrationWindow(); });
+  }
   const ip=localIp();
   const port=currentSettings.httpPort||8080;
   dialog.showMessageBox(mainWindow,{
@@ -3991,7 +4183,7 @@ function loadSettings(){
   return defaultSettings();
 }
 function saveSettings(s){
-  s = { ...defaultSettings(), ...s };
+  s = restrictNetworkFeatureSettings({ ...defaultSettings(), ...s });
   s.transcriptSource = ['deepgram','local','cloud'].includes(s.transcriptSource) ? s.transcriptSource : 'local';
   s.ndiSourceName = String(s.ndiSourceName || 'AnchorCast').trim() || 'AnchorCast';
   s.remoteRequireAuth = isRemoteAuthRequired(s.remoteRequireAuth);
@@ -4169,8 +4361,12 @@ function grandioseStatus(){
 }
 
 function startMjpegServer(){
+  const gate = networkRegistrationGate('External Output (NDI)');
+  if (gate) return gate;
   if(ndiMjpegServer) return;
   ndiMjpegServer = http.createServer((req, res) => {
+    const access = networkRegistrationGate('External Output (NDI)');
+    if (access) return json(res,403,access);
     const url = req.url.split('?')[0];
     if(url === '/stream'){
       res.writeHead(200, {
@@ -4228,6 +4424,8 @@ function pushFrame(res, jpegBuf){
 }
 
 function startNdi(){
+  const gate = networkRegistrationGate('External Output (NDI)');
+  if (gate) { stopNdi(); return gate; }
   if(ndiStatus === 'running' || ndiStatus === 'starting') return;
   ndiStatus = 'starting';
   ndiSdkActive = false;
@@ -4351,62 +4549,30 @@ function stopNdi(){
 }
 
 function notifyNdiStatus(){
-  const addonSt = ndiAddonStatus();
-  const ip = localIp();
-  mainWindow?.webContents.send('ndi-status', {
-    status:      ndiStatus,
-    method:      ndiSdkActive ? 'ndi-sdk' : 'mjpeg',
-    ndiSdkActive,
-    obsUrl:      `http://localhost:${NDI_MJPEG_PORT}/stream`,
-    vmixUrl:     `http://${ip}:${NDI_MJPEG_PORT}/stream`,
-    clientCount: mjpegClients.length,
-    addonState:  addonSt.state,
-    addonLabel:  addonSt.label,
-    sourceName:  currentSettings.ndiSourceName || 'AnchorCast',
-  });
+  const info = getNdiFeatureStatus();
+  mainWindow?.webContents.send('ndi-status', info);
+  if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.webContents.send('ndi-status', info);
 }
 
 ipcMain.handle('ndi-start', async () => {
-  const gate = requiresRegistration('External Output (NDI)');
-  if (gate) return { error: gate.reason, blocked: true };
-  startNdi();
+  const gate = networkRegistrationGate('External Output (NDI)');
+  if (gate) return gate;
+  const result = startNdi();
+  if (result?.blocked) return result;
   await new Promise(r => setTimeout(r, 400));
-  currentSettings.ndiEnabled = true;
+  const access = networkRegistrationGate('External Output (NDI)');
+  if (access) { stopNdi(); return access; }
+  currentSettings.ndiEnabled = ndiStatus === 'running' || ndiStatus === 'fallback';
   try{ fs.mkdirSync(path.dirname(SETTINGS_FILE),{recursive:true}); fs.writeFileSync(SETTINGS_FILE,JSON.stringify(currentSettings,null,2)); }catch(e){}
-  const addonSt = ndiAddonStatus();
-  const ip = localIp();
-  return {
-    status: ndiStatus,
-    method: ndiSdkActive ? 'ndi-sdk' : 'mjpeg',
-    ndiSdkActive,
-    obsUrl:  `http://localhost:${NDI_MJPEG_PORT}/stream`,
-    vmixUrl: `http://${ip}:${NDI_MJPEG_PORT}/stream`,
-    addonState: addonSt.state,
-    addonLabel: addonSt.label,
-    sourceName: currentSettings.ndiSourceName || 'AnchorCast',
-  };
+  return { success:currentSettings.ndiEnabled, ...getNdiFeatureStatus() };
 });
 ipcMain.handle('ndi-stop', () => {
   stopNdi();
   currentSettings.ndiEnabled = false;
   try{ fs.mkdirSync(path.dirname(SETTINGS_FILE),{recursive:true}); fs.writeFileSync(SETTINGS_FILE,JSON.stringify(currentSettings,null,2)); }catch(e){}
-  return { status: ndiStatus };
+  return { success:true, ...getNdiFeatureStatus() };
 });
-ipcMain.handle('ndi-status', () => {
-  const addonSt = ndiAddonStatus();
-  const ip = localIp();
-  return {
-    status:      ndiStatus,
-    method:      ndiSdkActive ? 'ndi-sdk' : 'mjpeg',
-    ndiSdkActive,
-    obsUrl:      `http://localhost:${NDI_MJPEG_PORT}/stream`,
-    vmixUrl:     `http://${ip}:${NDI_MJPEG_PORT}/stream`,
-    clientCount: mjpegClients.length,
-    addonState:  addonSt.state,
-    addonLabel:  addonSt.label,
-    sourceName:  currentSettings.ndiSourceName || 'AnchorCast',
-  };
-});
+ipcMain.handle('ndi-status', () => getNdiFeatureStatus());
 
 // Enhanced project-verse — also triggers NDI capture on verse change
 ipcMain.handle('project-verse',(_,data)=>{
@@ -4446,7 +4612,7 @@ ipcMain.handle('get-displays',()=>
   screen.getAllDisplays().map(d=>({id:d.id,label:d.label||`Display ${d.id}`,
     bounds:d.bounds,isPrimary:d.id===screen.getPrimaryDisplay().id}))
 );
-ipcMain.handle('get-settings',()=>({ ...defaultSettings(), ...loadSettings() }));
+ipcMain.handle('get-settings',()=>restrictNetworkFeatureSettings({ ...defaultSettings(), ...loadSettings() }));
 ipcMain.handle('save-settings',(_,s,opts)=>{
   try{
     saveSettings(s);
@@ -6057,8 +6223,8 @@ function stopWhisperServer() {
 
 ipcMain.handle('whisper-status',  () => ({ ready: whisperReady, model: whisperModel }));
 ipcMain.handle('whisper-start',   async (_, model) => {
-  const gate = requiresRegistration('AI Transcription');
-  if (gate) return { ready: false, blocked: true, error: gate.reason };
+  const gate = getTranscriptionRegistrationBlock();
+  if (gate) return { ready: false, ...gate };
   // Auto-migrate multilingual models to English-only variants (better accuracy for sermons)
   const _m = String(model || 'small.en');
   const resolvedModel = _m === 'small' ? 'small.en'
@@ -6072,6 +6238,8 @@ ipcMain.handle('whisper-stop',    () => { stopWhisperServer(); return { ready: f
 // Reinforcement: when detection identifies a verse, inject its text into Whisper's context
 // so subsequent transcription chunks are biased toward that passage's vocabulary.
 ipcMain.handle('whisper-reinforce', async (_, { text, ttl = 30 } = {}) => {
+  const gate = getTranscriptionRegistrationBlock();
+  if (gate) return { ok: false, ...gate };
   if (!whisperReady || !text) return { ok: false };
   try {
     const res = await fetch(`${WHISPER_URL}/reinforce`, {
@@ -6391,7 +6559,23 @@ function stitchTranscriptFragment(text) {
   return stitched;
 }
 
+function clearBlockedTranscriptionAudio() {
+  // Do not reset pcmTranscribing here: an already-running request must finish
+  // before another worker can start. Its result is checked again before emit.
+  pcmChunks = [];
+  pcmOverlap = [];
+  pcmTotalSamples = 0;
+  pcmQueue = [];
+  lastTranscriptSent = '';
+  lastTranscriptWords = [];
+}
+
 ipcMain.handle('push-audio-pcm', async (_, pcmBuffer) => {
+  const gate = getTranscriptionRegistrationBlock();
+  if (gate) {
+    clearBlockedTranscriptionAudio();
+    return gate;
+  }
   if (!pcmBuffer) return;
   const int16 = new Int16Array(pcmBuffer);
   pcmChunks.push(int16);
@@ -6430,6 +6614,11 @@ ipcMain.handle('push-audio-pcm', async (_, pcmBuffer) => {
 });
 
 async function processNextChunk() {
+  if (getTranscriptionRegistrationBlock()) {
+    clearBlockedTranscriptionAudio();
+    pcmTranscribing = false;
+    return;
+  }
   if (pcmQueue.length === 0) { pcmTranscribing = false; return; }
 
   pcmTranscribing = true;
@@ -6506,6 +6695,12 @@ async function processNextChunk() {
       mainWindow?.webContents.send('transcript-no-key');
     }
 
+    // Registration can change while a provider request is in flight.
+    if (getTranscriptionRegistrationBlock()) {
+      clearBlockedTranscriptionAudio();
+      pcmTranscribing = false;
+      return;
+    }
     if (text && text.length > 1) {
       const stitched = stitchTranscriptFragment(text);
       if (stitched && shouldEmitTranscript(stitched)) {
@@ -9377,27 +9572,8 @@ ipcMain.handle('open-external',(_, url)=>{
 ipcMain.handle('copy-to-clipboard', (_, text) => { try { clipboard.writeText(String(text || '')); return { success:true }; } catch (e) { return { success:false, error: e?.message || 'Copy failed' }; } });
 
 // Remote server info and toggle
-ipcMain.handle('get-remote-status',()=>({
-  enabled: (currentSettings.remoteEnabled !== false) || (httpServer !== null),
-  running: httpServer !== null,
-  ip: localIp(),
-  port: currentSettings.httpPort||8080,
-  url: `http://${localIp()}:${currentSettings.httpPort||8080}/remote`,
-  authRequired: isRemoteAuthRequired(currentSettings.remoteRequireAuth),
-  selectedAdapter: currentSettings.networkAdapter || null,
-  adapters: getAllNetworkAdapters(),
-  roleLinks: makeRoleRemoteLinks(),
-}));
-ipcMain.handle('get-remote-info',()=>({
-  ip:      localIp(),
-  port:    currentSettings.httpPort||8080,
-  enabled: (currentSettings.remoteEnabled !== false) || (httpServer !== null),
-  running: httpServer !== null,
-  authRequired: isRemoteAuthRequired(currentSettings.remoteRequireAuth),
-  selectedAdapter: currentSettings.networkAdapter || null,
-  adapters: getAllNetworkAdapters(),
-  roleLinks: makeRoleRemoteLinks(),
-}));
+ipcMain.handle('get-remote-status',()=>getRemoteFeatureStatus());
+ipcMain.handle('get-remote-info',()=>getRemoteFeatureStatus());
 ipcMain.handle('get-network-adapters', () => getAllNetworkAdapters());
 ipcMain.handle('set-network-adapter', async (_, adapterName) => {
   currentSettings.networkAdapter = adapterName || null;
@@ -9405,46 +9581,49 @@ ipcMain.handle('set-network-adapter', async (_, adapterName) => {
     fs.mkdirSync(path.dirname(SETTINGS_FILE),{recursive:true});
     fs.writeFileSync(SETTINGS_FILE,JSON.stringify(currentSettings,null,2));
   }catch(e){}
-  // Restart server so it reports the correct IP
   if(currentSettings.remoteEnabled !== false){
-    startHttpServer(currentSettings.httpPort||8080);
+    await startHttpServer(currentSettings.httpPort||8080);
   }
-  return { success:true, ip: localIp() };
+  return { success:true, ...getRemoteFeatureStatus() };
 });
 
-ipcMain.handle('start-remote', async ()=>{
-  const gate = requiresRegistration('Remote Control');
-  if (gate) return { error: gate.reason, blocked: true };
-  currentSettings.remoteEnabled = true;
-  try{ fs.mkdirSync(path.dirname(SETTINGS_FILE),{recursive:true}); fs.writeFileSync(SETTINGS_FILE,JSON.stringify(currentSettings,null,2)); }catch(e){}
-  startHttpServer(currentSettings.httpPort||8080);
-  return { success:true, enabled:true, ip:localIp(), port:currentSettings.httpPort||8080 };
-});
-ipcMain.handle('stop-remote', async ()=>{
-  currentSettings.remoteEnabled = false;
-  try{ fs.mkdirSync(path.dirname(SETTINGS_FILE),{recursive:true}); fs.writeFileSync(SETTINGS_FILE,JSON.stringify(currentSettings,null,2)); }catch(e){}
-  stopHttpServer();
-  mainWindow?.webContents.send('http-server-started',{ip:null,disabled:true});
-  return { success:true, enabled:false, ip:null, port:currentSettings.httpPort||8080 };
-});
-ipcMain.handle('toggle-remote', async (_, enable)=>{
+// NETWORK_REMOTE_TOGGLE_BEGIN
+let _remoteToggleInFlight = null;
+async function setRemoteFeatureEnabled(enable) {
+  if (typeof enable !== 'boolean') return { success:false, error:'Expected true or false.' };
   if (enable) {
-    const gate = requiresRegistration('Remote Control');
-    if (gate) return { error: gate.reason, blocked: true };
+    const gate = networkRegistrationGate('Remote Control');
+    if (gate) return gate;
+    if (_remoteToggleInFlight) return _remoteToggleInFlight;
+    currentSettings.remoteEnabled = true;
+    const task = (async () => {
+      const started = await startHttpServer(currentSettings.httpPort||8080);
+      const access = networkRegistrationGate('Remote Control');
+      if (access || started?.success !== true) {
+        currentSettings.remoteEnabled = false;
+        if (access) stopHttpServer();
+      }
+      try{ fs.mkdirSync(path.dirname(SETTINGS_FILE),{recursive:true}); fs.writeFileSync(SETTINGS_FILE,JSON.stringify(currentSettings,null,2)); }catch(e){}
+      if (access) return access;
+      const state = getRemoteFeatureStatus();
+      return { ...started, ...state, success:started?.success === true && state.running === true,
+        error:started?.success === true && !state.running ? 'Remote start was cancelled.' : started?.error };
+    })();
+    _remoteToggleInFlight = task;
+    try { return await task; } finally { if (_remoteToggleInFlight === task) _remoteToggleInFlight=null; }
   }
-  currentSettings.remoteEnabled = enable;
-  try{
-    fs.mkdirSync(path.dirname(SETTINGS_FILE),{recursive:true});
-    fs.writeFileSync(SETTINGS_FILE,JSON.stringify(currentSettings,null,2));
-  }catch(e){}
-  if(enable){
-    startHttpServer(currentSettings.httpPort||8080);
-  } else {
-    stopHttpServer();
-    mainWindow?.webContents.send('http-server-started',{ip:null,disabled:true});
-  }
-  return{ success:true, enabled:enable, ip:enable?localIp():null, port:currentSettings.httpPort||8080 };
-});
+  // Stop is always allowed, including when registration could not be verified.
+  currentSettings.remoteEnabled = false;
+  stopHttpServer();
+  try{ fs.mkdirSync(path.dirname(SETTINGS_FILE),{recursive:true}); fs.writeFileSync(SETTINGS_FILE,JSON.stringify(currentSettings,null,2)); }catch(e){}
+  const result = { success:true, ...getRemoteFeatureStatus() };
+  mainWindow?.webContents.send('http-server-started',result);
+  return result;
+}
+// NETWORK_REMOTE_TOGGLE_END
+ipcMain.handle('start-remote',()=>setRemoteFeatureEnabled(true));
+ipcMain.handle('stop-remote',()=>setRemoteFeatureEnabled(false));
+ipcMain.handle('toggle-remote',(_,enable)=>setRemoteFeatureEnabled(enable));
 
 ipcMain.handle('open-adaptive-management',()=>{createAdaptiveManagementWindow();return{success:true};});
 
@@ -9452,13 +9631,13 @@ ipcMain.handle('open-adaptive-management',()=>{createAdaptiveManagementWindow();
 
 ipcMain.handle('get-remote-runtime-status', () => {
   const lastSeenAt = Number(remoteRuntimeStatus.lastSeenAt || 0);
-  const connected = lastSeenAt > 0 && (Date.now() - lastSeenAt) < 90000;
+  const connected = !networkRegistrationGate('Remote Control') && !!httpServer?.listening && lastSeenAt > 0 && (Date.now() - lastSeenAt) < 90000;
   return {
     connected,
     lastSeenAt: lastSeenAt || null,
     lastRole: remoteRuntimeStatus.lastRole || null,
     lastIp: remoteRuntimeStatus.lastIp || null,
-    serverEnabled: currentSettings.remoteEnabled !== false
+    serverEnabled: !networkRegistrationGate('Remote Control') && currentSettings.remoteEnabled !== false
   };
 });
 ipcMain.handle('load-detection-review-data', () => ({
@@ -9489,10 +9668,55 @@ ipcMain.handle('save-detection-feedback', (_, payload = {}) => {
 ipcMain.handle('get-registration-status', () => getRegistrationStatus());
 ipcMain.handle('get-license-status', () => getRegistrationStatus()); // legacy compat
 ipcMain.handle('get-hardware-id', () => getHardwareId());
+// REGISTRATION_ACTIONS_FIX_BEGIN
+function registrationEmailFailure(error) {
+  const code = String(error?.code || 'SMTP_ERROR');
+  let message = 'The registration email could not be sent.';
+  if (code === 'SMTP_TIMEOUT' || code === 'ETIMEDOUT') {
+    message = 'The registration email service did not respond in time. Check your connection or try another network.';
+  } else if (code === 'SMTP_AUTH_FAILED') {
+    message = 'The registration email service could not authenticate. Please contact AnchorCast support; this is not your email password.';
+  } else if (/CERT|TLS|SSL/.test(code)) {
+    message = 'A secure connection to the registration email service could not be established.';
+  } else if (['ECONNREFUSED', 'ECONNRESET', 'ENOTFOUND', 'EAI_AGAIN', 'ENETUNREACH', 'EHOSTUNREACH', 'SMTP_CONNECTION_CLOSED'].includes(code)) {
+    message = 'The registration email service could not be reached or the connection was interrupted.';
+  }
+  return { success: false, code, stage: String(error?.stage || ''),
+    error: message + ' You can retry or choose Continue without registering.' };
+}
+
+ipcMain.handle('skip-registration', (event) => {
+  if (!registrationWindow || registrationWindow.isDestroyed() ||
+      event.sender !== registrationWindow.webContents) {
+    return { success: false, error: 'Please use the registration window to continue.' };
+  }
+  if (_registrationAppQuitting || !mainWindow || mainWindow.isDestroyed()) {
+    return { success: false, error: 'The main window is unavailable. Please restart AnchorCast.' };
+  }
+  _registrationDeferredForSession = true;
+  if (!revealMainWindow()) return { success: false, error: 'Could not show AnchorCast.' };
+  registrationWindow.close();
+  return { success: true, registered: isRegistered() };
+});
+
+ipcMain.handle('open-registration-window', (event) => {
+  const allowed = [mainWindow, registrationStatusWindow, settingsWindow].some(win =>
+    win && !win.isDestroyed() && event.sender === win.webContents);
+  if (!allowed || _registrationAppQuitting) return { success: false, error: 'Registration is not available from this window.' };
+  showRegistrationWindow();
+  return { success: true };
+});
+// REGISTRATION_ACTIONS_FIX_END
+
 ipcMain.handle('send-registration-email', async (_, fullName, email, churchName) => {
+  if (_registrationEmailInFlight) return {
+    success: false, code: 'REGISTRATION_BUSY',
+    error: 'A registration email is already being sent. Please wait or continue without registering.'
+  };
+  _registrationEmailInFlight = true;
   try {
     if (!fullName || !String(fullName).trim()) return { success:false, error:'Full name is required.' };
-    if (!email || !String(email).includes('@')) return { success:false, error:'Valid email required.' };
+    if (!email || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(String(email).trim())) return { success:false, error:'Valid email required.' };
     const result = await sendRegistrationEmail(String(fullName).trim(), String(email).trim(), String(churchName||'').trim());
     if (result.success) {
       // Persist pending email state so app shows success screen on relaunch
@@ -9501,12 +9725,19 @@ ipcMain.handle('send-registration-email', async (_, fullName, email, churchName)
     return result;
   } catch(e) {
     console.error('[Registration] Email error:', e.message);
-    return { success:false, error: e.message || 'Failed to send email. Check your internet connection.' };
+    return registrationEmailFailure(e);
+  } finally {
+    _registrationEmailInFlight = false;
   }
 });
 ipcMain.handle('get-email-sent-state', () => getEmailSentState());
 ipcMain.handle('activate-registration', (_, fullName, email, token, churchName) => {
-  return activateRegistration(fullName, email, token, churchName);
+  const result = activateRegistration(fullName, email, token, churchName);
+  if (result?.success) {
+    mainWindow?.webContents.send('registration-complete', result);
+    if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.webContents.send('registration-complete', result);
+  }
+  return result;
 });
 
 ipcMain.handle('open-bible-manager', () => {

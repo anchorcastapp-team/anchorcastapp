@@ -150,6 +150,8 @@ contextBridge.exposeInMainWorld('electronAPI',{
   getLicenseStatus: () => ipcRenderer.invoke('get-license-status'), // legacy compat
   sendRegistrationEmail: (fullName, email, church) => ipcRenderer.invoke('send-registration-email', fullName, email, church),
   getEmailSentState:     () => ipcRenderer.invoke('get-email-sent-state'),
+  skipRegistration:     () => ipcRenderer.invoke('skip-registration'),
+  openRegistrationWindow: () => ipcRenderer.invoke('open-registration-window'),
   getTimerState:     ()     => ipcRenderer.invoke('get-timer-state'),
   timerFlashSpeed: (data)  => ipcRenderer.invoke('timer-flash-speed', data),
   isTimerStandalone: ()    => ipcRenderer.invoke('is-timer-standalone'),
