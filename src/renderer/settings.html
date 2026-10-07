@@ -9,6 +9,7 @@
              img-src 'self' data: blob: https:;">
   <title>AnchorCast Options</title>
   <script src="js/electron-shim.js"></script>
+  <script src="js/feature-registration.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="css/app.css">
@@ -215,7 +216,7 @@
       <div class="preview-thumb" id="sidebarPreview">
         <div style="font-size:9px;color:var(--dim);text-align:center;padding:8px">Live preview</div>
       </div>
-      <div class="preview-label" id="versionInfo">AnchorCast v1.VERSION</div>
+      <div class="preview-label" id="versionInfo">AnchorCast v1.2.0</div>
     </div>
   </div>
 
@@ -265,10 +266,11 @@
             <div class="toggle-name" id="ndiSettLabel">Off</div>
             <div class="toggle-sub">Broadcast projection to OBS, vMix, or any browser via NDI</div>
           </div>
-          <div class="toggle" id="ndiSettToggle" onclick="toggleNdiSetting()">
+          <div class="toggle" id="ndiSettToggle" data-registration-feature="ndi" role="switch" aria-label="External Output (NDI)" aria-checked="false" tabindex="0" onclick="toggleNdiSetting()">
             <div class="toggle-knob" id="ndiSettKnob"></div>
           </div>
         </div>
+        <div class="registration-feature-note" data-registration-note="ndi" hidden>🔒 Registration required. <button type="button" data-registration-prompt="ndi">Register to use External Output</button>.</div>
         <div class="form-hint">Use <strong>Tools → External Output</strong> for OBS frame path and full NDI setup.</div>
 
         <div class="section-title">Overlay on Media</div>
@@ -1363,10 +1365,11 @@ YOUR</textarea>
             <div class="toggle-name" id="remoteStatusLabel">Loading…</div>
             <div class="toggle-sub" id="remoteUrlLabel">Allow phones/tablets on same WiFi to control AnchorCast</div>
           </div>
-          <div class="toggle" id="settRemoteToggle" onclick="toggleRemoteServer()">
+          <div class="toggle" id="settRemoteToggle" data-registration-feature="remote" role="switch" aria-label="Remote Control" aria-checked="false" tabindex="0" onclick="toggleRemoteServer()">
             <div class="toggle-knob" id="settRemoteKnob"></div>
           </div>
         </div>
+        <div class="registration-feature-note" data-registration-note="remote" hidden>🔒 Registration required. <button type="button" data-registration-prompt="remote">Register to use Remote Control</button>.</div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Remote Control Port</label>
@@ -1458,6 +1461,39 @@ YOUR</textarea>
           </button>
         </div>
         <div id="customStatus"></div>
+      </div>
+
+      <div class="pane" id="pane-bible-download-bible">
+        <div class="section-title">Download Free Bible Translations in Public Domain / Free License</div>
+        <div class="status-msg msg-info" style="margin:-4px 0 14px;line-height:1.6">
+          <strong>Copyright Notice</strong><br>
+          Bible translations are owned by their respective copyright holders.
+          AnchorCast only provides access to publicly available resources and does not claim ownership of any translation.
+          Users are responsible for complying with the applicable license terms for any Bible translation they download or import.
+        </div>
+        <input class="form-input" id="dlBibleSearch" placeholder="Search translations (e.g. NIV, Young's Literal...)"
+          oninput="renderDlBibleList()" style="margin-bottom:14px">
+        <div id="dlBibleStatus"></div>
+        <div id="dlBibleList" style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto">
+          <div style="color:var(--dim);font-size:12px;padding:8px 0">Loading translation list…</div>
+        </div>
+      </div>
+
+      <!-- License Required modal -->
+      <div id="bibleLicenseModal" style="display:none;position:fixed;inset:0;z-index:9999;
+        background:rgba(0,0,0,.6);align-items:center;justify-content:center">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;
+          max-width:420px;width:90%;padding:22px;box-shadow:0 10px 40px rgba(0,0,0,.5)">
+          <div style="font-size:13px;font-weight:700;color:#f39c12;margin-bottom:10px">🟡 This translation is copyrighted.</div>
+          <div style="font-size:12px;color:var(--text);line-height:1.6;margin-bottom:6px">This translation is copyrighted.</div>
+          <div style="font-size:12px;color:var(--dim);line-height:1.6;margin-bottom:18px">
+            Please obtain it from the copyright holder or an authorized source before importing into AnchorCast.
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="bvm-btn" style="padding:8px 14px" onclick="closeBibleLicenseModal()">Cancel</button>
+            <button class="bvm-btn bvm-up" style="padding:8px 14px" onclick="importLicensedBibleFromModal()">Import File…</button>
+          </div>
+        </div>
       </div>
 
 
@@ -1616,7 +1652,7 @@ YOUR</textarea>
 
 <!-- Bottom bar -->
 <div class="bottom-bar">
-  <div class="version" id="versionInfo">AnchorCast v1.VERSION</div>
+  <div class="version" id="versionInfo">AnchorCast v1.2.0</div>
   <div class="bottom-sp"></div>
   <button class="btn-cancel" onclick="closeSettings()">Cancel</button>
   <button class="btn-save" onclick="saveSettings()">Save Settings</button>
@@ -1632,7 +1668,7 @@ const SECTION_TABS = {
   pres:       ['General'],
   audio:      ['General', 'Learning'],
   network:    ['General'],
-  bible:      ['General'],
+  bible:      ['General', 'Download Bible'],
   alerts:     ['General'],
 
 };
@@ -1665,6 +1701,7 @@ function setTab(el, tab) {
   activeTab = tab;
   showPane();
   if (activeSection === 'audio' && tab === 'learning') loadAdaptiveLearningPane();
+  if (activeSection === 'bible' && tab === 'download-bible') loadDlBibleCatalog();
 }
 
 function loadAdaptiveLearningPane() {
@@ -1676,9 +1713,10 @@ function loadAdaptiveLearningPane() {
 function renderTabs() {
   const tabs = SECTION_TABS[activeSection] || ['General'];
   const bar = document.getElementById('modTabs');
-  bar.innerHTML = tabs.map((t, i) =>
-    `<div class="mod-tab${i===0?' active':''}" onclick="setTab(this,'${t.toLowerCase()}')">${t}</div>`
-  ).join('');
+  bar.innerHTML = tabs.map((t, i) => {
+    const slug = t.toLowerCase().replace(/\s+/g, '-');
+    return `<div class="mod-tab${i===0?' active':''}" onclick="setTab(this,'${slug}')">${t}</div>`;
+  }).join('');
 }
 
 
@@ -1815,18 +1853,50 @@ function promptUpload(id) {
   document.getElementById('fileInput').click();
 }
 
+let _bibleLicenseModalSlug = '';
+function showBibleLicenseModal(slug, fullName) {
+  _bibleLicenseModalSlug = slug;
+  const modal = document.getElementById('bibleLicenseModal');
+  modal.style.display = 'flex';
+}
+function closeBibleLicenseModal() {
+  document.getElementById('bibleLicenseModal').style.display = 'none';
+  _bibleLicenseModalSlug = '';
+}
+function importLicensedBibleFromModal() {
+  const slug = _bibleLicenseModalSlug;
+  closeBibleLicenseModal();
+  if (!slug) return;
+  // Reuses the exact same manual-import flow as the General tab's Upload
+  // button — opens the file picker, pre-filled with this translation's code,
+  // and the file goes through the same auto-flatten step before saving.
+  // Switch to General first so the upload status (#uploadStatus lives in
+  // that pane) is actually visible once a file is chosen.
+  const generalTabEl = document.querySelector('.mod-tab');
+  if (generalTabEl) generalTabEl.click();
+  promptUpload(slug);
+}
+
 async function processFile(file) {
   if (!file) return;
   const status = document.getElementById('uploadStatus');
   status.innerHTML = '<div class="status-msg msg-info">⏳ Processing…</div>';
   try {
     const text = await file.text();
-    const data = JSON.parse(text);
+    let data = JSON.parse(text);
     let abbrev = document.getElementById('customAbbrev')?.value.trim().toUpperCase();
     if (!abbrev) {
       abbrev = file.name.replace(/\.json$/i,'').replace(/[^A-Z0-9]/gi,'').toUpperCase().slice(0,8);
     }
     if (!abbrev) throw new Error('Could not determine abbreviation');
+    // Auto-flatten — handles both already-flat {b,c,v,t} data (passes through
+    // unchanged) and nested books→chapters→verses or Bolls-style raw exports,
+    // so users don't need to run a separate conversion step before uploading.
+    if (window.electronAPI?.flattenBibleJson) {
+      const flat = await window.electronAPI.flattenBibleJson(data);
+      if (!flat?.success) throw new Error(flat?.error || 'Could not process this Bible file.');
+      data = flat.data;
+    }
     if (window.electronAPI?.importTranslation) {
       const r = await window.electronAPI.importTranslation({ abbrev, data });
       if (r?.success) {
@@ -1846,7 +1916,12 @@ async function importCustom() {
   if (!abbrev) { status.innerHTML = '<div class="status-msg msg-err">⚠ Enter an abbreviation first</div>'; return; }
   if (!raw)    { status.innerHTML = '<div class="status-msg msg-err">⚠ Paste JSON data first</div>'; return; }
   try {
-    const data = JSON.parse(raw);
+    let data = JSON.parse(raw);
+    if (window.electronAPI?.flattenBibleJson) {
+      const flat = await window.electronAPI.flattenBibleJson(data);
+      if (!flat?.success) throw new Error(flat?.error || 'Could not process this Bible file.');
+      data = flat.data;
+    }
     if (window.electronAPI?.importTranslation) {
       const r = await window.electronAPI.importTranslation({ abbrev, data });
       if (r?.success) {
@@ -1866,6 +1941,163 @@ async function deleteTrans(id) {
     await loadBvmGrid();
   }
 }
+
+// ── Download Bible tab ──────────────────────────────────────────
+// ── Bible translation license classification ──────────────────────
+// Determines whether a translation can be auto-downloaded (public domain /
+// free license) or requires the user to obtain it themselves and import it
+// manually (copyrighted). Unknown/unlisted codes default to 'copyrighted' —
+// the safe default — rather than assuming they're free to redistribute.
+const BIBLE_LICENSE_INFO = {
+  YLT:  { status: 'public_domain' },
+  KJV:  { status: 'public_domain' },
+  WEB:  { status: 'free_license'  }, // public-use project; include attribution
+  LXXE: { status: 'public_domain' },
+  GNV:  { status: 'public_domain' },
+  DRB:  { status: 'public_domain' },
+  LBP:  { status: 'public_domain' }, // generally treated as public domain; verify source
+  LSV:  { status: 'free_license'  }, // publisher permits free distribution under its license
+  ASV:  { status: 'public_domain' },
+};
+function bibleLicenseStatus(slug) {
+  const info = BIBLE_LICENSE_INFO[String(slug || '').toUpperCase()];
+  return info ? info.status : 'copyrighted';
+}
+
+let dlBibleCatalog = [];
+let dlBibleCatalogLoaded = false;
+let dlBibleLoadError = '';  // persists independently of search input / list re-renders
+let dlBibleActive = {}; // slug -> status line while downloading
+
+async function loadDlBibleCatalog() {
+  if (dlBibleCatalogLoaded) { renderDlBibleList(); return; } // cache — catalog rarely changes within a session
+  const list = document.getElementById('dlBibleList');
+  dlBibleLoadError = '';
+  if (!window.electronAPI?.fetchBibleCatalog) {
+    dlBibleLoadError = 'Download feature unavailable in this build.';
+    renderDlBibleList();
+    return;
+  }
+  list.innerHTML = `<div style="color:var(--dim);font-size:12px;padding:8px 0">Loading translation list…</div>`;
+  try {
+    const r = await window.electronAPI.fetchBibleCatalog();
+    if (!r?.success) throw new Error(r?.error || 'Could not load the translation list.');
+    dlBibleCatalog = r.translations || [];
+    dlBibleCatalogLoaded = true;
+    if (dlBibleCatalog.length === 0) {
+      dlBibleLoadError = 'The translation list loaded but was empty. The catalog source may have changed — please try the manual download scripts instead, or report this.';
+    }
+  } catch (e) {
+    dlBibleLoadError = e.message || 'Could not load the translation list.';
+  }
+  renderDlBibleList();
+}
+
+function renderDlBibleList() {
+  const list = document.getElementById('dlBibleList');
+  const status = document.getElementById('dlBibleStatus');
+  if (!list) return;
+
+  // Show a persistent error regardless of what's typed in search — this is
+  // the actual bug fix: previously, typing in the search box would silently
+  // overwrite any load error with a generic "no matches" message, hiding the
+  // real problem entirely.
+  if (dlBibleLoadError && status) {
+    status.innerHTML = `<div class="status-msg msg-err">⚠ ${dlBibleLoadError}
+      <br><button class="bvm-btn" style="margin-top:6px" onclick="dlBibleCatalogLoaded=false;loadDlBibleCatalog()">Retry</button></div>`;
+  }
+  // NOTE: deliberately do NOT clear dlBibleStatus when there's no load error —
+  // this function runs on every search keystroke and every download-progress
+  // tick, and clearing unconditionally would wipe out download-complete/failed
+  // messages almost immediately after they appear.
+
+  const q = (document.getElementById('dlBibleSearch')?.value || '').trim().toLowerCase();
+  const filtered = !q ? dlBibleCatalog : dlBibleCatalog.filter(t =>
+    t.slug.toLowerCase().includes(q) || t.fullName.toLowerCase().includes(q)
+  );
+  if (dlBibleCatalog.length === 0) {
+    // Nothing loaded (yet, or due to error) — don't show a confusing "no
+    // matches" message on top of/instead of the real error above.
+    list.innerHTML = dlBibleLoadError ? '' : `<div style="color:var(--dim);font-size:12px;padding:8px 0">Loading translation list…</div>`;
+    return;
+  }
+  if (filtered.length === 0) {
+    list.innerHTML = `<div style="color:var(--dim);font-size:12px;padding:8px 0">No translations match "${q}".</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(t => {
+    const id = t.slug.toUpperCase();
+    const isInstalled = !!installed[id];
+    const active = dlBibleActive[t.slug];
+    let rightSide;
+    if (active) {
+      rightSide = `<div style="font-size:10px;color:var(--gold);white-space:nowrap">${active}</div>`;
+    } else if (isInstalled) {
+      rightSide = `<div class="bvm-btn" style="background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.25);color:#2ecc71;cursor:default">✓ Installed</div>`;
+    } else {
+      const licStatus = bibleLicenseStatus(t.slug);
+      const safeSlug = t.slug.replace(/'/g,"\\'");
+      const safeName = t.fullName.replace(/'/g,"\\'");
+      if (licStatus === 'public_domain') {
+        rightSide = `<button class="bvm-btn" style="background:rgba(46,204,113,.12);border:1px solid rgba(46,204,113,.35);color:#2ecc71"
+          onclick="downloadDlBibleTranslation('${safeSlug}','${safeName}')">🟢 Download (Public Domain)</button>`;
+      } else if (licStatus === 'free_license') {
+        rightSide = `<button class="bvm-btn" style="background:rgba(52,152,219,.12);border:1px solid rgba(52,152,219,.35);color:#3498db"
+          onclick="downloadDlBibleTranslation('${safeSlug}','${safeName}')">🔵 Download (Free License)</button>`;
+      } else {
+        rightSide = `<button class="bvm-btn" style="background:rgba(243,156,18,.12);border:1px solid rgba(243,156,18,.35);color:#f39c12"
+          onclick="showBibleLicenseModal('${safeSlug}','${safeName}')">🟡 LICENSE REQUIRED</button>`;
+      }
+    }
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;
+        padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px">
+        <div style="min-width:0">
+          <div style="font-weight:700;font-size:12px">${t.slug} <span style="font-weight:400;color:var(--dim)">— ${t.fullName}</span></div>
+        </div>
+        ${rightSide}
+      </div>`;
+  }).join('');
+}
+
+function _handleBibleDownloadResult({ slug, success, error, blocked, verseCount, fullName }) {
+  delete dlBibleActive[slug];
+  const status = document.getElementById('dlBibleStatus');
+  if (success) {
+    status.innerHTML = `<div class="status-msg msg-ok">✓ ${(slug||'').toUpperCase()} downloaded and imported (${(verseCount||0).toLocaleString()} verses)</div>`;
+    loadBvmGrid(); // refresh Installed Translations + dropdown
+  } else if (blocked) {
+    status.innerHTML = `<div class="status-msg msg-err">⚠ ${error}</div>`;
+  } else {
+    status.innerHTML = `<div class="status-msg msg-err">⚠ ${(slug||'').toUpperCase()}: ${error || 'Download failed'}</div>`;
+  }
+  renderDlBibleList();
+}
+
+async function downloadDlBibleTranslation(slug, fullName) {
+  if (!window.electronAPI?.downloadBibleTranslation) return;
+  dlBibleActive[slug] = 'Starting…';
+  renderDlBibleList();
+  const r = await window.electronAPI.downloadBibleTranslation(slug, fullName);
+  // Handle completion directly from the invoke() result rather than relying
+  // solely on the bible-download-complete EVENT — that event is sent to a
+  // specific BrowserWindow, and if it ever targets the wrong one (as it did
+  // previously, sending to mainWindow instead of this Settings window), the
+  // UI would get stuck showing "Starting…" forever even though the download
+  // succeeded server-side. The event listener below still updates the UI
+  // for live progress ticks and as a redundant safety net — calling the
+  // completion handler twice is harmless (idempotent).
+  if (r) _handleBibleDownloadResult({ slug, success: !!r.success, error: r.error, blocked: !!r.blocked, verseCount: r.verseCount, fullName });
+}
+
+window.electronAPI?.on?.('bible-download-progress', ({ slug, line }) => {
+  dlBibleActive[slug] = line;
+  renderDlBibleList();
+});
+
+window.electronAPI?.on?.('bible-download-complete', (payload) => {
+  _handleBibleDownloadResult(payload);
+});
 
 // ── Upload drag-drop ──────────────────────────────────────────
 const uploadZone = document.getElementById('uploadZone');
@@ -1973,6 +2205,16 @@ async function openRemoteUrl(role) {
 async function loadRemoteStatus() {
   if (!window.electronAPI) return;
   try {
+    if (!window.RegistrationAccess || !await window.RegistrationAccess.refresh()) {
+      updateNdiSettUI(false);
+      const label=document.getElementById('remoteStatusLabel');
+      if(label) label.textContent='🔒 Remote Control — registration required';
+      const url=document.getElementById('remoteUrlLabel');
+      if(url) url.textContent='Register AnchorCast and complete activation to use this feature.';
+      const qr=document.getElementById('remoteCodeArea');if(qr)qr.innerHTML='';
+      const tog=document.getElementById('settRemoteToggle');if(tog)tog.setAttribute('aria-checked','false');
+      return;
+    }
     const s = await (window.electronAPI.getRemoteStatus ? window.electronAPI.getRemoteStatus() : window.electronAPI.getRemoteInfo());
     const label = document.getElementById('remoteStatusLabel');
     const url   = document.getElementById('remoteUrlLabel');
@@ -1980,7 +2222,9 @@ async function loadRemoteStatus() {
     const knob  = document.getElementById('settRemoteKnob');
     if (!label) return;
     const qrArea = document.getElementById('remoteCodeArea');
-    if (s?.running || s?.enabled) {
+    if (s?.blocked) return;
+    if (tog) tog.setAttribute('aria-checked',String(s?.running === true));
+    if (s?.running === true) {
       label.textContent = '🟢 Remote control running';
       if (url) url.textContent = s.url || (s.ip ? `http://${s.ip}:${s.port || 8080}/remote` : '');
       if (tog) tog.style.background = '#27ae60';
@@ -2016,18 +2260,21 @@ async function loadRemoteStatus() {
 }
 
 
+let _remoteSettingsBusy = false;
 async function toggleRemoteServer() {
-  if (!window.electronAPI) return;
-  const info = await window.electronAPI.getRemoteInfo().catch(() => null);
-  const shouldEnable = !(info?.running);
-  if (shouldEnable) {
-    if (window.electronAPI.startRemote) await window.electronAPI.startRemote().catch(()=>{});
-    else await window.electronAPI.toggleRemote?.(true).catch(()=>{});
-  } else {
-    if (window.electronAPI.stopRemote) await window.electronAPI.stopRemote().catch(()=>{});
-    else await window.electronAPI.toggleRemote?.(false).catch(()=>{});
-  }
-  setTimeout(loadRemoteStatus, 350);
+  if (_remoteSettingsBusy) return;
+  _remoteSettingsBusy=true;
+  try {
+    if (!window.RegistrationAccess || !await window.RegistrationAccess.ensure('remote')) return;
+    const info=await window.electronAPI.getRemoteInfo();
+    if (window.RegistrationAccess.handleBlocked('remote',info)) return;
+    if (!info) throw new Error('Remote status unavailable.');
+    const result=await window.electronAPI.toggleRemote(info.running !== true);
+    if (window.RegistrationAccess.handleBlocked('remote',result)) return;
+    if (result?.success !== true) throw new Error(result?.error || 'Could not change Remote Control.');
+    await loadRemoteStatus();
+  } catch(error) { alert(error?.message || 'Could not change Remote Control.'); }
+  finally { _remoteSettingsBusy=false; }
 }
 
 function onAdapterChange(val) {}
@@ -2035,6 +2282,8 @@ function onAdapterChange(val) {}
 // ── NDI ───────────────────────────────────────────────────────
 let _ndiEnabled = false;
 function updateNdiSettUI(enabled) {
+  const locked = !window.RegistrationAccess?.isGranted();
+  enabled = !locked && enabled === true;
   _ndiEnabled = enabled;
   const toggle = document.getElementById('ndiSettToggle');
   const knob   = document.getElementById('ndiSettKnob');
@@ -2042,19 +2291,27 @@ function updateNdiSettUI(enabled) {
   if (!toggle) return;
   toggle.style.background = enabled ? '#27ae60' : 'var(--border-lit)';
   if (knob) knob.style.left = enabled ? '21px' : '3px';
-  if (label) label.textContent = enabled ? '🟢 Running' : 'NDI / Web Output — Off';
+  toggle.setAttribute('aria-checked',String(enabled));
+  if (label) label.textContent = locked ? '🔒 External Output — registration required' : enabled ? '🟢 Running' : 'NDI / Web Output — Off';
+  window.RegistrationAccess?.apply();
 }
 
+let _ndiSettingsBusy = false;
 async function toggleNdiSetting() {
-  if (!window.electronAPI) return;
-  _ndiEnabled = !_ndiEnabled;
-  if (_ndiEnabled) {
-    const r = await window.electronAPI.ndiStart().catch(() => null);
-    updateNdiSettUI(r?.status === 'running' || r?.status === 'fallback');
-  } else {
-    await window.electronAPI.ndiStop().catch(() => null);
-    updateNdiSettUI(false);
-  }
+  if (_ndiSettingsBusy) return;
+  _ndiSettingsBusy=true;
+  try {
+    if (!window.RegistrationAccess || !await window.RegistrationAccess.ensure('ndi')) return;
+    const info=await window.electronAPI.ndiStatus();
+    if (window.RegistrationAccess.handleBlocked('ndi',info)) return;
+    if (!info) throw new Error('External Output status unavailable.');
+    const active=info.status==='running' || info.status==='fallback';
+    const result=await (active ? window.electronAPI.ndiStop() : window.electronAPI.ndiStart());
+    if (window.RegistrationAccess.handleBlocked('ndi',result)) { updateNdiSettUI(false); return; }
+    if (!result || result.success===false || result.error) throw new Error(result?.error || 'Could not change External Output.');
+    updateNdiSettUI(result.status==='running' || result.status==='fallback');
+  } catch(error) { alert(error?.message || 'Could not change External Output.'); }
+  finally { _ndiSettingsBusy=false; }
 }
 
 // ── Adaptive Learning Pane ─────────────────────────────────────
@@ -3110,8 +3367,15 @@ async function init() {
 
   loadRemoteStatus();
   setInterval(loadRemoteStatus, 2500);
+  window.electronAPI.on?.('registration-complete', async () => {
+    await loadRemoteStatus();
+    const info=await window.electronAPI.ndiStatus().catch(()=>null);
+    updateNdiSettUI(info?.status==='running' || info?.status==='fallback');
+  });
+  window.electronAPI.on?.('ndi-status', info => updateNdiSettUI(info?.status==='running' || info?.status==='fallback'));
 
   if (window.electronAPI?.ndiStatus) {
+    await window.RegistrationAccess?.refresh();
     window.electronAPI.ndiStatus().then(info => {
       if (info) updateNdiSettUI(info.status === 'running' || info.status === 'fallback');
     }).catch(()=>{});
@@ -3285,24 +3549,6 @@ function resetSongFontDefaults() {
 }
 
 init();
-</script>
-<script>
-(function(){
-  var v = window.electronAPI && window.electronAPI.appVersion;
-  if (!v) return;
-  // Update all elements that contain the version placeholder
-  document.querySelectorAll('[id*="version"],[id*="Version"]').forEach(function(el) {
-    if (el.textContent.includes('v1.VERSION')) {
-      el.textContent = el.textContent.replace(/v1\.VERSION/g, 'v' + v);
-    }
-  });
-  // Also update any text nodes
-  document.querySelectorAll('*').forEach(function(el) {
-    if (el.children.length === 0 && el.textContent.includes('v1.VERSION')) {
-      el.textContent = el.textContent.replace(/v1\.VERSION/g, 'v' + v);
-    }
-  });
-})();
 </script>
 </body>
 </html>

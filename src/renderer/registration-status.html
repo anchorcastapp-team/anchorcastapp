@@ -159,6 +159,7 @@
             <div class="muted">Hardware ID for manual activation or support requests.</div>
             <div class="action-stack">
               <button class="btn-reg" id="registerNowBtn">Open registration form</button>
+              <div id="regStatus" role="status" aria-live="polite"></div>
               <button class="btn-import" id="importLicenseBtn">Import registration file</button>
               <button class="btn-copy" id="copyHwBtn">Copy hardware ID</button>
             </div>
@@ -167,7 +168,20 @@
             </div>
           </div>
         </div>`;
-      document.getElementById('registerNowBtn')?.addEventListener('click', () => window.close());
+      document.getElementById('registerNowBtn')?.addEventListener('click', async () => {
+        const button = document.getElementById('registerNowBtn');
+        const status = document.getElementById('regStatus');
+        button.disabled = true;
+        try {
+          if (!window.electronAPI?.openRegistrationWindow) throw new Error('Apply the registration patch and restart AnchorCast.');
+          const result = await window.electronAPI.openRegistrationWindow();
+          if (!result?.success) throw new Error(result?.error || 'Could not open registration.');
+          window.close();
+        } catch (error) {
+          button.disabled = false;
+          if (status) { status.textContent = error.message; status.style.color = '#e74c3c'; }
+        }
+      });
       document.getElementById('copyHwBtn')?.addEventListener('click', async () => {
         if (!hwId) return;
         await window.electronAPI?.copyToClipboard?.(hwId);

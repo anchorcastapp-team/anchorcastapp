@@ -2,6 +2,25 @@
 <html lang="en" style="background:#08101d">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self' http://127.0.0.1:* http://localhost:*;
+    script-src 'self' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src 'self' https://fonts.gstatic.com data:;
+    img-src 'self' file: data: blob: http://127.0.0.1:* https:;
+    media-src 'self' blob: data: http://127.0.0.1:* file:;
+    connect-src 'self'
+      http://127.0.0.1:*
+      https://api.deepgram.com
+      wss://api.deepgram.com
+      wss://*.deepgram.com
+      https://api.openai.com
+      https://api.anthropic.com
+      https://lrclib.net
+      https://api.genius.com
+      https://genius.com;
+    worker-src 'self' blob:;
+  ">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AnchorCast</title>
   <style>
@@ -41,6 +60,18 @@
   <link rel="stylesheet" href="css/app.css">
   <link rel="stylesheet" href="css/anchorcast-theme.css">
   <script src="js/electron-shim.js"></script>
+  <!-- Inject platform class early to prevent web menubar flash on Windows -->
+  <script>
+    (function(){
+      try {
+        var p = window.electronAPI?.platform || '';
+        if (!p && typeof process !== 'undefined') p = process.platform || '';
+        if (p === 'darwin') document.documentElement.classList.add('platform-mac');
+        else if (p === 'win32') document.documentElement.classList.add('platform-win');
+        else if (p === 'linux') document.documentElement.classList.add('platform-linux');
+      } catch(e) {}
+    })();
+  </script>
   <style>
     /* ── Mac traffic light spacing fix ──────────────────────────────────
        On macOS hiddenInset titlebar, traffic lights sit at x:16 y:12
@@ -77,6 +108,11 @@
       body.platform-mac .brand > div:last-child { display: none; }
       body.platform-mac .web-menubar { display: none; }
     }
+    /* Hide web menubar on Windows and Linux — use native menu bar instead */
+    body.platform-win .web-menubar,
+    html.platform-win .web-menubar { display: none !important; }
+    body.platform-linux .web-menubar,
+    html.platform-linux .web-menubar { display: none !important; }
     /* Go Live button — always visible, shrink gracefully */
     body.platform-mac .go-live-btn {
       flex-shrink: 0;
@@ -153,8 +189,8 @@
           <div class="web-menu-item" onclick="wmAction('countdown-timer')">Countdown Timer</div>
           <div class="web-menu-item" onclick="wmAction('alerts')">Alerts</div>
           <div class="web-menu-sep"></div>
-          <div class="web-menu-item" onclick="wmAction('remote-url')">Remote Control URL…</div>
-          <div class="web-menu-item" onclick="wmAction('external-output')">External Output…</div>
+          <div class="web-menu-item" data-registration-feature="remote" onclick="wmAction('remote-url')">Remote Control URL…</div>
+          <div class="web-menu-item" data-registration-feature="ndi" onclick="wmAction('external-output')">External Output…</div>
         </div>
       </div>
       <div class="web-menu" data-menu="display">
@@ -226,7 +262,7 @@
       <button class="tb-btn" id="historyBtn" title="Sermon History (Cmd+H)">📝 History</button>
       <button class="tb-btn" id="themeBtn" title="Theme Designer (Cmd+T)">🎨 Themes</button>
       <button class="tb-btn" id="songsBtn" title="Song Manager">🎵 Songs</button>
-      <button class="tb-btn" id="remoteBtn" title="Remote Control URL">📱 Remote</button>
+      <button class="tb-btn" id="remoteBtn" data-registration-feature="remote" title="Remote Control URL">📱 Remote</button>
       <button class="tb-btn" id="countdownTbBtn" title="Timer">⏱ Timer</button>
       <button class="tb-btn" id="alertsTbBtn" title="Alerts" style="position:relative">🔔 Alerts</button>
     </div>
@@ -1175,7 +1211,7 @@
           <div style="font-size:11px;color:var(--text-dim);margin-top:2px" id="ndiMethodLabel">Click Start to broadcast to OBS or vMix</div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn-save" id="ndiStartBtn" style="padding:7px 16px">▶ Start</button>
+          <button class="btn-save" id="ndiStartBtn" data-registration-feature="ndi" style="padding:7px 16px">▶ Start</button>
           <button class="btn-cancel" id="ndiStopBtn" style="display:none;padding:7px 16px">⏹ Stop</button>
         </div>
       </div>
@@ -1398,6 +1434,7 @@
   </div>
 </div>
 
+<script src="js/feature-registration.js"></script>
 <script src="js/app.js"></script>
 <!-- ── CONTEXT MENU (right-click on presentation library) ─────────────── -->
 <div id="presContextMenu" style="display:none;position:fixed;z-index:800;
@@ -1902,7 +1939,11 @@
     const isMac = (typeof window !== 'undefined' && window.electronAPI?.platform === 'darwin')
       || (typeof process !== 'undefined' && process.platform === 'darwin')
       || navigator.userAgent.toLowerCase().includes('mac');
+    const isWin = (typeof window !== 'undefined' && window.electronAPI?.platform === 'win32')
+      || (typeof process !== 'undefined' && process.platform === 'win32')
+      || navigator.userAgent.toLowerCase().includes('windows');
     if (isMac) document.body.classList.add('platform-mac');
+    if (isWin) document.body.classList.add('platform-win');
   } catch(e) {}
 })();
 </script>

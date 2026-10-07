@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Register AnchorCast</title>
+<html lang="en"><head><meta charset="utf-8"><title>Register AnchorCast</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -10,7 +10,7 @@
   .anchor{font-size:30px;margin-bottom:6px;color:#4a9eff}
   .logo{color:#c9a84c;font-size:18px;font-weight:700;letter-spacing:1.5px}
   .logo-sub{color:#555;font-size:10px;letter-spacing:2px;margin-top:3px}
-  .body{flex:1;padding:18px 26px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+  .body{flex:1;min-height:0;padding:18px 26px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
   h2{font-size:16px;color:#fff;font-weight:700;margin-bottom:2px}
   .desc{font-size:12px;color:#666;line-height:1.6}
   .desc a{color:#c9a84c;cursor:pointer;text-decoration:none}
@@ -42,7 +42,7 @@
     text-align:center;font-size:10px;color:#333;flex-shrink:0}
   /* Success screen */
   .success{display:none;flex-direction:column;align-items:center;justify-content:center;
-    flex:1;padding:28px;text-align:center;gap:14px}
+    flex:1;min-height:0;overflow-y:auto;padding:20px 28px;text-align:center;gap:14px}
   .success.show{display:flex}
   .s-icon{font-size:52px}
   .s-title{font-size:18px;font-weight:700;color:#2ecc71}
@@ -60,6 +60,13 @@
   .btn-back{padding:9px 24px;background:transparent;border:1px solid rgba(255,255,255,.1);
     border-radius:7px;color:#555;font-size:11px;cursor:pointer;font-family:inherit}
   .btn-back:hover{color:#c9a84c;border-color:rgba(201,168,76,.3)}
+  .continue-panel{padding:12px 26px;border-top:1px solid rgba(201,168,76,.2);flex-shrink:0;text-align:center}
+  .btn-secondary{background:transparent;border:1px solid rgba(201,168,76,.6);color:#e0bf6a}
+  .continue-note{font-size:11px;color:#aaa;line-height:1.5;margin-top:7px}
+  button:focus-visible,a:focus-visible{outline:2px solid #e0bf6a;outline-offset:3px}
+  .footer{color:#999}
+  .status:empty{display:none}
+  .continue-panel #status{margin:0 0 10px}
 </style>
 </head><body>
 
@@ -86,22 +93,21 @@
     4. AnchorCast opens and registers automatically ✅
   </div>
   <div class="field">
-    <label>Full Name *</label>
+    <label for="nameInput">Full Name *</label>
     <input id="nameInput" type="text" placeholder="e.g. John Smith" autocomplete="name"/>
   </div>
   <div class="field">
-    <label>Email Address *</label>
+    <label for="emailInput">Email Address *</label>
     <input id="emailInput" type="email" placeholder="e.g. john@church.org" autocomplete="email"/>
   </div>
   <div class="field">
-    <label>Church / Organisation <span style="color:#444;font-weight:400">(optional)</span></label>
+    <label for="churchInput">Church / Organisation <span style="color:#444;font-weight:400">(optional)</span></label>
     <input id="churchInput" type="text" placeholder="e.g. Grace Community Church" autocomplete="organization"/>
   </div>
   <div>
     <button class="btn btn-primary" id="sendBtn" onclick="sendEmail()">
       📧 Send Registration Email
     </button>
-    <div class="status" id="status"></div>
   </div>
   <div class="hwid" id="hwIdDisplay">Hardware ID: loading…</div>
   <div class="oss">
@@ -130,6 +136,13 @@
   <button class="btn-back" onclick="showForm()">← Back / Resend Email</button>
 </div>
 
+<!-- Remains accessible on the form, while sending, on errors and after success. -->
+<div class="continue-panel">
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+  <button type="button" class="btn btn-secondary" id="skipBtn" onclick="skipRegistration()">Continue without registering</button>
+  <p class="continue-note">Use the basic features now. Additional Bible translations, NDI, Remote Control and AI Transcription still require registration. Register later from <b>Help → Registration</b>.</p>
+  <div class="status" id="skipStatus" role="status" aria-live="polite"></div>
+</div>
 <div class="footer">Already have a link? Click it in your email client to activate.</div>
 
 <script>
@@ -172,9 +185,29 @@
   }
 
   function showSuccess(email) {
+    document.getElementById('status').textContent = '';
     document.getElementById('sentToBox').textContent = '✉ Email sent to: ' + email;
     document.getElementById('formView').style.display = 'none';
     document.getElementById('successView').classList.add('show');
+  }
+
+  async function skipRegistration() {
+    const button = document.getElementById('skipBtn');
+    const status = document.getElementById('skipStatus');
+    if (button.disabled) return;
+    button.disabled = true;
+    status.textContent = 'Opening AnchorCast…';
+    try {
+      if (!window.electronAPI?.skipRegistration) {
+        throw new Error('The registration update is incomplete. Apply both preload files and src/main.js, then restart AnchorCast.');
+      }
+      const result = await window.electronAPI.skipRegistration();
+      if (!result?.success) throw new Error(result?.error || 'Could not open AnchorCast.');
+    } catch (error) {
+      status.style.color = '#e74c3c';
+      status.textContent = error.message;
+      button.disabled = false;
+    }
   }
 
   async function sendEmail() {
@@ -184,6 +217,7 @@
     const status = document.getElementById('status');
     const btn    = document.getElementById('sendBtn');
 
+    if (btn.disabled) return;
     if (!name)  { status.style.color='#e74c3c'; status.textContent='⚠ Please enter your full name.'; return; }
     if (!email || !email.includes('@')) {
       status.style.color='#e74c3c'; status.textContent='⚠ Please enter a valid email address.'; return;
@@ -192,15 +226,15 @@
     btn.disabled = true;
     btn.textContent = '⏳ Sending…';
     status.style.color='#888';
-    status.textContent='';
+    status.textContent='Contacting the registration email service… You can continue without registering at any time.';
 
     try {
       const r = await window.electronAPI.sendRegistrationEmail(name, email, church);
-      if (r.success) {
+      if (r?.success) {
         showSuccess(email);
       } else {
         status.style.color='#e74c3c';
-        status.textContent='❌ ' + (r.error || 'Failed to send. Please try again.');
+        status.textContent='❌ ' + (r?.error || 'Failed to send. Retry or choose Continue without registering.');
         btn.disabled = false;
         btn.textContent = '📧 Send Registration Email';
       }
