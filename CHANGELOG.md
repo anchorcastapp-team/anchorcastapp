@@ -1,6 +1,152 @@
 # Changelog
 
+## [1.8.1] — Unreleased
+
+### Fixed — detection panel ordering
+
+- Confirmed Scripture cards and **Suggestions / Review** now show the latest accepted detection or meaningful evidence update first within their own section.
+- A newer supporting match refreshes its existing discussion card rather than leaving it at its original transcript position or creating another card.
+- An existing suggestion upgraded to a confirmed quotation/reference moves to the confirmed section with its current activity order.
+- Identical repeated results, routine redraws and presentation-status changes do not falsely make older detections new. A stable sequence resolves same-millisecond updates.
+- Display activity is separate from spoken evidence order. Late online results may move a card visually, but cannot make an old passage fresh for Auto or take priority over newer spoken evidence.
+- The Suggestions section's expanded/collapsed state, passage expansion and keyboard focus are retained while cards reorder. Supporting updates do not force the operator's scroll position to the top.
+
+### Changed
+
+- Added `updatedAt` and `activitySequence` to persisted detection-event exports and group activity fields to the Debug log. Existing records without these fields fall back to their creation/source times.
+- Updated application, Help, Options, About, diagnostic and root lockfile version metadata to **1.8.1**.
+- Added a checked incremental updater, verifier and regression coverage. No new runtime dependency.
+
+This maintenance update retains the v1.8.0 confidence benchmarks, grouping, History, Auto/Manual controls, MP3 recording, voiceovers, trimming, timers and registration behavior. It does not address the separately reported Intel Mac Settings-window loop or the earlier audio-duration/macOS-path test failures.
+
+---
+
 All notable changes to **AnchorCast** are documented here.
+
+---
+
+## [1.8.0] — Unreleased
+
+This release combines the changes prepared for the **unpublished v1.7.2 draft** with the complete **v1.8.0 Sermon Audio Studio** updates. There is no separate v1.7.2 release entry; those changes are included below as part of v1.8.0. The v1.7.1 and earlier history is preserved unchanged.
+
+### Added
+
+#### Independent sermon audio recording
+
+- **Local MP3 recorder** — an opt-in **Record Audio** control below **Start Transcript** records the microphone selected in **Settings → Audio & AI**. Includes an input meter, elapsed capture time, **Start Recording**, **Pause/Resume**, **Stop & Save**, **Save MP3 As…** and **Open Recordings**. Recording remains independent of transcription and does not start when the controls are merely opened.
+- **Streaming and recovery** — microphone audio is encoded locally as a genuine **128 kbps mono MP3**, with bounded PCM buffers, input/session validation, interrupted-file retention where possible and an app-close recording guard. Paused time is excluded. No additional transcription-provider call is introduced, and the recorder does not require a cloud API or Whisper model. Check interrupted audio before sharing it.
+
+#### Recording settings and reusable voiceovers
+
+- **Recording tab under Audio & AI** — editable introduction and closing scripts, optional contact fields/placeholders, a default formal male Onyx narration preset, voice/speed selection, editable voice direction, local preview and optional OpenAI speech generation. Generation uses the saved OpenAI API key, requires explicit consent and may incur API charges. Only the selected script, resolved contacts and voice direction are sent; this feature does not upload the sermon recording.
+- **Prepared voiceover library** — independent introduction and closing assets saved locally for offline reuse. Contact/text/voice changes invalidate affected prepared speech; music changes require local **Rebuild mix** only. Authorized narration can also be imported without cloud generation. Unresolved placeholders block preparation rather than being spoken.
+- **Introduction and closing background music** — includes the original synthesized **Warm Welcome** instrumental, a music-off option and custom-track import, with adjustable volume, lead-in, ending and transition gap. Fades are applied around the narration. Music accompanies the introduction and closing only, not the preacher's sermon. The asset notice and reproducible synthesis source are included.
+- **Generic editable samples** — introduction and closing starter text is not tied to a particular church and does not require contact placeholders. **Use sample text** is available for each slot, with confirmation before replacing nonempty text.
+
+#### Sermon trimming and finishing
+
+- **Save the original first** — explicit **Stop & Save** and **Stop & Save, then Close** save the original MP3 before offering optional finishing. Existing recordings can be opened through **Trim / Add Intro / Closing…**. Introduction and closing inclusion is opt-in; both checkboxes start unchecked.
+- **Start/end trim editor** — choose the sermon section to keep with **Start at / End at**, two sliders or **Set start/end to playhead**. Shows original and kept duration, with **Play kept section** and **Reset trim**. This trims the beginning and/or end, not middle sections or multiple tracks.
+- **Non-destructive, sample-boundary export** — trim only the sermon input, then concatenate the unchanged prepared introduction and/or closing. Export a trimmed sermon alone, either voiceover, or both. Finished **128 kbps mono MP3** copies go to **Recordings/Exports**, with preview, **Save finished MP3 As…** and **Open finished messages**. The original and previously finished copies are not overwritten.
+- **Efficient original-audio preview** — decode duration locally with the existing encoder, cache it only while the source file is unchanged and stream preview through revocable loopback-only capability URLs with byte-range support. The whole sermon is not copied into renderer memory.
+- **Explicit Cancel and Escape** — Cancel remains reachable in the finishing dialog footer. Before export it closes the editor; while that dialog is loading or exporting it cancels its own operation, waits for cleanup and then closes. Cancelling after a completed save keeps both the finished MP3 and the original. Unrelated audio jobs are not cancelled.
+- **Validation and failure handling** — block invalid, empty or reversed selections; reject source changes since preview; clean unfinished derivatives after cancellation/errors; and retain trim choices for retry after a failed export. Timestamps accept seconds, MM:SS or HH:MM:SS with millisecond precision. Native shutdown/interruption paths retain their original-audio behavior rather than opening an optional finishing prompt.
+- **Native audio-generation/export protection** — allowlisted local file operations, bounded imports, a fixed HTTPS speech endpoint, redacted provider errors, scoped job cancellation and exit confirmation while preparing/exporting. Prior prepared clips and original sermons survive failed or cancelled operations.
+
+#### Diagnostics and source tooling
+
+- **Readiness labels** — distinguish waiting for reference completion, suggestions for review, ready in Manual, ready/queued for Auto, sent-to-output and held/cancelled states. Confirmation colour is separate from age and presentation readiness.
+- **Expanded and grouped diagnostics** — export effective threshold, Manual/Auto state, passage context, confirmation decisions, evidence upgrades, parser-error stage, Auto holds/cancellations and projection IPC results. Include discussion IDs, announced-passage membership, contributing methods, grouped-card counts and separate occurrence counts. IPC acceptance is not proof of physical-screen display. Logs can include private transcript excerpts; review them before sharing.
+- **Setup and verification tooling** — checked, repeatable merge scripts for native bridges, encoder packaging and version metadata; source manifests; Node regression tests; optional Chromium checks; and rebuild checklists. Native-file backups are kept outside the project. Incremental trim setup merges its required preview and cancellation methods into both preloads without replacing unrelated code or SMTP settings.
+
+### Changed
+
+#### Confidence benchmarks and detection canvas
+
+- **One selected benchmark** — **Low 60%, Medium 75%, High 85%** remain selectable. The saved threshold is inclusive and applies before grouping and again before Auto commit. Removed the hidden 80% online floor, 88% Auto gate and conflicting legacy per-type overrides from these decisions. Missing/invalid settings default to 75%; an existing valid selection is retained.
+- **Confirmation is separate from confidence** — a match needs a confirmed reference, supported quotation or operator-approved learned phrase for Auto; a high score alone does not confirm a Scripture. Scores are heuristic match scores, not measured accuracy guarantees.
+- **One card per ongoing Scripture discussion** — an announced reference, its following quotation and continued supporting phrases share a discussion identity. This addresses the repeated active cards reported for **1 John 1:9** and **Philippians 1:6**. Each accepted occurrence remains independently recorded and reviewable; scores are neither averaged nor artificially boosted.
+- **Genuine repetitions retained** — separately re-announced references, returns after another confirmed passage or a longer gap can begin another discussion. There is no whole-service ban on detecting the same verse again. Existing saved sessions and historical detection lists are not rewritten.
+- **Suggestions separated from confirmed detections** — unrelated thematic matches appear in an initially collapsed **Suggestions / Review** section. Supporting suggestions for the active verse remain attached without downgrading its confirmation or transferring their score/Auto eligibility to it.
+- **Cleaner detection canvas** — removed recorded-match counts, evidence rows, timestamps and per-match controls from active cards. Detailed records remain available through Review, History and diagnostic export. Expandable announced passages remain available.
+- **Stable confirmation colours** — confirmed references/quotations meeting the selected benchmark remain green even when they become earlier occurrences. Suggestions remain amber; rejected, superseded or below-threshold results are not shown as confirmed green. Stale Auto presentation remains blocked independently, with age/readiness explained in text.
+
+#### Recording status, narration and storage
+
+- **Visible recording indicator** — the main Audio button and recorder monitor show a pulsing red dot and **REC HH:MM:SS** while recording. Minimized recorder controls do not hide the main-button indicator or elapsed time; the timer text stays steady.
+- **Distinct non-recording states** — paused audio shows a steady amber pause marker. Startup, saving, stopped and error states do not show a false recording pulse. Screen-reader announcements occur on state changes; reduced-motion/high-contrast preferences use a steady marker.
+- **Script-only voiceovers** — introduction and closing speech requests contain only the resolved editable script. Removed the automatically added AI-narration sentence and updated the default voice direction.
+- **Written listener notice** — Settings and the finishing dialog provide a non-spoken publishing reminder for selected AI-generated clips. Imported-only narration and original sermon audio are not falsely labelled as generated. Include an appropriate disclosure in the episode description or a visible listener-facing player notice when sharing.
+- **Shared bundled audio folder** — Warm Welcome and its notice use the existing root **assets/audio** directory rather than a separate **src/audio-assets** folder. Runtime lookup, synthesis scripts, packaging and verification use this location; existing **assets/Audio** casing is supported. Prepared voiceovers, recordings, exports and custom tracks keep their writable user-data paths. The folder move does not require regenerating narration.
+- **Speech-provider requirements** — this implementation supports OpenAI speech generation or imported narration, not a Claude-key voice provider. Recording settings explain the requirement; recognizable Anthropic credentials entered in the OpenAI field are rejected locally before a speech request. No Claude script-writing feature is introduced.
+
+### Fixed
+
+#### Scripture parsing and passage context
+
+- **Premature references in both modes** — chapter-only mentions establish context without becoming verse 1. Unfinished verse numbers and ambiguous number sequences are held before creating a verse card. Complete references have a short settling period for nearby corrections.
+- **Spoken-digit references** — marked chapter/verse numbers support phrases such as “Psalm one one nine, verse one zero five.” Ordinary “Romans one one” remains Romans 1:1 and numeric hyphens remain ranges. Added singular “Hebrew,” chapter-before-book phrasing and book/number forms without spaces.
+- **Field-aware chapter/verse corrections** — “Psalm 89, I mean verse 89” can restore the earlier Psalm 119 context rather than changing the active chapter to 89. A later correction marks the old occurrence superseded instead of deleting History.
+- **Side references hijacking the main reading** — track recent explicit passages and supported quotation context separately. Ambiguous bare verse numbers wait for explicit book/chapter context or corroborating installed Bible text rather than inheriting the last side reference automatically. “Read on” alone does not invent the next verse; ambiguous shared quotations remain held outside the active reading.
+- **Stronger evidence discarded** — a stronger overlapping match updates its existing occurrence and can become eligible for Auto without another card. Rejected/dismissed cards and cleared panels are not silently reactivated, and operator-corrected references are not overwritten by late evidence.
+
+#### Announced passages and automatic presentation
+
+- **Verse ranges stay together** — **Daniel 3:16–27** is one expandable passage with all twelve verses in ascending order, **Present verse 16**, individual verse presentation and **Schedule passage**. Non-contiguous lists remain lists; unannounced intermediate verses are not invented.
+- **Auto range queue overflow** — only the opening verse of an announcement enters the Auto queue. Unread members no longer fill the eight pending slots or discard the opening verses. Auto waits for subsequent explicit verse references or supported quotations instead of racing through every verse. The existing opt-in complete-passage display remains available for contiguous ranges.
+- **Unread range transcription hints** — send only the opening verse to the local transcription hint bridge initially, rather than letting every unread tail verse replace it.
+- **Reading position after a range** — “Next verse” after announcing 16–27 advances from 16 to 17, not to 28. Supported subsequent quotations within the range can update the reading position.
+- **Repeated Auto presentation during one discussion** — Auto uses discussion and verse identity, not just a method's event key. Supporting phrases do not repeatedly send the same ongoing verse discussion to live output; genuinely new discussions remain eligible.
+- **Manual/Auto synchronization** — applying Manual settings disables Auto; toolbar mode changes persist. An unchanged mode control in an already-open Options window does not overwrite a newer toolbar choice. Manual selection, panel/transcript clearing, rejected matches and manual output actions cancel pending Auto work.
+- **Rapid or stale automatic overwrites** — scheduling briefly settles candidates, prioritizes current evidence and spaces live changes. Before committing, it rechecks mode, live state, threshold, status and freshness. Late responses cannot override newer manual selections. Enabling Auto can reconsider the newest fresh eligible result without replaying an old backlog.
+- **Detection card flicker and focus loss** — readiness/supporting-evidence updates do not replay every card's entry animation or unnecessarily reset scroll position. Expanded passages and focused controls survive redraws.
+
+#### Online response handling
+
+- **JSON parsing failures** — read all provider text blocks, accept one complete array (including a valid empty array with harmless surrounding commentary), validate item schema/evidence and reject truncated or ambiguous responses without inventing results. Diagnostics distinguish response decoding, schema/evidence issues, output truncation and HTTP/network failures. Parsing failures use a short retry cadence rather than the old minute-long network backoff; local detection continues independently.
+
+#### Recorder controls and theme styling
+
+- **Explicit Minimize (−)** — hides recorder controls while capture continues; a paused session stays paused. The main Audio button restores the same session and current time.
+- **Guarded Close (×)** — asks before stopping active or paused recording. **Stop & Save, then Close** waits for successful finalization and offers optional finishing. **Cancel** leaves the recording state unchanged. Idle/saved controls close normally; failed or interrupted saves remain visible.
+- **Safe Escape and cancellation** — Escape uses the close-confirmation path while recording and dismisses that question when already open. Backdrop clicks do nothing. Startup cancellation waits for cleanup and duplicate save clicks are blocked.
+- **Recorder theme override** — state-specific colours take precedence over the application theme and hover styles. Frequent audio updates do not recreate the animated dot.
+
+### Upgrade and compatibility
+
+- **Single consolidated release** — application and lockfile metadata remain **1.8.0**, with the unpublished v1.7.2 work incorporated into this release. Existing application identity and data paths are unchanged; there is no requirement to publish or install a separate v1.7.2 release first.
+- **Existing features retained** — v1.7.1 negative overtime/red blinking, **Hide on Projection / Show on Projection** while timing continues, selected-translation loading, independent detection History/recovery, Theme Designer behavior and existing registration restrictions. AI Transcription, additional Bible translations, NDI and Remote Control retain their registration requirements; basic audio recording remains separate.
+- **Saved scripts protected** — a one-time Recording-settings update replaces only untouched former sample defaults, allowing formatting-only differences. Custom scripts, contacts, imported narration, music and voice selections are retained. A byte-for-byte backup is created beside the settings file before the atomic revision update.
+- **Old generated prefaces require regeneration** — previously prepared AI clips containing the added spoken sentence are kept but marked **Generate voice again — remove old spoken preface**. They are not silently reused as current clips. **Generate voice**, not **Rebuild mix**, removes the preface from future narration. Imported audio and earlier finished sermon files are unchanged; no paid generation happens during migration.
+- **Encoder dependency** — the combined release adds **ffmpeg-static** where absent. Install dependencies on the appropriate build machine, synchronize the lockfile before using **npm ci**, and include the matching encoder in each target installer. These source packages do not supply platform-specific encoder binaries. Review the included third-party notices and platform/signing notes.
+- **Data and configuration** — no automatic rewrite of existing transcripts, historical detections or Bible data. Native merge scripts preserve unrelated main-process/preload configuration, including local SMTP settings. Existing API-key storage is not changed or newly claimed to be encrypted.
+- **Validation scope** — implementation results and limitations are documented in **START_HERE_v1.8.0.md**, **RECORDING_TRIM_TEST_RESULTS.json** and the earlier feature test notes. This release-document consolidation changes no application code and is not a new native-installation or microphone test.
+
+---
+
+## [1.7.1] — 2026-10
+
+### Added
+- **Hide on Projection / Show on Projection** — hide the running timer, its label and conclusion message without stopping, pausing or restarting it. Countdown, Count Up and negative overtime continue in the background. The Timer Monitor and quick-controls readout remain available to the operator. The visibility setting stays with the current timer when projection/control windows reopen; a new Start defaults to visible. Available in the timer window (including standalone Timer), inline controls and timer modal. Slides, media, clock and other overlays are unaffected.
+- **Negative overtime countdown** — at 00:00 the timer remains running and continues as -00:01, -00:02, and so on, showing how far the speaker has exceeded their allotted time. Red blinking, the conclusion message and Flash Faster remain available. Applies to the timer control window, operator live preview, main-app projection and standalone Timer.
+- **Detection Debug log** — exports processed-line decisions, actual thresholds, missing Bible text, selected/fallback translation and panel-versus-history counts for troubleshooting. API settings and tokens are not exported; transcript excerpts are included and should be reviewed before sharing.
+- **Detection verification and offline replay tools** — includes source verification, parser/history regression tests, optional Chromium component checks, and a finalized-text replay command using a user-supplied flat Bible file. No new runtime dependencies.
+
+### Fixed
+- **Overtime lost on window reopen** — expired countdowns are no longer discarded by the main/standalone timer state handlers. Opening the timer controls or reopening the projection during the same app session reconstructs the original deadline and current negative overtime rather than hiding or restarting the timer. Count-up timers also preserve their elapsed time on reopen.
+- **Operator timer disappearing at zero** — the live timer overlay stays visible and blinks red throughout overtime unless the operator hides it, stops it or starts a new timer. A hidden timer continues in the operator monitor. Rejected start requests no longer show a false running timer.
+- **Inconsistent countdown boundary and formatting** — a shared timing helper keeps the displays on the same rounding rules, uses the original duration for warning thresholds, and formats the negative sign without a -00:00 display. Styling changes do not replace the current preview with the configured starting duration. The conclusion message no longer overwrites the editable session title.
+- **Detected verses missing from saved History after clearing the panel** — History and crash recovery now use an independent current-transcript detection ledger, not the dismissible AI Detections list. Clearing the panel preserves previous references and subsequent appearances of the same Scripture; clearing the transcript explicitly starts a new ledger. Failed permanent saves retain the recovery file.
+- **Later repeated Scripture references suppressed** — detection identity now follows the contributing finalized transcript occurrence rather than suppressing identical reference/text pairs for the whole service. Repeated citations and keyword/learned quotations remain eligible; overlapping evidence from the same occurrence is coalesced.
+- **Spoken and split Scripture references** — adds a shared grammar for complete spoken numbers, ordinal book names, adjacent verse continuations, lists/ranges, chapter-only context and bounded self-corrections. Examples include “Ephesians 3:20” followed by “And 21,” “Ephesians chapter one. Verse eighteen and nineteen,” and “Romans eight seven, I mean eleven.” Does not invent verse 1 for chapter-only mentions or silently change valid numeric references to match a quotation.
+- **Selected Bible translation ignored by detection** — repairs the missing reload function and incorrect translation-availability checks; detection now uses the selected installed translation. KJV fallback is explicitly identified, unavailable verse text is diagnosed, database readiness is reported per translation, and replacing same-sized Bible data invalidates its search index.
+- **Quote matching delayed during continuous speech / cloud failure** — local detection remains active with or without optional online detection, has a bounded pending-search wait, and uses source-attributed conservative quotation matching. A keyword index reduces full-Bible rescans. Pending asynchronous results are bounded at save and invalidated across transcript resets.
+- **Compound Psalm/verse numbers changed by transcript normalization** — complete number phrases such as “Psalm twenty three” and “chapter eight verse twenty six” remain intact instead of partially converting the number.
+
+### Changed
+- Application version and root lockfile metadata updated to **1.7.1**; installer naming continues to use the package version. Help, changelog and release notes reflect this release.
+- Shared timer helper is included in the standalone Timer packaging allowlist. No runtime dependencies added.
+- Added timer regression checks and refreshed the existing source verification hashes for this combined release.
 
 ---
 
