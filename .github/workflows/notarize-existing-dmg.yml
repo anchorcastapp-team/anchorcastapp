@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "GitHub release tag, example: v1.8.0"
+        description: "GitHub release tag, example: v1.8.1"
         required: true
-        default: "v1.8.0"
+        default: "v1.8.1"
       dmg_name:
         description: "Exact DMG asset name already uploaded to the release"
         required: true
-        default: "AnchorCastUpdate_v1.8.0_arm64.dmg"
+        default: "AnchorCastUpdate_v1.8.1_arm64.dmg"
 
 permissions:
   contents: write
