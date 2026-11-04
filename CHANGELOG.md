@@ -6,6 +6,23 @@ All notable changes to **AnchorCast** are documented here.
 
 The presentation-library and import fixes previously prepared under the v1.8.1 draft are assigned to **v1.8.2**. **v1.8.0 and v1.8.1 have already been released**; their history is retained below. Release dates have not been added where none were supplied.
 
+### Fixed — bundled PDF renderer compatibility (r2)
+
+- Corrected PDF.js cleanup to use `PDFDocumentLoadingTask.destroy()` instead of calling the removed `destroy()` method on a `PDFDocumentProxy`. This resolves the `pdf.destroy is not a function` failure reported by the macOS native smoke test. Cleanup runs once across success, failure, cancellation and password-request paths; a cleanup error does not overwrite the primary rendering error.
+- Fixed the separate-process presentation reload test to write an unformatted numeric result to stdout. The assertion still requires exactly two persisted slides; it now passes even with terminal colours forced on.
+- Refreshed the presentation/PDF verification manifest and included the previously missing optional presentation UI test tools. An outdated manifest is rejected before comparing its stale file hashes.
+- Added `--platform=mac`, `--platform=win` and `--platform=all` to the read-only PDF build verifier. All matching build variants on the selected platform still require assets and the beforePack guard. Selecting one platform does not verify the other platform's installer.
+- Added renderer lifecycle contract tests whose document proxy deliberately lacks `destroy()`. Actual PDF.js decoding and rebuilt native installers still require the real local smoke test; no native compatibility certification is claimed.
+
+### Added — bundled PDF import
+
+- Added a local PDF.js rendering route for Windows, macOS and Linux desktop builds, ahead of the existing Poppler/PyMuPDF fallbacks. The renderer resources are staged under `assets/pdfjs` for inclusion in Full, Light and Update installers; PDF imports no longer depend on separately installed Python packages when the bundle is present.
+- Added a local import-progress window with Cancel, sequential page rendering, bounded size/page/output limits and cleanup of incomplete output. Closing that window cancels the import without changing the original PDF or committing a partial library record.
+- Added specific password-protected, malformed, unsupported-XFA, missing-bundle and timeout messages. PDF failures no longer instruct operators to install PowerPoint or LibreOffice for an existing PDF.
+- Added developer staging, a `beforePack` resource check, read-only source/dependency verification and a native Electron conversion smoke test. PDF.js is pinned to 6.5.438 and staged with its matching worker/resources/notices. End users receive the renderer in rebuilt installers rather than installing npm/Python tools themselves.
+- Rendering uses an isolated, sandboxed browser window with no Node integration or arbitrary filesystem/IPC bridge; resources and job endpoints are limited to local allowlisted paths. PDF scripting is not enabled.
+- Validation scope: source/bridge/packaging tests run locally, but the real PDF.js dependency could not be downloaded in the patch environment. Actual PDF.js decoding and native Windows/macOS installer behavior must be checked on the build machine before release. This entry describes the implemented source path, not a completed native certification.
+
 ### Fixed — presentation library, saved previews and import diagnostics
 
 - Cross-platform interpreter discovery now builds paths with the explicitly requested platform's path rules. Fixed the Mac candidate assertion failing when the suite runs on Windows (`/Resources/...` becoming `\Resources\...`); added Windows/POSIX host simulations without relaxing assertions. Mac per-user LibreOffice paths follow the same rule; Windows `py.exe` launcher paths also receive `-3`.
@@ -26,7 +43,7 @@ The presentation-library and import fixes previously prepared under the v1.8.1 d
 - Retains the already-released v1.8.1 global newest-first timeline for confirmed detections and Suggestions / Review. Detection thresholds, grouping, History, Auto/Manual behavior, recording, voiceovers, trimming, timers and registration remain unchanged by this maintenance patch.
 - Includes the cross-platform Python discovery correction together with presentation persistence, restored previews, durable deletion and the relocated **New** toolbar action.
 - The release is numbered **1.8.2**. Source builds must use matching application-version metadata; the documentation update alone does not change `package.json`, lockfiles or displayed application labels.
-- No new Node dependency or preload permission is introduced. The existing presentation-library hook in `src/main.js` must remain installed once; do not add a second copy.
+- PDF.js is a new build dependency; its staged browser assets are included in the installer. No new preload permission is introduced. The existing presentation-library hook in `src/main.js` must remain installed once; do not add a second copy.
 - The separate Intel Mac Settings-window loop and earlier macOS audio-duration/path test failures are not claimed as fixed by this release.
 
 ---
