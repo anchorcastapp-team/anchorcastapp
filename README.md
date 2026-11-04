@@ -1,9 +1,6 @@
 # ⚓ AnchorCast v1.8.2
 ### *Free & Open-Source AI Church Presentation Software*
 
-**v1.8.2:** reusable intro/closing voiceovers, original instrumental background, non-destructive finished MP3 exports, and the preceding detection/recorder/timer improvements. See [release notes](RELEASE_NOTE_v8.0.0.md) and [source installation guide](V8_INSTALL_AND_TEST_NOTES.md). Optional OpenAI voice generation uses your API account and may incur provider charges; prepared clips and imported narration can be reused offline.
-
-
 <p align="center">
   <a href="https://github.com/anchorcastapp-team/anchorcastapp/stargazers">
     <img src="https://img.shields.io/github/stars/anchorcastapp-team/anchorcastapp?style=for-the-badge" />
