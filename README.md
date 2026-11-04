@@ -1,4 +1,4 @@
-# ⚓ AnchorCast v1.7.0
+# ⚓ AnchorCast v1.8.2
 ### *Free & Open-Source AI Church Presentation Software*
 
 <p align="center">
