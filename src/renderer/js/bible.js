@@ -95,6 +95,9 @@ const STORES = {
 let TRANSLATIONS = ['KJV','NKJV'];
 let _dbLoaded = false;
 let _dbStatus = 'fallback';
+let _dbRevision = 0;
+const _loadedTranslations = new Set();
+const _loadedChapterCounts = new Map();
 
 // Ensure a store exists for a given translation ID
 function _ensureStore(id) {
@@ -265,20 +268,48 @@ function _seed() {
 // Called at startup by main process via IPC — loads data/kjv.json into memory.
 // Format expected: [{"b":1,"c":1,"v":1,"t":"verse text"}, ...]
 // b is 1-indexed (1=Genesis), we store 0-indexed internally.
-function loadFromJSON(jsonData, translation) {
-  _ensureStore(translation);
-  const store = STORES[translation];
-  store.clear();
-  let count = 0;
+function loadFromJSON(jsonData, translation = 'KJV') {
+  if (!Array.isArray(jsonData)) throw new TypeError('Bible data must be a verse array');
+  translation = String(translation || 'KJV').toUpperCase();
+  const parsed = new Map(), chapterCounts = new Map();
   for (const row of jsonData) {
-    const key = `${row.b - 1}:${row.c}:${row.v}`;
-    store.set(key, row.t);
-    count++;
+    const b = Number(row?.b), c = Number(row?.c), v = Number(row?.v);
+    if (!Number.isInteger(b) || b < 1 || b > 66 || !Number.isInteger(c) || c < 1 ||
+        !Number.isInteger(v) || v < 1 || typeof row.t !== 'string' || !row.t.trim()) continue;
+    parsed.set(`${b-1}:${c}:${v}`, row.t);
+    chapterCounts.set(`${b-1}:${c}`, Math.max(chapterCounts.get(`${b-1}:${c}`) || 0, v));
   }
-  console.log(`[BibleDB] Loaded ${count} ${translation} verses`);
-  _dbStatus = 'full';
+  if (!parsed.size) throw new Error('No usable verses found in Bible data');
+  _ensureStore(translation);
+  STORES[translation] = parsed;
+  _loadedTranslations.add(translation);
+  _loadedChapterCounts.set(translation, chapterCounts);
+  _dbRevision++;
   _dbLoaded = true;
-  return count;
+  _dbStatus = STORES.KJV.size >= 30000 ? 'full' : 'partial';
+  console.log(`[BibleDB] Loaded ${parsed.size} ${translation} verses`);
+  return parsed.size;
+}
+
+// Reference validity and text availability are different questions. An installed
+// non-KJV translation may contain a verse that the small KJV seed does not.
+function hasTranslation(id) { return !!STORES[String(id || '').toUpperCase()]?.size; }
+function getVerseDetails(book, chapter, verse, translation = 'KJV') {
+  const idx = typeof book === 'number' ? book : bookNameToIndex(book);
+  if (idx === null || idx === undefined) return null;
+  const key = `${idx}:${chapter}:${verse}`;
+  const preferred = String(translation || 'KJV').toUpperCase();
+  const text = STORES[preferred]?.get(key);
+  if (text) return { text, translation:preferred, fallback:false };
+  const fallback = STORES.KJV.get(key);
+  return fallback ? { text:fallback, translation:'KJV', fallback:preferred !== 'KJV' } : null;
+}
+function isValidReference(book, chapter, verse = null, translation = 'KJV') {
+  const idx = typeof book === 'number' ? book : bookNameToIndex(book);
+  if (idx == null || idx < 0 || idx >= ALL_BOOKS.length || !Number.isInteger(chapter) || chapter < 1) return false;
+  const maxV = _loadedChapterCounts.get(String(translation).toUpperCase())?.get(`${idx}:${chapter}`) ||
+    _loadedChapterCounts.get('KJV')?.get(`${idx}:${chapter}`) || VERSE_COUNTS[idx]?.[chapter-1] || 0;
+  return maxV > 0 && (verse == null || (Number.isInteger(verse) && verse > 0 && verse <= maxV));
 }
 
 // ─── LOOKUP ENGINE ────────────────────────────────────────────────────────────
@@ -360,7 +391,7 @@ function getAvailableChapters(book) {
 function parseReference(text) {
   if (!text) return null;
   text = text.trim();
-  const mRange = text.match(/^((?:\d\s?)?[a-zA-Z]+(?:\s[a-zA-Z]+)?)\s+(\d+)[:\s.]+(\d+)\s*[-–—]\s*(\d+)$/i);
+  const mRange = text.match(/^((?:\d\s?)?[a-zA-Z]+(?:\s+[a-zA-Z]+){0,3})\s+(\d+)[:\s.]+(\d+)\s*[-–—]\s*(\d+)$/i);
   if (mRange) {
     const idx = bookNameToIndex(mRange[1]);
     if (idx !== null) {
@@ -369,12 +400,12 @@ function parseReference(text) {
       if (endV === startV) return { bookIdx: idx, book: indexToBookName(idx), chapter: +mRange[2], verse: startV };
     }
   }
-  const m = text.match(/^((?:\d\s?)?[a-zA-Z]+(?:\s[a-zA-Z]+)?)\s+(\d+)[:\s.]+(\d+)$/i);
+  const m = text.match(/^((?:\d\s?)?[a-zA-Z]+(?:\s+[a-zA-Z]+){0,3})\s+(\d+)[:\s.]+(\d+)$/i);
   if (m) {
     const idx = bookNameToIndex(m[1]);
     if (idx !== null) return { bookIdx: idx, book: indexToBookName(idx), chapter: +m[2], verse: +m[3] };
   }
-  const spoken = text.match(/^((?:\d\s?)?[a-zA-Z]+(?:\s[a-zA-Z]+)?)\s+chapter\s+(\w+)\s+verse\s+(\w+)$/i);
+  const spoken = text.match(/^((?:\d\s?)?[a-zA-Z]+(?:\s+[a-zA-Z]+){0,3})\s+chapter\s+(\w+)\s+verse\s+(\w+)$/i);
   if (spoken) {
     const words = { one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,
       eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,
@@ -440,6 +471,11 @@ const _STOP_WORDS = new Set([
 function _normalizeForSearch(text) {
   return text.toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\b(?:worketh|works|working)\b/g, 'work')
+    .replace(/\b(?:dwelleth|dwells)\b/g, 'dwell')
+    .replace(/\b(?:quickeneth|quickens)\b/g, 'quicken')
+    .replace(/\b(?:strengtheneth|strengthens)\b/g, 'strengthen')
+    .replace(/\b(?:pertaineth|pertains)\b/g, 'pertain')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -459,26 +495,32 @@ function _buildNgrams(words, n) {
 }
 
 const _VERSE_INDEX = new Map();
+const _WORD_POSTINGS = new Map();
 let _indexBuiltFor = null;
 
 function _buildVerseIndex(translation) {
   const store = STORES[translation] || STORES.KJV;
   _VERSE_INDEX.clear();
+  _WORD_POSTINGS.clear();
   for (const [key, text] of store.entries()) {
     if (!text || text.startsWith('\uD83D\uDCE5')) continue;
     const words = _extractKeywords(text);
     if (words.length < 3) continue;
     const wordSet = new Set(words);
+    for (const word of wordSet) {
+      if (!_WORD_POSTINGS.has(word)) _WORD_POSTINGS.set(word,new Set());
+      _WORD_POSTINGS.get(word).add(key);
+    }
     const bigrams = new Set(_buildNgrams(words, 2));
     const trigrams = words.length >= 3 ? new Set(_buildNgrams(words, 3)) : new Set();
     _VERSE_INDEX.set(key, { text, wordSet, bigrams, trigrams, wordCount: wordSet.size });
   }
-  _indexBuiltFor = translation + ':' + store.size;
+  _indexBuiltFor = translation + ':' + store.size + ':' + _dbRevision;
 }
 
 function _ensureIndex(translation) {
   const store = STORES[translation] || STORES.KJV;
-  const cacheKey = translation + ':' + store.size;
+  const cacheKey = translation + ':' + store.size + ':' + _dbRevision;
   if (_indexBuiltFor !== cacheKey) _buildVerseIndex(translation);
 }
 
@@ -494,12 +536,15 @@ function searchVerses(query, translation = 'KJV', limit = 15) {
 
   const results = [];
 
-  for (const [key, cached] of _VERSE_INDEX.entries()) {
-    let matchCount = 0;
-    for (const w of querySet) {
-      if (cached.wordSet.has(w)) matchCount++;
-    }
+  // Score only verses sharing query keywords; do not rescan all 31k verses
+  // on the renderer thread for every short finalized speech segment.
+  const candidates = new Map();
+  for (const word of querySet) for (const key of _WORD_POSTINGS.get(word) || []) {
+    candidates.set(key,(candidates.get(key)||0)+1);
+  }
+  for (const [key, matchCount] of candidates) {
     if (matchCount < 2) continue;
+    const cached = _VERSE_INDEX.get(key);
 
     let score = matchCount * 2;
 
@@ -542,44 +587,44 @@ function getAllRefs() {
   return refs;
 }
 
-function getDbStatus() {
+function getDbStatus(translation = 'KJV') {
+  const id = String(translation || 'KJV').toUpperCase();
+  const counts = Object.fromEntries(TRANSLATIONS.map(t => [t, STORES[t]?.size || 0]));
+  const selectedCount = counts[id] || 0;
   return {
-    status: _dbStatus,
-    verseCount: STORES.KJV.size,
-    translations: TRANSLATIONS.filter(t => STORES[t] && STORES[t].size > 0)
+    status: selectedCount >= 30000 ? 'full' : _loadedTranslations.has(id) ? 'partial' : 'fallback',
+    verseCount: selectedCount, translation:id, revision:_dbRevision,
+    translations: TRANSLATIONS.filter(t => hasTranslation(t)), counts,
   };
 }
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
-_seed(); // Always load the 223 built-in key verses first
-
-// Request JSON data from main process (Electron IPC) — loads ALL translations found in data/
-if (window.electronAPI && window.electronAPI.loadBibleData) {
-  window.electronAPI.loadBibleData().then(data => {
+_seed();
+let _loadPromise = null;
+function reload() {
+  if (_loadPromise) return _loadPromise;
+  _loadPromise = (async () => {
+    if (!window.electronAPI?.loadBibleData) return getDbStatus();
+    const data = await window.electronAPI.loadBibleData();
     if (data && typeof data === 'object') {
-      let loaded = 0;
       for (const [id, verses] of Object.entries(data)) {
-        if (Array.isArray(verses) && verses.length > 10) {
-          loadFromJSON(verses, id);
-          loaded++;
-        }
-      }
-      if (loaded > 0) {
-        console.log(`[BibleDB] Loaded ${loaded} translation(s):`, Object.keys(data).join(', '));
-      } else {
-        console.log('[BibleDB] Running with built-in verses. Upload a Bible JSON in Settings › Bible Versions.');
+        if (Array.isArray(verses) && verses.length) loadFromJSON(verses,id);
       }
     }
-  }).catch(e => {
-    console.log('[BibleDB] JSON load skipped:', e.message);
-  });
+    return getDbStatus();
+  })().catch(e => { console.warn('[BibleDB] JSON load skipped:',e.message); return getDbStatus(); })
+    .finally(() => { _loadPromise = null; });
+  return _loadPromise;
 }
 
 window.BibleDB = {
   CANON, ALL_BOOKS, TRANSLATIONS,
-  getVerse, getChapter, getAvailableChapters,
-  parseReference, detectReferences, searchVerses,
+  getVerse, getVerseDetails, getChapter, getAvailableChapters, isValidReference, hasTranslation, reload,
+  referenceAliases: ABBREV,
+  parseReference, detectReferences, searchVerses, normalizeForSearch:_normalizeForSearch,
   getAllRefs, bookNameToIndex, indexToBookName, loadFromJSON, getDbStatus,
   getChapters: getAvailableChapters,
   normalizeBook: (n) => indexToBookName(bookNameToIndex(n)),
 };
+
+// Exposed promise lets application initialization wait for actual imported data.
+window.BibleDB.ready = reload();

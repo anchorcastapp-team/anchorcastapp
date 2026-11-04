@@ -32,6 +32,8 @@ const State = {
   currentPresSlides: [],  // slides for active presentation
   currentPresSlideIdx: 0, // current slide index
   detections:    [],
+  detectionHistory: [], // Full current transcript history; Clear panel never deletes this.
+  transcriptGeneration: 0,
   transcriptLines: [],
   reviewTranscriptLineId: null,
   reviewDetectionId: null,
@@ -211,7 +213,7 @@ async function init() {
     setupElectronEvents();
     await refreshTranslationDropdowns();
     try { await loadBibleData(); } catch (_) {}
-    if (!BibleDB?.translations?.[State.currentTranslation]) State.currentTranslation = 'KJV';
+    if (!BibleDB?.hasTranslation?.(State.currentTranslation)) State.currentTranslation = 'KJV';
     await loadDefaultBibleReference();
     _checkTranscriptAutosaveOnStartup(); // recover any transcript left over from an interrupted session
   } else {
@@ -231,7 +233,7 @@ async function init() {
 
   // Init AI detection
   if (window.AIDetection) {
-    AIDetection.init(State.settings.apiKey || '', handleDetection);
+    AIDetection.init(State.settings.apiKey || '', handleDetection, { getTranslation: () => State.currentTranslation, getSettings: () => State.settings, onStatus: showDetectionStatus });
   }
 
   // Init Adaptive Transcript Memory
@@ -315,7 +317,7 @@ function applySettings(s) {
   }
   if (window.AIDetection) AIDetection.setEnabled(State.isOnline);
   if (typeof updateOnlineUI === 'function') updateOnlineUI();
-  if (s.displayMode === 'auto') setDisplayMode(true);
+  if (s.displayMode === 'auto' || s.displayMode === 'manual') setDisplayMode(s.displayMode === 'auto', { persist:false, notify:false });
   // Apply adaptive transcript memory settings
   if (window.TranscriptMemory) {
     TranscriptMemory.enabled = s.adaptiveEnabled !== false;
@@ -325,8 +327,8 @@ function applySettings(s) {
       btn.style.color  = TranscriptMemory.enabled ? 'var(--gold)' : 'var(--text-dim)';
     }
   }
-  if (s.apiKey && window.AIDetection) {
-    AIDetection.init(s.apiKey, handleDetection);
+  if (window.AIDetection) {
+    AIDetection.init(s.apiKey || '', handleDetection, { getTranslation: () => State.currentTranslation, getSettings: () => State.settings, onStatus: showDetectionStatus });
   }
 }
 
@@ -533,6 +535,11 @@ async function toggleOverlayLowerThird() {
 }
 
 
+// Load imported Bible data, not an undefined function swallowed in a try/catch.
+async function loadBibleData() {
+  return window.BibleDB?.reload?.();
+}
+
 // Populate translation dropdowns with only installed versions
 async function refreshTranslationDropdowns() {
   if (!window.electronAPI) return;
@@ -559,7 +566,7 @@ async function refreshTranslationDropdowns() {
   ['globalTranslation', 'searchTranslation'].forEach(selId => {
     const sel = document.getElementById(selId);
     if (!sel) return;
-    const current = sel.value;
+    const current = State.currentTranslation || State.settings?.translation || sel.value || 'KJV';
     sel.innerHTML = '';
     available.forEach(t => {
       const opt = document.createElement('option');
@@ -568,10 +575,10 @@ async function refreshTranslationDropdowns() {
       if (t.id === current) opt.selected = true;
       sel.appendChild(opt);
     });
-    if (!sel.querySelector(`option[value="${current}"]`) && available.length) {
+    if (!available.some(t => t.id === current) && available.length) {
       sel.value = available[0].id;
       State.currentTranslation = available[0].id;
-    }
+    } else { sel.value = current; }
   });
 }
 
@@ -862,6 +869,7 @@ function bindEvents() {
     if (!State.currentPresId || !State.currentPresSlides?.length) { toast('⚠ Select a presentation first'); return; }
     addPresentationToQueue(State.currentPresId);
   };
+  document.getElementById('presNewBtn')?.addEventListener('click', newPresentation);
   document.getElementById('presImportBtn')?.addEventListener('click', () => importPresentation(false));
   document.getElementById('presPreviewImportBtn')?.addEventListener('click', () => importPresentation(false));
   document.getElementById('presAddScheduleBtn')?.addEventListener('click', queueCurrentPresentation);
@@ -900,6 +908,7 @@ function bindEvents() {
 
   // Detections
   document.getElementById('clearDetectionsBtn').addEventListener('click', clearDetections);
+  document.getElementById('detectionDiagnosticsBtn')?.addEventListener('click', exportDetectionDiagnostics);
   document.getElementById('reviewDetectionsBtn')?.addEventListener('click', openDetectionReviewPanel);
   document.getElementById('detectionReviewSearch')?.addEventListener('input', renderDetectionReviewList);
 
@@ -1073,17 +1082,35 @@ function _showWhisperSetupBanner(data) {
 function setupElectronEvents() {
   if (!window.electronAPI) return;
   window.electronAPI.on('projection-opened', () => { State.isProjectionOpen = true; });
+  // Restore and synchronize the operator overlay without replaying an old start.
+  let timerSyncRevision = 0;
+  const syncTimer = (state) => {
+    if (state?.running) _startLiveTimerDisplay(state.seconds ?? 0, state.mode, state.label || '', state);
+  };
   // Sync timer state from countdown window to quick timer bar in main app
   window.electronAPI.on('timer-state-sync', (state) => {
+    timerSyncRevision++;
     if (!state) return;
     // running may be explicit true, or implied by having seconds > 0
     const isRunning = state.running === true || (state.seconds > 0 && state.running !== false);
     if (isRunning) {
-      _startLiveTimerDisplay(state.remaining || state.seconds, state.mode, state.label || '');
+      _startLiveTimerDisplay(state.seconds ?? 0, state.mode, state.label || '', state);
     }
   });
   window.electronAPI.on('timer-stopped', () => {
+    timerSyncRevision++;
     _stopLiveTimerDisplay();
+  });
+  window.electronAPI.on('timer-visibility', (state) => {
+    timerSyncRevision++;
+    _syncLiveTimerVisibility(state);
+  });
+  const restoreTimerRevision = timerSyncRevision;
+  window.electronAPI.getTimerState?.().then(state => {
+    if (timerSyncRevision === restoreTimerRevision) syncTimer(state);
+  }).catch(() => {});
+  window.electronAPI.on('timer-flash-speed', (data) => {
+    document.documentElement.style.setProperty('--live-timer-blink-speed', AnchorCastTimer.flashSpeed(data?.speed) + 's');
   });
 
   window.electronAPI.on('display-warning', ({ msg, level }) => {
@@ -1137,11 +1164,14 @@ function setupElectronEvents() {
     const onlyThemeChanged = themeOnly;  // explicit flag is reliable; key-diff heuristic was fragile
 
     const prevMicId = State.settings?.microphoneId;
-    State.settings = await window.electronAPI.getSettings();
+    const modeRevision=_modeRevision;
+    const settings=await window.electronAPI.getSettings();
+    if(_modeWritePending||modeRevision!==_modeRevision)settings.displayMode=State.isAutoMode?'auto':'manual';
+    State.settings=settings;
     applySettings(State.settings);
     refreshTranslationDropdowns();
-    if (State.settings.apiKey && window.AIDetection) {
-      AIDetection.init(State.settings.apiKey, handleDetection);
+    if (window.AIDetection) {
+      AIDetection.init(State.settings.apiKey || '', handleDetection, { getTranslation: () => State.currentTranslation, getSettings: () => State.settings, onStatus: showDetectionStatus });
     }
     updateSrcToggleUI();
 
@@ -1208,7 +1238,7 @@ function setupElectronEvents() {
     // it the active translation immediately (rather than requiring a manual
     // dropdown switch), and persist the choice so it stays the default on
     // every future launch — same as any other translation choice would.
-    if (payload?.justImported && String(payload.justImported).toUpperCase() === 'KJ21' && BibleDB?.translations?.['KJ21']) {
+    if (payload?.justImported && String(payload.justImported).toUpperCase() === 'KJ21' && BibleDB?.hasTranslation?.('KJ21')) {
       State.currentTranslation = 'KJ21';
       if (window.electronAPI?.getSettings && window.electronAPI?.saveSettings) {
         try {
@@ -1218,7 +1248,7 @@ function setupElectronEvents() {
       }
       toast('✓ KJ21 imported and set as your default translation');
     }
-    if (!BibleDB?.translations?.[State.currentTranslation]) State.currentTranslation = 'KJV';
+    if (!BibleDB?.hasTranslation?.(State.currentTranslation)) State.currentTranslation = 'KJV';
     const gt = document.getElementById('globalTranslation');
     const st = document.getElementById('searchTranslation');
     if (gt) gt.value = State.currentTranslation;
@@ -2486,7 +2516,7 @@ async function transcribeAudioFile(file) {
       btn.classList.remove('active');
       stopMicAnimation();
       if (pcmTranscriptUnsub) { pcmTranscriptUnsub(); pcmTranscriptUnsub = null; }
-      saveTranscriptHistory();
+      saveTranscriptHistory().catch(() => toast('⚠ Transcript could not be saved — export it before closing'));
       if (window.TranscriptMemory) {
         TranscriptMemory.endSession();
         if (State.settings?.adaptiveLearningEnabled !== false) {
@@ -2527,10 +2557,11 @@ function stopRecording() {
   if (demoInterval)    { clearInterval(demoInterval); demoInterval = null; }
 
   // Auto-save transcript to history on every stop
-  saveTranscriptHistory().then(() => {
+  saveTranscriptHistory().then(saved => {
+    if (!saved) return;
     window.electronAPI?.setTranscriptUnsaved?.(false);
     toast('💾 Transcript auto-saved');
-  }).catch(() => {});
+  }).catch(() => toast('⚠ Transcript could not be saved — export it before closing'));
 
   // End adaptive memory session and trigger offline learning
   if (window.TranscriptMemory) {
@@ -2704,7 +2735,12 @@ function pushTranscriptLine(text, detectVerses = false) {
   body.scrollTop = body.scrollHeight;
 
   if (detectVerses && window.AIDetection) {
-    AIDetection.processText(displayText, State.isOnline);
+    try {
+      AIDetection.processText(displayText, State.isOnline, { id:line.id, time:line.time });
+    } catch (error) {
+      AIDetection.recordDecision?.('processing-error',{sourceLineId:line.id,sourceText:displayText,detail:error.message});
+      console.warn('[Detection] Failed to process finalized transcript line:',error.message);
+    }
   }
 }
 
@@ -2728,7 +2764,16 @@ function removeInterim() {
 }
 
 function clearTranscript() {
+  // Cancellation happens below, only after the operator confirms clearing.
+  if (typeof confirm === 'function' && !confirm('Clear the current transcript and its detected-verse history? Previously saved History sessions will not be deleted.')) return;
+  State.transcriptGeneration = (State.transcriptGeneration || 0) + 1;
   State.transcriptLines = [];
+  State.detectionHistory = [];
+  State.detections = [];
+  getAutoScriptureController()?.reset();
+  window.AIDetection?.clearCache?.();
+  renderDetections();
+  window.electronAPI?.clearTranscriptAutosave?.().catch(() => {});
   document.getElementById('transcriptBody').innerHTML =
     `<div class="empty-state"><span class="empty-icon">🎤</span>Start transcription to see the live sermon text here.</div>`;
   toast('↺ Transcript cleared');
@@ -2754,23 +2799,31 @@ async function exportTranscript() {
 }
 
 async function saveTranscriptHistory() {
+  const generation = State.transcriptGeneration;
+  await window.AIDetection?.flushPending?.();
+  if (generation !== State.transcriptGeneration) return false; // user started a fresh transcript
   const text = State.transcriptLines.map(l => l.text).join('\n');
-  if (!text || !window.electronAPI) return;
+  if (!text || !window.electronAPI) return false;
   const words = text.split(/\s+/).filter(Boolean).length;
   const duration = Math.round((Date.now() - (State.recordingStartTime || Date.now())) / 1000);
-  await window.electronAPI.saveTranscript({
+  const result = await window.electronAPI.saveTranscript({
     title: `Sermon — ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`,
     text,
     lineCount: State.transcriptLines.length,
-    verseCount: State.detections.length,
+    verseCount: (State.detectionHistory || State.detections).length,
     wordCount: words,
     duration,
-    detectedVerses: State.detections.map(d => d.ref),
+    detectedVerses: (State.detectionHistory || State.detections).map(d => d.ref),
+    detectionEvents: getTranscriptDetectionEvents(),
     date: new Date().toISOString(),
   });
+  if (result?.success === false) throw new Error(result.error || 'Transcript save failed');
+  // Do not delete the recovery buffer for a newer session while this save was pending.
+  if (generation !== State.transcriptGeneration || State.isRecording) return true;
   // The session is now safely captured in permanent history — the live
   // crash-recovery buffer is no longer needed.
   await _stopTranscriptAutosave(true);
+  return true;
 }
 
 // ─── Live transcript crash-recovery (autosave) ────────────────────────────
@@ -2802,6 +2855,8 @@ async function _writeTranscriptAutosave() {
     await window.electronAPI.autosaveTranscript({
       text,
       lineCount: State.transcriptLines.length,
+      detectionEvents: getTranscriptDetectionEvents(),
+      detectedVerses: (State.detectionHistory || State.detections).map(d => d.ref),
       recordingStartTime: State.recordingStartTime,
     });
   } catch(_) { /* best-effort — a failed autosave shouldn't interrupt the service */ }
@@ -2816,16 +2871,18 @@ async function _checkTranscriptAutosaveOnStartup() {
     const r = await window.electronAPI.checkTranscriptAutosave();
     if (!r?.found || !r.data?.text) return;
     const words = r.data.text.split(/\s+/).filter(Boolean).length;
-    await window.electronAPI.saveTranscript({
+    const result = await window.electronAPI.saveTranscript({
       title: `Recovered Session — ${new Date(r.data.savedAt || Date.now()).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`,
       text: r.data.text,
       lineCount: r.data.lineCount || 0,
-      verseCount: 0,
+      verseCount: Array.isArray(r.data.detectedVerses) ? r.data.detectedVerses.length : 0,
       wordCount: words,
       duration: 0,
-      detectedVerses: [],
+      detectedVerses: Array.isArray(r.data.detectedVerses) ? r.data.detectedVerses : [],
+      detectionEvents: Array.isArray(r.data.detectionEvents) ? r.data.detectionEvents : [],
       date: r.data.savedAt || new Date().toISOString(),
     });
+    if (result?.success === false) throw new Error(result.error || 'Recovery save failed');
     await window.electronAPI.clearTranscriptAutosave();
     toast('🛟 Recovered a transcript from an interrupted session — check History');
   } catch(_) { /* non-critical */ }
@@ -2875,123 +2932,265 @@ function stopMicAnimation() {
 }
 
 // ─── AI DETECTION HANDLER ─────────────────────────────────────────────────────
+function showDetectionStatus(message) {
+  const el=document.getElementById('detectionPendingStatus');
+  if(el){el.textContent=message||'';el.hidden=!message;}
+}
+// Groups share their identity with presentation decisions and persisted events.
+// State.detections remains occurrence-level for History and the detailed review.
+function getDetectionGroups() {
+  if (!window.DetectionGroups) {
+    showDetectionStatus('Detection grouping helper is missing — apply the complete patch.');
+    return {groups:[],confirmed:[],suggestions:[],byEvent:new Map()};
+  }
+  return window.DetectionGroups.annotate(State.detections || [],
+    window.DetectionGroups.build(State.detections || [], State.settings));
+}
+function newestAutomaticDetection() {
+  // Display lists use latest accepted activity; Auto still follows spoken evidence.
+  let newest = null;
+  for (const group of getDetectionGroups().confirmed) {
+    const candidate=window.DetectionGroups.autoCandidate(group,Date.now(),State.settings);
+    if(candidate && (!newest || window.DetectionGroups.compareReadingOrder(candidate,newest)>0)) newest=candidate;
+  }
+  return newest;
+}
+let _autoScriptureController=null;
+function getAutoScriptureController(){
+  if(!_autoScriptureController && window.AutoScripture){
+    _autoScriptureController=window.AutoScripture.create({
+      getState:()=>({auto:State.isAutoMode,live:State.isLive,settings:State.settings}),
+      onDecision:(code,data)=>{
+        window.AIDetection?.recordDecision?.(code,data);
+        const event=State.detectionHistory.find(d=>d.eventKey===data.eventKey);
+        if(event){event.presentationState=code.replace('auto-','');event.presentationReason=data.detail||'';}
+        renderDetections();
+      },
+      present:(det,canCommit)=>{
+        if(!canCommit()||!State.isAutoMode||!State.isLive)return false;
+        State._autoPresenting=true;
+        State._autoRequest={eventKey:det.eventKey,ref:det.ref,requestId:`auto-${Date.now()}-${Math.random().toString(36).slice(2,7)}`};
+        try{
+          // Navigate before preparing the Scripture canvas, but make only one
+          // live send. Do not cycle through other suggestions from this window.
+          navigateBibleSearch(det.book,det.chapter,det.verse);
+          if(!canCommit())return false;
+          if(det.announcedPassage && det.passageVerses?.length===det.rangeEnd-det.verse+1 && det.rangeEnd>det.verse && State.settings.scriptureShowCompletePassage)
+            presentVerseRange(det.book,det.chapter,det.verse,det.rangeEnd,`${det.book} ${det.chapter}:${det.verse}–${det.rangeEnd}`,{silent:true,origin:'auto'});
+          else presentVerse(det.book,det.chapter,det.verse,det.ref,{silent:true,origin:'auto'});
+          return State.liveVerse?.book===det.book && Number(State.liveVerse?.chapter)===det.chapter && Number(State.liveVerse?.verse)===det.verse;
+        }finally{State._autoPresenting=false;State._autoRequest=null;}
+      }
+    });
+  }return _autoScriptureController;
+}
+function cancelAutomaticScripture(reason='operator-action',manual=true){
+  if(!State._autoPresenting)getAutoScriptureController()?.cancel(reason,manual);
+}
+function detectionReadiness(det){
+  const verdict=window.DetectionPolicy.eligible(det,State.settings);
+  if(det.presentationState==='present-dispatched'&&!['rejected','dismissed','superseded'].includes(det.status))return {className:'high',label:'Sent to live output'};
+  if(!verdict.ok)return {className:'med',label:({ 'below-threshold':'Below selected threshold','stale-evidence':'Earlier occurrence — Present manually','suggestion-only':'Suggestion only — review first','quotation-not-distinctive':'Suggestion only — review first','quotation-shared-with-active-passage':'Shared quotation — review passage','superseded':'Superseded by correction' })[verdict.reason]||'Held for review'};
+  const heldLabels={
+    'operator-override':'Held — operator changed the output',
+    'superseded-by-current-passage':'Held — a newer passage took priority',
+    'older-than-current-output':'Held — earlier speech than the current output',
+    'queue-capacity':'Held — newer candidates took priority',
+    'already-presented':'Already sent for this Scripture discussion',
+    'range-member-awaiting-reading':'Announced passage — waiting for this verse to be read'
+  };
+  if(det.presentationState==='held' && heldLabels[det.presentationReason])return {className:'med',label:heldLabels[det.presentationReason]};
+  if(det.presentationState==='present-failed')return {className:'med',label:'Presentation failed — retry Present'};
+  if(det.presentationState==='cancelled')return {className:'med',label:'Automatic presentation cancelled'};
+  if(det.presentationState==='queued')return {className:'high',label:'Queued for Auto'};
+  return {className:'high',label:State.isAutoMode?(State.isLive?'Ready for Auto':'Ready — output is not live'):'Ready — Manual mode'};
+}
 function handleDetection(detection) {
-  const lastLine = (State.transcriptLines || []).slice(-1)[0] || null;
-
-  // Deduplicate exact ref + same source phrase
-  if (State.detections.find(d => d.ref === detection.ref && String(d.sourceText || '') === String(lastLine?.text || lastLine?.raw || ''))) return;
-
-  // Apply confidence threshold by detection type
-  const type = String(detection.type || 'keyword').toLowerCase();
-  const thresholdMap = {
-    direct: parseFloat(State.settings.detectionThresholdDirect ?? 0.80),
-    verbal: parseFloat(State.settings.detectionThresholdVerbal ?? 0.85),
-    keyword: parseFloat(State.settings.detectionThresholdKeyword ?? 0.80),
-    content: parseFloat(State.settings.detectionThresholdContent ?? 0.60),
-    learned: parseFloat(State.settings.detectionThresholdLearned ?? 0.75),
-  };
-  const threshold = thresholdMap[type] ?? parseFloat(State.settings.confidenceThreshold || 0.75);
-  if (detection.confidence < threshold) return;
-
-  const det = {
-    ...detection,
-    id: `det_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
-    sourceText: detection.sourcePhrase || lastLine?.text || lastLine?.raw || '',
-    sourceLineId: lastLine?.id || null,
-    status: 'pending',
-    createdAt: Date.now(),
-  };
-
-  State.detections.unshift(det);
-  _pushReplayEvent('verse-detection', {
-    ref: det.ref || '',
-    transcript: det.sourceText || '',
-    liveText: det.text || '',
-    summary: `${det.ref || ''} (${det.type || 'detection'})`
-  });
+  const lastLine=State.transcriptLines?.at(-1)||null;
+  State.detectionHistory ||= [...State.detections];
+  const sourceLineId=detection.sourceLineId||lastLine?.id||null;
+  const sourceText=detection.sourceText||detection.sourcePhrase||lastLine?.text||lastLine?.raw||'';
+  const eventKey=detection.eventKey||`${detection.ref}:${sourceLineId||Date.now()}`;
+  const existing=State.detectionHistory.find(d=>d.eventKey===eventKey);
+  if(detection.action==='supersede'){
+    if(existing){existing.status='superseded';existing.autoEligible=false;existing.presentationState='superseded';}
+    cancelAutomaticScripture('reference-corrected',false);renderDetections();return true;
+  }
+  if(existing && !detection.isUpdate){window.AIDetection?.recordDecision?.('same-history-event',{...detection,sourceLineId});return false;}
+  if(existing?.status==='replaced' && detection.isUpdate){window.AIDetection?.recordDecision?.('operator-locked-match',detection);return false;}
+  const threshold=window.DetectionPolicy.threshold(State.settings);
+  if(!Number.isFinite(detection.confidence)||detection.confidence<threshold){
+    window.AIDetection?.recordDecision?.('below-threshold',{...detection,sourceLineId,sourceText,threshold});return false;
+  }
+  // Missing confirmation metadata fails closed; model scores do not grant Auto.
+  const prepared={...detection,eventKey,sourceText,sourceLineId,confirmation:detection.confirmation||'suggestion',
+    sourceTime:detection.sourceTime||lastLine?.time||Date.now()};
+  const activity = window.DetectionGroups?.evidenceChanged?.(existing,prepared)
+    ? window.DetectionGroups.nextActivity(State.detectionHistory,Date.now())
+    : {updatedAt:existing?.updatedAt,activitySequence:existing?.activitySequence};
+  let det;
+  if(existing){
+    const status=existing.status,id=existing.id,createdAt=existing.createdAt;
+    Object.assign(existing,prepared,activity,{id,createdAt,status});det=existing;
+    // A dismissed card stays dismissed. Its independent history can improve.
+  }else{
+    det={...prepared,...activity,id:`det_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,status:'pending',createdAt:Date.now()};
+    State.detections.unshift(det);State.detectionHistory.unshift(det);
+    _pushReplayEvent('verse-detection',{ref:det.ref||'',transcript:det.sourceText||'',liveText:det.text||'',summary:`${det.ref||''} (${det.confirmation})`});
+  }
+  const group=getDetectionGroups().byEvent.get(det.eventKey);
+  if(group){
+    detection.discussionId=det.discussionId;
+    if(det.passageId)detection.passageId=det.passageId;
+    if(!existing)window.AIDetection?.recordDecision?.('discussion-assigned',{...det,detail:`${group.label} · ${group.count} occurrence records`});
+  }
   renderDetections();
-
-  // ── Whisper Reinforcement ──────────────────────────────────────────────────
-  // Feed the detected verse text back into Whisper's context prompt.
-  // This biases the next 30s of transcription toward the same passage vocabulary,
-  // dramatically improving detection accuracy when the preacher quotes the same verse.
-  if (det.text && window.electronAPI?.reinforceWhisper) {
-    // Send ONLY the verse text as reinforcement — NOT the reference number.
-    // Whisper echoes initial_prompt content back into its output, so if we include
-    // "Exodus 6:2." the literal reference leaks into the transcript and gets
-    // re-detected as a false verse. Sending bare verse words avoids this.
-    const reinforceText = String(det.text).slice(0, 300);
-    window.electronAPI.reinforceWhisper({ text: reinforceText, ttl: 30 }).catch(() => {});
-  }
-
-  // Auto mode: automatically present high-confidence verses
-  if (State.isAutoMode && det.confidence >= 0.88) {
-    navigateBibleSearch(det.book, det.chapter, det.verse);
-    presentVerse(det.book, det.chapter, det.verse, det.ref);
-    if (State.isLive) sendPreviewToLive();
-  }
+  // Only confirmed references/quotations may bias subsequent transcription.
+  // Related suggestions and unread range tail verses never feed their words into Whisper.
+  if(!existing && (!det.announcedPassage || det.verse===det.passageVerses?.[0]) && ['reference','quotation'].includes(det.confirmation) && det.text && window.electronAPI?.reinforceWhisper)
+    window.electronAPI.reinforceWhisper({text:String(det.text).slice(0,300),ttl:30}).catch(()=>{});
+  if(group && State.detections.includes(det))getAutoScriptureController()?.offer(det);
+  return true;
 }
 
 function renderDetections() {
-  const body = document.getElementById('detectionsBody');
-  const emptyEl = document.getElementById('detectionsEmpty');
-  if(emptyEl) emptyEl.style.display = State.detections.length ? 'none' : 'block';
-
-  // Remove old detection items (keep the empty-state element)
-  body.querySelectorAll('.detection-item').forEach(e => e.remove());
-
-  // State.detections[0] = newest (via unshift). Render newest at top, oldest at bottom.
-  State.detections.forEach((det, i) => {
-    const preview = (det.text || '').slice(0, 75) + (det.text?.length > 75 ? '…' : '');
-    const confPct = Math.round(det.confidence * 100);
-    const confClass = confPct >= 85 ? 'high' : confPct >= 65 ? 'med' : 'low';
-
-    const div = document.createElement('div');
-    div.className = 'detection-item';
-    div.innerHTML = `
-      <div class="det-header">
-        <div class="det-dot ${confClass}"></div>
-        <div class="det-ref">${det.ref}</div>
-        <span class="det-type ${det.type || 'keyword'}">${det.type || 'AI'}</span>
-        <div class="det-score">${confPct}%</div>
-      </div>
-      <div class="det-preview">${preview}</div>
-      <div class="det-actions">
-        <button class="det-btn det-btn-present">▶ Present</button>
-        <button class="det-btn det-btn-queue">+ Scheduled</button>
-        <button class="det-btn det-btn-review">📝 Review</button>
-      </div>
-    `;
-
-    div.querySelector('.det-btn-present').addEventListener('click', () => {
-      presentVerse(det.book, det.chapter, det.verse, det.ref);
-      _pushReplayEvent('present-verse', { ref: det.ref || '', transcript: det.sourceText || '', liveText: det.text || '', summary: det.ref || '' });
-      navigateBibleSearch(det.book, det.chapter, det.verse);
-    });
-    div.querySelector('.det-btn-queue').addEventListener('click', () =>
-      addToQueue(det.book, det.chapter, det.verse, det.ref));
-    div.querySelector('.det-btn-review').addEventListener('click', () => { openDetectionReviewPanel(); selectDetectionReview(det.id); });
-
-    body.appendChild(div);
-  });
-
-  if (body) body.scrollTop = 0;
+  const body=document.getElementById('detectionsBody');
+  if(!body)return;
+  const model=getDetectionGroups(), empty=document.getElementById('detectionsEmpty');
+  if(empty){empty.style.display=model.groups.length?'none':'block';}
+  const previousScroll=body.scrollTop;
+  const previousFocus=body.contains(document.activeElement)?document.activeElement:null;
+  const priorGroups=new Map([...body.querySelectorAll('.detection-item')].map(el=>[el.dataset.detectionKey,el]));
+  // v1.8.1-r2: the model already sorts ALL groups by accepted activity.
+  // Splitting it into confirmed/suggestion containers undid that ordering in
+  // the DOM. Render one timeline; classification is a label, not a priority.
+  let timeline=body.querySelector('.det-timeline');
+  if(!timeline){
+    timeline=document.createElement('div');timeline.className='det-timeline';
+    timeline.setAttribute('role','list');
+    timeline.setAttribute('aria-label','Scripture detections and suggestions — newest activity first');
+    body.appendChild(timeline);
+  }
+  function actionButton(label,cls,fn){const el=document.createElement('button');el.type='button';el.className=`det-btn ${cls}`;el.textContent=label;el.addEventListener('click',fn);return el;}
+  function presentRecord(det){
+    presentVerse(det.book,det.chapter,det.verse,det.ref);
+    _pushReplayEvent('present-verse',{ref:det.ref||'',transcript:det.sourceText||'',liveText:det.text||'',summary:det.ref||''});
+    navigateBibleSearch(det.book,det.chapter,det.verse);
+  }
+  function review(det){openDetectionReviewPanel();selectDetectionReview(det.id);}
+  const keep=new Set();
+  function draw(group,container,index){
+    keep.add(group.id);
+    const det=group.initial, best=group.representative;
+    const readiness=detectionReadiness(det);
+    const indicator=window.DetectionPolicy.indicator(best,State.settings);
+    const old=priorGroups.get(group.id);
+    const fingerprint=JSON.stringify([group.label,group.section,readiness,indicator,group.methods,group.members.map(d=>[d.id,d.ref,d.confidence,d.status,d.sourceText,d.presentationState,d.presentationReason,d.confirmation])]);
+    let card=old,restoreFocus=-1;
+    if(!card){card=document.createElement('div');card.className='detection-item det-group';card.dataset.detectionKey=group.id;}
+    card.dataset.detectionSection=group.section;
+    card.setAttribute('role','listitem');
+    card.setAttribute('aria-label',`${group.label} — ${group.section==='suggestions'?'Suggestion / Review — not a confirmed citation':'Confirmed Scripture'}`);
+    if(card._groupFingerprint!==fingerprint){
+      const opened=new Set([...card.querySelectorAll('details[open]')].map(el=>el.className));
+      const focusIndex=card.contains(document.activeElement)?[...card.querySelectorAll('button,summary')].indexOf(document.activeElement):-1;restoreFocus=focusIndex;
+      if(old)card.style.animation='none';
+      card.innerHTML=`<div class="det-header"><div class="det-dot ${indicator.className}" role="img" aria-label="${escapeHtml(indicator.label)}" title="${escapeHtml(indicator.label)}"></div><div class="det-ref">${escapeHtml(group.label)}</div><span class="det-type">${group.kind==='passage'?'PASSAGE':escapeHtml(best.confirmation||'suggestion')}</span><div class="det-score" title="Best supported match score, not a combined probability">${Math.round(best.confidence*100)}%</div></div>
+        <div class="det-preview">${escapeHtml(String(det.text||'').slice(0,120))}${String(det.text||'').length>120?'…':''}</div>
+        <div class="det-readiness">${group.section==='suggestions'?'Suggestion / Review — not a confirmed citation':escapeHtml(readiness.label)}</div>
+        ${group.kind==='passage'?`<div class="det-group-meta">${group.verses.length} announced verses · starts at verse ${group.verses[0]}</div>`:''}<div class="det-actions"></div>`;
+      const actions=card.querySelector('.det-actions');
+      actions.appendChild(actionButton(group.kind==='passage'?`▶ Present verse ${group.verses[0]}`:'▶ Present','det-btn-present',()=>presentRecord(group.initial)));
+      actions.appendChild(actionButton(group.kind==='passage'?'+ Schedule passage':'+ Scheduled','det-btn-queue',()=>{
+        if(group.kind==='passage')for(const verse of group.verses)addToQueue(group.book,group.chapter,verse,`${group.book} ${group.chapter}:${verse}`);
+        else addToQueue(det.book,det.chapter,det.verse,det.ref);
+      }));
+      actions.appendChild(actionButton('Review','det-btn-review',()=>review(best)));
+      if(group.kind==='passage'){
+        const expanded=document.createElement('details');expanded.className='det-passage';
+        const summary=document.createElement('summary');summary.textContent=`Expand passage (${group.verses.length} verses)`;expanded.appendChild(summary);
+        for(const verse of group.verses){
+          const member=group.members.find(d=>d.verse===verse),row=document.createElement('div');row.className='det-passage-verse';
+          const text=document.createElement('div');text.textContent=`${verse}. ${member?.text||'Verse text unavailable'}`;row.appendChild(text);
+          if(member)row.appendChild(actionButton(`Present ${verse}`,'det-btn-present',()=>presentRecord(member)));
+          expanded.appendChild(row);
+        }
+        if(opened.has(expanded.className))expanded.open=true;card.appendChild(expanded);
+      }
+      // Source matches remain in History, Review and Debug log, not on this canvas.
+      card._groupFingerprint=fingerprint;
+    }
+    if(container.children[index]!==card)container.insertBefore(card,container.children[index]||null);
+    if(restoreFocus>=0)card.querySelectorAll('button,summary')[restoreFocus]?.focus({preventScroll:true});
+  }
+  model.groups.forEach((g,i)=>draw(g,timeline,i));
+  for(const [key,el]of priorGroups)if(!keep.has(key))el.remove();
+  // Reuse existing card nodes before removing obsolete section wrappers. This
+  // also handles a renderer refreshed from the old layout without duplicates.
+  for(const legacy of body.querySelectorAll('.det-confirmed, .det-suggestions'))legacy.remove();
+  // Moving an unchanged DOM card must not discard keyboard focus.
+  if(previousFocus?.isConnected && document.activeElement!==previousFocus)previousFocus.focus({preventScroll:true});
+  // Follow the head when already at the top. Do not force a scrolling operator
+  // back there for every suggestion or evidence update.
+  body.scrollTop=previousScroll<=2?0:previousScroll;
 }
 
 function clearDetections() {
+  cancelAutomaticScripture('panel-cleared', true);
   State.detections = [];
-  // NOTE: this used to also clear State.transcriptLines ("so old text can't
-  // re-trigger detections when transcription restarts"), but that silently
-  // wiped the entire sermon transcript — including everything saved to
-  // History — any time someone clicked "Clear all" on the Detections panel,
-  // producing a saved transcript that was missing lines with no warning.
-  // Re-detection prevention is already handled independently by
-  // AIDetection.clearCache() below, so clearing the transcript here was
-  // both unnecessary and harmful. Removed.
+  State.reviewDetectionId = null;
   renderDetections();
-  // Clear the AI detection engine cache
-  if (window.AIDetection) AIDetection.clearCache();
-  toast('🗑 Detections cleared');
+  window.AIDetection?.clearPending?.();
+  // Persist the independent log, not the emptied display list.
+  if (State.isRecording) void _writeTranscriptAutosave();
+  toast('🗑 Panel cleared — transcript and detected-verse history preserved');
+}
+
+function getTranscriptDetectionEvents() {
+  return (State.detectionHistory || State.detections || []).map(d => ({
+    id:d.id, eventKey:d.eventKey, ref:d.ref, book:d.book, chapter:d.chapter, verse:d.verse,
+    type:d.type, confidence:d.confidence, status:d.status, createdAt:d.createdAt,
+    updatedAt:d.updatedAt,activitySequence:d.activitySequence,
+    sourceLineId:d.sourceLineId, sourceStartLineId:d.sourceStartLineId,
+    sourceText:d.sourceText, sourceTime:d.sourceTime, sourceStart:d.sourceStart, sourceEnd:d.sourceEnd,
+    firstSeq:d.firstSeq,lastSeq:d.lastSeq,
+    discussionId:d.discussionId,discussionLabel:d.discussionLabel,
+    passageId:d.passageId,passageVerses:d.passageVerses,announcedPassage:d.announcedPassage,rangeStart:d.rangeStart,rangeEnd:d.rangeEnd,
+    evidenceTypes:d.evidenceTypes,
+    translation:d.translation, fallbackTranslation:d.fallbackTranslation,
+    confirmation:d.confirmation, autoEligible:d.autoEligible, holdReason:d.holdReason,
+    presentationState:d.presentationState, presentationReason:d.presentationReason,
+  }));
+}
+
+async function exportDetectionDiagnostics() {
+  const report = window.AIDetection?.getDiagnostics?.();
+  if (!report) return toast('⚠ Detection diagnostics unavailable — apply the complete detection patch');
+  report.interfaceRevision = 'detection-global-order-v1.8.1-r2';
+  report.panelOrdering = 'global-latest-accepted-activity-first';
+  report.panelLayout = 'unified-timeline';
+  // Capture actual DOM order, not only the correctly sorted model: this exposes
+  // regressions where a section wrapper silently changes the visual ordering.
+  report.renderedCardOrder = [...(document.getElementById('detectionsBody')?.querySelectorAll('.det-timeline > .detection-item') || [])]
+    .map(el=>({id:el.dataset.detectionKey,section:el.dataset.detectionSection}));
+  report.transcriptLineCount = State.transcriptLines.length;
+  const groups=getDetectionGroups();
+  report.visiblePanelCount=groups.groups.length;
+  report.confirmedCardCount=groups.confirmed.length;report.suggestionCardCount=groups.suggestions.length;
+  report.panelOccurrenceCount=State.detections.length;
+  report.detectionGroups=groups.groups.map(g=>({id:g.id,ref:g.label,kind:g.kind,section:g.section,verses:g.verses,latestUpdatedAt:g.latestUpdatedAt,latestActivitySequence:g.latestActivitySequence,eventKeys:g.members.map(d=>d.eventKey)}));
+  report.transcriptDetectionCount = (State.detectionHistory || []).length;
+  report.detectionEvents = getTranscriptDetectionEvents();
+  const content = JSON.stringify(report,null,2);
+  const defaultName = `AnchorCast-detection-diagnostics-${new Date().toISOString().slice(0,10)}.json`;
+  if (window.electronAPI?.exportFile) {
+    const result = await window.electronAPI.exportFile({content,defaultName,filters:[{name:'JSON',extensions:['json']}]});
+    if (result?.success) toast('↓ Detection diagnostics exported — review transcript excerpts before sharing');
+  } else {
+    const url = URL.createObjectURL(new Blob([content],{type:'application/json'}));
+    const a = document.createElement('a');a.href=url;a.download=defaultName;a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
 }
 
 
@@ -3024,7 +3223,7 @@ function renderDetectionReviewList() {
     return String(d.ref || '').toLowerCase().includes(query) || String(d.sourceText || '').toLowerCase().includes(query) || String(d.text || '').toLowerCase().includes(query);
   });
   list.innerHTML = '';
-  if (count) count.textContent = `${items.length} detections`;
+  if (count) count.textContent = `${items.length} recorded matches`;
   if (!items.length) {
     list.innerHTML = `<div class="empty-state" style="min-height:120px"><span class="empty-icon">🔮</span>No detections to review.</div>`;
     return;
@@ -3081,6 +3280,7 @@ async function approveDetectionReview() {
   const det = getDetectionReviewItem();
   if (!det) return;
   det.status = 'approved';
+  renderDetections();
   await persistDetectionFeedback(det, 'approve', true);
   selectDetectionReview(det.id);
   toast('✓ Detection approved');
@@ -3090,6 +3290,7 @@ async function rejectDetectionReview() {
   const det = getDetectionReviewItem();
   if (!det) return;
   det.status = 'rejected';
+  cancelAutomaticScripture('operator-rejected-detection',true);renderDetections();
   await persistDetectionFeedback(det, 'reject', false);
   selectDetectionReview(det.id);
   toast('↺ Detection rejected');
@@ -3116,6 +3317,9 @@ async function replaceDetectionReview() {
   det.ref = `${parsed.book} ${parsed.chapter}:${parsed.verse || 1}`;
   det.text = verseText || det.text;
   det.status = 'replaced';
+  delete det.passageId;delete det.passageVerses;delete det.announcedPassage;delete det.discussionId;
+  det.rangeStart=det.rangeEnd=det.verse;
+  cancelAutomaticScripture('operator-corrected-reference',true);
   await persistDetectionFeedback(det, 'replace', true);
   selectDetectionReview(det.id);
   renderDetections();
@@ -3237,6 +3441,7 @@ function buildVerseRangeHTML(book, chapter, startVerse, endVerse, ref) {
 }
 
 function presentVerseRange(book, chapter, startVerse, endVerse, ref, options = {}) {
+  if(options.origin!=='auto')cancelAutomaticScripture('operator-scripture-selection');
   const html = buildVerseRangeHTML(book, chapter, startVerse, endVerse, ref);
   if (!html) { toast(`⚠ Verses not found: ${ref}`); return; }
 
@@ -3444,6 +3649,7 @@ function _syncProjectionRange(book, chapter, startVerse, endVerse, ref, verses) 
   const combinedTextPlain = verses.map(v => v.text).join('  ');
 
   const versePayload = {
+    detectionRequest: State._autoRequest ? {...State._autoRequest} : null,
     book, chapter, verse: startVerse, endVerse, ref,
     text: combinedTextPlain,
     rangeVerses: verses,
@@ -3512,13 +3718,19 @@ function _syncProjectionRange(book, chapter, startVerse, endVerse, ref, verses) 
     },
   };
   if (window.electronAPI) {
-    window.electronAPI.projectVerse(versePayload);
+    const request=window.electronAPI.projectVerse(versePayload);
+    if(versePayload.detectionRequest){const meta=versePayload.detectionRequest;
+      Promise.resolve(request).then(result=>window.AIDetection?.recordDecision?.(result?.success===false?'projection-ipc-failed':'projection-ipc-accepted',
+        {ref:meta.ref,eventKey:meta.eventKey,detail:result?.error||`Request ${meta.requestId}; IPC acceptance is not a screen acknowledgement`}))
+        .catch(err=>window.AIDetection?.recordDecision?.('projection-ipc-failed',{ref:meta.ref,eventKey:meta.eventKey,detail:err.message}));}
+    return request;
   } else {
     _webPostRenderState('scripture', versePayload);
   }
 }
 
 function presentVerse(book, chapter, verse, ref, options = {}) {
+  if(options.origin!=='auto')cancelAutomaticScripture('operator-scripture-selection');
   const html = buildVerseHTML(book, chapter, verse, ref);
   if (!html) { toast(`⚠ Verse not found: ${ref}`); return; }
 
@@ -4466,6 +4678,7 @@ function updateLiveDisplay(book, chapter, verse, ref) {
 }
 
 function sendPreviewToLive() {
+  cancelAutomaticScripture('operator-output-action');
   State._logoActive = false;
   _updateLogoBtnState();
   // BUG-2 FIX: Song path must not require currentSongSlideIdx != null.
@@ -4557,6 +4770,7 @@ function blankScreen() {
 }
 
 function clearLive() {
+  cancelAutomaticScripture('operator-output-action');
   State._logoActive = false;
   _updateLogoBtnState();
   // Guard: nothing to clear
@@ -4645,6 +4859,7 @@ function syncProjection() {
   const showVerseNums = sfs.showVerseNumbers !== false;
   if (projThemeData) projThemeData.showVerseNum = showVerseNums;
   const versePayload = {
+    detectionRequest: State._autoRequest ? {...State._autoRequest} : null,
     book, chapter, verse, ref, text,
     translation: State.currentTranslation,
     theme: State.currentTheme,
@@ -4712,7 +4927,12 @@ function syncProjection() {
     },
   };
   if (window.electronAPI) {
-    window.electronAPI.projectVerse(versePayload);
+    const request=window.electronAPI.projectVerse(versePayload);
+    if(versePayload.detectionRequest){const meta=versePayload.detectionRequest;
+      Promise.resolve(request).then(result=>window.AIDetection?.recordDecision?.(result?.success===false?'projection-ipc-failed':'projection-ipc-accepted',
+        {ref:meta.ref,eventKey:meta.eventKey,detail:result?.error||`Request ${meta.requestId}; IPC acceptance is not a screen acknowledgement`}))
+        .catch(err=>window.AIDetection?.recordDecision?.('projection-ipc-failed',{ref:meta.ref,eventKey:meta.eventKey,detail:err.message}));}
+    return request;
   } else {
     _webPostRenderState('scripture', versePayload);
   }
@@ -4924,6 +5144,7 @@ function refreshCanvases() {
 
 // ─── GO LIVE ──────────────────────────────────────────────────────────────────
 function toggleGoLive() {
+  cancelAutomaticScripture('operator-output-action');
   State.isLive = !State.isLive;
   const btn = document.getElementById('goLiveBtn');
   const txt = document.getElementById('goLiveTxt');
@@ -6473,6 +6694,8 @@ async function previewSongSlide(idx) {
 }
 
 async function presentSongSlide(idx) {
+  cancelAutomaticScripture('operator-song-selection');
+  cancelAutomaticScripture('operator-output-action');
   State._logoActive = false;
   _updateLogoBtnState();
   State.currentSongSlideIdx = idx;
@@ -6716,15 +6939,77 @@ let _liveTimerEnd       = null;
 let _liveTimerMode      = 'countdown';
 let _liveTimerWarnSecs  = 60;
 let _liveTimerRunning   = false;
+let _liveTimerProjectionVisible = true;
+let _liveTimerStartedAt = null;
+let _liveTimerVisibilityPending = false;
+let _liveTimerStateRevision = 0;
 
-function _startLiveTimerDisplay(seconds, mode, label) {
+function _updateTimerProjectionControls() {
+  const message = !_liveTimerRunning ? 'Start a timer to control its visibility.' : _liveTimerProjectionVisible
+    ? 'Visible on projection' : 'Hidden on projection — still running';
+  for (const id of ['timerInlineVisibilityBtn', 'timerModalVisibilityBtn']) {
+    const btn = document.getElementById(id);
+    if (!btn) continue;
+    btn.disabled = !_liveTimerRunning || _liveTimerVisibilityPending;
+    btn.textContent = _liveTimerRunning && !_liveTimerProjectionVisible ? 'Show on Projection' : 'Hide on Projection';
+    btn.setAttribute('aria-busy', String(_liveTimerVisibilityPending));
+    btn.title = !_liveTimerRunning ? 'Start a timer first' : _liveTimerProjectionVisible
+      ? 'Hide the timer without stopping it' : 'Show the current time without restarting';
+  }
+  for (const id of ['timerInlineProjectionStatus', 'timerModalProjectionStatus']) {
+    const el = document.getElementById(id);
+    if (el && el.textContent !== message) el.textContent = message;
+  }
+  const layer = document.getElementById('liveTimerLayer');
+  if (layer) layer.style.display = _liveTimerRunning && _liveTimerProjectionVisible ? 'flex' : 'none';
+}
+
+function _syncLiveTimerVisibility(state) {
+  if (!state || typeof state.running !== 'boolean') return;
+  if (!state.running) { _stopLiveTimerDisplay(); return; }
+  if (!_liveTimerRunning || _liveTimerStartedAt !== state.startedAt) {
+    _startLiveTimerDisplay(state.seconds ?? 0, state.mode, state.label || '', state);
+    return;
+  }
+  _liveTimerStateRevision++;
+  _liveTimerProjectionVisible = AnchorCastTimer.projectionIsVisible(state);
+  _updateTimerProjectionControls();
+}
+
+async function toggleProjectionTimerVisibility() {
+  if (!_liveTimerRunning || _liveTimerVisibilityPending) return;
+  if (!window.electronAPI?.setTimerProjectionVisible) {
+    toast('⚠ Timer visibility is unavailable. Apply both preloads and restart AnchorCast.');
+    return;
+  }
+  _liveTimerVisibilityPending = true;
+  _updateTimerProjectionControls();
+  const requestRevision = _liveTimerStateRevision;
+  try {
+    const result = await window.electronAPI.setTimerProjectionVisible({
+      visible: !_liveTimerProjectionVisible, expectedStartedAt: _liveTimerStartedAt
+    });
+    if (requestRevision === _liveTimerStateRevision && result?.state) _syncLiveTimerVisibility(result.state);
+    if (!result?.success) toast('⚠ ' + (result?.error || 'Could not change timer visibility.'));
+  } catch (error) {
+    toast('⚠ Could not change timer visibility. Please try again.');
+  } finally {
+    _liveTimerVisibilityPending = false;
+    _updateTimerProjectionControls();
+  }
+}
+
+function _startLiveTimerDisplay(seconds, mode, label, state = null) {
   _stopLiveTimerDisplay();
-  _liveTimerMode     = mode;
-  _liveTimerRunning  = true;
-  _liveTimerWarnSecs = seconds <= 300 ? 60 : Math.ceil(seconds * 0.1);
-  _liveTimerEnd      = mode === 'countdown'
-    ? Date.now() + seconds * 1000
-    : Date.now();
+  _liveTimerMode = AnchorCastTimer.normalizeMode(mode);
+  _liveTimerRunning = true;
+  _liveTimerProjectionVisible = AnchorCastTimer.projectionIsVisible(state);
+  _liveTimerStartedAt = state?.startedAt ?? null;
+  _liveTimerWarnSecs = AnchorCastTimer.warningSeconds(seconds);
+  _liveTimerEnd = AnchorCastTimer.baseline(state || { seconds, mode: _liveTimerMode });
+  if (state?.position) _timerPosition = state.position;
+  const speed = AnchorCastTimer.flashSpeed(state?.data?.flashSpeed ?? state?.flashSpeed);
+  document.documentElement.style.setProperty('--live-timer-blink-speed', speed + 's');
 
   // Use the permanent liveTimerLayer overlay — mirrors projection's timerLayer
   // It floats ON TOP of live content without replacing it
@@ -6769,7 +7054,8 @@ function _startLiveTimerDisplay(seconds, mode, label) {
       'margin-top:' + Math.round(clampDisp * 0.12) + 'px;' +
       'text-align:' + (isEdge ? 'right' : 'center') + ';' +
       'text-shadow:0 0 4px rgba(0,0,0,1),1px 1px 0 #000">' +
-      (label || '') + '</div>';
+      '</div>';
+  document.getElementById('_ltimerLbl').textContent = label || '';
 
   // Update Start button
   const startBtn = document.getElementById('timerInlineStartBtn');
@@ -6781,32 +7067,41 @@ function _startLiveTimerDisplay(seconds, mode, label) {
   }
 
   function tick() {
-    const now  = Date.now();
-    let secs;
-    if (_liveTimerMode === 'countdown') {
-      secs = Math.max(0, Math.ceil((_liveTimerEnd - now) / 1000));
-    } else {
-      secs = Math.floor((now - _liveTimerEnd) / 1000);
-    }
-    const m = Math.floor(secs / 60);
-    const s = String(secs % 60).padStart(2, '0');
+    const frame = AnchorCastTimer.frame(_liveTimerEnd, _liveTimerMode, _liveTimerWarnSecs);
     const disp = document.getElementById('_ltimerDisp');
     if (!disp) { clearInterval(_liveTimerInterval); return; }
-    disp.textContent = `${m}:${s}`;
-    const isWarn = _liveTimerMode === 'countdown' && secs <= _liveTimerWarnSecs && secs > 0;
-    const isOver = _liveTimerMode === 'countdown' && secs === 0;
-    disp.style.color = (isWarn || isOver) ? '#e74c3c' : '#fff';
-    if (isOver) { _stopLiveTimerDisplay(); return; }
+    disp.textContent = frame.text;
+    disp.classList.toggle('warning', frame.warning);
+    disp.classList.toggle('overtime', frame.overtime);
+    disp.style.color = (frame.warning || frame.overtime) ? '#e74c3c' : '#fff';
+    const lbl = document.getElementById('_ltimerLbl');
+    if (lbl) lbl.textContent = frame.overtime ? 'Thank you. Kindly conclude your session.' : (label || '');
+    for (const id of ['timerInlineReadout', 'timerModalReadout']) {
+      const monitor = document.getElementById(id);
+      if (monitor) {
+        monitor.textContent = frame.text;
+        monitor.style.color = (frame.warning || frame.overtime) ? '#e74c3c' : '';
+      }
+    }
   }
 
   tick();
-  _liveTimerInterval = setInterval(tick, 500);
+  _liveTimerInterval = setInterval(tick, 100);
+  _updateTimerProjectionControls();
 
 }
 
 function _stopLiveTimerDisplay() {
   if (_liveTimerInterval) { clearInterval(_liveTimerInterval); _liveTimerInterval = null; }
   _liveTimerRunning = false;
+  _liveTimerStateRevision++;
+  _liveTimerProjectionVisible = true;
+  _liveTimerStartedAt = null;
+  _updateTimerProjectionControls();
+  for (const id of ['timerInlineReadout', 'timerModalReadout']) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = '00:00'; el.style.color = ''; }
+  }
 
   // Hide the overlay — leave liveDisplay content untouched
   const layer = document.getElementById('liveTimerLayer');
@@ -6828,12 +7123,21 @@ async function startProjectionTimer() {
   const minutes = parseInt(document.getElementById(inlineOpen ? 'timerInlineMinutes' : 'timerMinutes')?.value || '5');
   const label   = document.getElementById(inlineOpen ? 'timerInlineLabel' : 'timerLabelInput')?.value || '';
   const seconds = minutes * 60;
-  if (window.electronAPI) {
-    await window.electronAPI.showTimer({ mode, seconds, label, scale: _timerScale, position: _timerPosition });
+  if (!window.electronAPI?.showTimer) {
+    toast('⚠ Timer service is unavailable.');
+    return;
   }
-  // Start live countdown display in operator view
-  _startLiveTimerDisplay(seconds, mode, label);
-  toast(`⏱ Timer started: ${minutes}min ${mode}`);
+  try {
+    const result = await window.electronAPI.showTimer({ mode, seconds, label, scale: _timerScale, position: _timerPosition });
+    if (result?.error || result?.success === false || result?.projected === false) {
+      toast('⚠ ' + (result.error || 'Open Projection first, then start the timer.'));
+      return;
+    }
+    _startLiveTimerDisplay(seconds, mode, label, result?.state);
+    toast(`⏱ Timer started: ${minutes}min ${mode}`);
+  } catch (error) {
+    toast('⚠ Could not start timer: ' + (error?.message || 'Please try again.'));
+  }
 }
 
 async function stopProjectionTimer() {
@@ -7308,6 +7612,7 @@ async function presentMedia(item) {
 
 // ── Helper: present currently previewed media ─────────────────────────────────
 function presentCurrentMedia() {
+  cancelAutomaticScripture('operator-output-action');
   const item = (State.media || []).find(m => String(m.id) === String(State.currentMediaId));
   if (item) presentMedia(item);
 }
@@ -8161,19 +8466,26 @@ function addMediaToQueue(item) {
 // State.presentations = [{ id, name, type:'imported'|'created', slideCount, slides?, outDir? }]
 
 // ── Load & render library strip ───────────────────────────────────────────────
+let _presentationLoadToken = 0;
+let _presentationSelectionToken = 0;
 async function loadPresentations() {
-  // Reset cache so we always get fresh data from disk on load
-  _createdPresCache = null;
+  const token=++_presentationLoadToken;
   try {
-    const list = window.electronAPI ? await window.electronAPI.getPresentations() : [];
-    State.presentations = list || [];
-  } catch(e) { State.presentations = []; }
-  // Merge in locally-created presentations from assets/Data/
-  const local = await _getLocalPresentations();
-  local.forEach(lp => {
-    if (!State.presentations.find(p => p.id === lp.id)) State.presentations.push(lp);
-  });
-  renderPresLibStrip();
+    _createdPresCache = null;
+    const imported=window.electronAPI?.getPresentations ? await window.electronAPI.getPresentations() : [];
+    const local=await _getLocalPresentations();
+    if(token!==_presentationLoadToken)return;
+    const merged=new Map();
+    for(const value of [...(imported||[]),...local]) {
+      const pres=PresentationData.normalize(value);
+      if(!merged.has(pres.id))merged.set(pres.id,pres);
+    }
+    State.presentations=[...merged.values()];
+    renderPresLibStrip(document.getElementById('presSearchInput')?.value||'');
+    if(State.currentPresId!=null && State.presentations.some(p=>p.id===String(State.currentPresId))) {
+      await selectPresentation(State.currentPresId);
+    }
+  } catch(e) {toast('⚠ Could not load presentations: '+e.message);}
 }
 
 function renderPresLibStrip(filter = '') {
@@ -8198,7 +8510,7 @@ function renderPresLibStrip(filter = '') {
 
     // Thumbnail — first slide image for imported, gradient for created
     const imgUrl = pres.type === 'imported' && pres.outDir
-      ? toMediaUrl(pres.outDir.replace(/\\/g, '/') + '/slide-1.png')
+      ? PresentationData.mediaUrl(pres.thumbnailPath || pres.outDir.replace(/\\/g, '/') + '/slide-1.png')
       : '';
     const bgColor = pres.slides?.[0]?.bg || '#0a0a1e';
 
@@ -8226,14 +8538,14 @@ function renderPresLibStrip(filter = '') {
         </div>
       </div>
       <div style="display:flex;gap:3px;flex-shrink:0">
-        <button class="btn-sm" onclick="event.stopPropagation();newPresentation()"
-          style="font-size:9px;padding:2px 6px;color:var(--gold);border-color:var(--gold-dim)" title="New Presentation">+ New</button>
-        <button class="btn-sm" onclick="event.stopPropagation();_editPres('${pres.id}')"
+        <button class="btn-sm" data-pres-action="edit"
           style="font-size:9px;padding:2px 5px" title="Edit">✏</button>
-        <button class="btn-sm" onclick="event.stopPropagation();_deletePres('${pres.id}')"
+        <button class="btn-sm" data-pres-action="delete"
           style="font-size:9px;padding:2px 5px;color:var(--live);border-color:rgba(224,82,82,.3)" title="Delete">🗑</button>
       </div>`;
 
+    row.querySelector('[data-pres-action=edit]')?.addEventListener('click',e=>{e.stopPropagation();_editPres(pres.id);});
+    row.querySelector('[data-pres-action=delete]')?.addEventListener('click',e=>{e.stopPropagation();_deletePres(pres.id);});
     row.addEventListener('click', () => selectPresentation(pres.id));
     row.addEventListener('contextmenu', e => {
       e.preventDefault();
@@ -8262,40 +8574,37 @@ function _deletePres(id) {
   deleteCurrentPresentation();
 }
 async function selectPresentation(id) {
-  State.currentPresId = id;
-  State.currentPresSlideIdx = 0;
-
-  // Highlight in list
-  document.querySelectorAll('.pres-row').forEach(el => {
-    const active = el.dataset.presid === String(id);
-    el.style.borderLeft  = active ? '3px solid var(--gold)' : '3px solid transparent';
-    el.style.background  = active ? 'rgba(201,168,76,.06)' : 'transparent';
-  });
-
-  const pres = State.presentations.find(p => String(p.id) === String(id));
-  if (!pres) return;
-
-  let slides = [];
-
-  if (pres.type === 'imported') {
-    const result = window.electronAPI
-      ? await window.electronAPI.getPresentationSlides({ id })
-      : { success: false, slides: [] };
-    if (result.success) slides = result.slides;
-  } else {
-    // Created presentation — slides are stored locally
-    slides = (pres.slides || []).map((s, i) => ({ index: i, slide: s }));
+  const token=++_presentationSelectionToken;
+  State.currentPresId=String(id);State.currentPresSlideIdx=0;State.currentPresSlides=[];
+  const value=State.presentations.find(p=>String(p.id)===String(id));
+  if(!value)return;
+  const pres=PresentationData.normalize(value);Object.assign(value,pres);
+  renderPresLibStrip(document.getElementById('presSearchInput')?.value||'');
+  _showPresPreviewArea({...pres,_loadError:'Loading slides…'});
+  try {
+    let slides=[];
+    if(pres.type==='imported') {
+      if(!window.electronAPI?.getPresentationSlides)throw Error('Presentation import requires the desktop application.');
+      const result=await window.electronAPI.getPresentationSlides({id:pres.id});
+      if(!result?.success)throw Error(result?.error||'The saved slide images could not be loaded. Re-import the original file.');
+      slides=result.slides||[];
+      if(result.outDir)pres.outDir=result.outDir;
+      pres.thumbnailPath=slides[0]?.imagePath;
+    } else slides=pres.slides.map((s,index)=>({index,slide:PresentationData.slide(s)}));
+    if(token!==_presentationSelectionToken||String(State.currentPresId)!==pres.id)return;
+    Object.assign(value,pres,{slideCount:slides.length});
+    State.currentPresSlides=slides;
+    _showPresPreviewArea({...pres,_loadError:slides.length?'':'This presentation has no slides.'});
+    // Make the target visible BEFORE measuring/rendering custom slide objects.
+    if(slides.length)previewPresSlide(0);
+    renderPresLibStrip(document.getElementById('presSearchInput')?.value||'');
+    if(PresentationData.hasTemporaryImages(pres))toast('⚠ This older deck contains temporary images. Re-select those images in the editor; text and other slides are preserved.');
+  } catch(e) {
+    if(token!==_presentationSelectionToken)return;
+    State.currentPresSlides=[];
+    _showPresPreviewArea({...pres,_loadError:e.message});
+    toast('⚠ '+e.message);
   }
-
-  State.currentPresSlides = slides;
-  State.currentPresSlideIdx = 0;
-
-  // Show the presentation slides in Program Preview
-  if (slides.length) previewPresSlide(0);
-  _showPresPreviewArea(pres);
-
-  const pt = document.getElementById('previewPanelTitle');
-  if (pt) pt.textContent = `📑 ${pres.name}`;
 }
 
 // ── Preview slide in Program Preview ─────────────────────────────────────────
@@ -8316,10 +8625,12 @@ function previewPresSlide(idx) {
   const ld = document.getElementById('liveDisplay');
   const le = document.getElementById('liveEmpty');
   if (ld) {
+    ld.style.display = 'flex';
+    ld.replaceChildren();
     ld.style.padding = '0';
     ld.style.position = 'relative';
     if (pres?.type === 'imported') {
-      ld.innerHTML = `<img src="${toMediaUrl(slide.imagePath)}"
+      ld.innerHTML = `<img src="${PresentationData.mediaUrl(slide.imagePath)}"
         style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000">`;
     } else {
       const s = slide.slide || {};
@@ -8332,9 +8643,10 @@ function previewPresSlide(idx) {
 
 // Render a created slide's objects[] into a container element
 function _renderCreatedSlideInto(container, s, isPreview) {
+  s = PresentationData.slide(s);
   const CW = 1920, CH = 1080;
   container.style.background = s.bg || '#0a0a1e';
-  container.style.backgroundImage = s.bgImage ? `url('${toMediaUrl(s.bgImage)}')` : 'none';
+  container.style.backgroundImage = s.bgImage ? `url('${PresentationData.mediaUrl(s.bgImage)}')` : 'none';
   container.style.backgroundSize = 'cover';
   container.style.backgroundPosition = 'center';
   container.style.position = 'relative';
@@ -8416,7 +8728,7 @@ function _renderCreatedSlideInto(container, s, isPreview) {
 
     } else if (obj.type === 'image') {
       const img = document.createElement('img');
-      img.src = toMediaUrl(obj.src || '');
+      img.src = PresentationData.mediaUrl(obj.src || '');
       img.style.width       = '100%';
       img.style.height      = '100%';
       img.style.objectFit   = obj.imgFit || 'contain';
@@ -8476,8 +8788,10 @@ function _updatePresPreviewArea(pres, activeIdx) {
 
   strip.innerHTML = '';
   if (!total) {
-    const e = document.getElementById('presPreviewEmpty');
-    if (e) { strip.appendChild(e); e.style.display = ''; }
+    const e = document.createElement('div');
+    e.id='presPreviewEmpty';e.className='empty-state';
+    e.textContent=pres?._loadError||'Select a presentation to view its slides.';
+    strip.appendChild(e);
     return;
   }
 
@@ -8492,12 +8806,12 @@ function _updatePresPreviewArea(pres, activeIdx) {
       'transition:border-color .12s,transform .1s;';
 
     if (pres?.type === 'imported') {
-      box.style.backgroundImage = "url('"+toMediaUrl(slide.imagePath)+"')";
+      box.style.backgroundImage = "url('"+PresentationData.mediaUrl(slide.imagePath)+"')";
       box.style.backgroundSize  = 'cover';
       box.style.backgroundPosition = 'center';
     } else {
       const s = slide.slide || {};
-      if (s.bgImage) { box.style.backgroundImage="url('"+toMediaUrl(s.bgImage)+"')"; box.style.backgroundSize='cover'; }
+      if (s.bgImage) { box.style.backgroundImage="url('"+PresentationData.mediaUrl(s.bgImage)+"')"; box.style.backgroundSize='cover'; }
 
       // Render ALL objects proportionally as mini preview
       const CW = 1920, CH = 1080;
@@ -8532,6 +8846,11 @@ function _updatePresPreviewArea(pres, activeIdx) {
           t.textContent = obj.text?.slice(0,60) || '';
           el.appendChild(t);
 
+        } else if (obj.type === 'image') {
+          const image=document.createElement('img');
+          image.src=PresentationData.mediaUrl(obj.src||'');image.alt='';
+          image.style.cssText='width:100%;height:100%;display:block;object-fit:'+(obj.imgFit||'contain')+';';
+          image.style.opacity=String((obj.imgOpacity??100)/100);el.appendChild(image);
         } else if (obj.type === 'shape') {
           el.style.background   = obj.shapeFill || '#3b82f6';
           el.style.opacity      = String((obj.shapeOpacity??80)/100);
@@ -8604,7 +8923,8 @@ async function presentPresSlide(idx, { silent = false } = {}) {
   if (!silent) toast(`📑 Slide ${idx + 1} of ${(State.currentPresSlides || []).length}`);
 }
 
-function presentCurrentPresSlide() { presentPresSlide(State.currentPresSlideIdx ?? 0); }
+function presentCurrentPresSlide() {
+  cancelAutomaticScripture('operator-output-action'); presentPresSlide(State.currentPresSlideIdx ?? 0); }
 
 function navigatePresSlide(dir) {
   const total = State.currentPresSlides?.length || 0;
@@ -8662,58 +8982,61 @@ function openPresEditor() { newPresentation(); } // legacy alias
 
 // Receive saved data back from editor window
 function _wirePresEditorSaved() {
-  window.electronAPI?.on('pres-editor-saved', async (pres) => {
-    if (!pres) return;
-    // Persist to assets/Data/created_presentations.json
-    await _saveLocalPresentation(pres);
-    // Update in-memory state
-    const idx = State.presentations.findIndex(p => p.id === pres.id);
-    if (idx >= 0) State.presentations[idx] = pres;
-    else          State.presentations.unshift(pres);
-
-    State.currentPresId = pres.id;
-    renderPresLibStrip();
-    selectPresentation(pres.id);
-    toast(`💾 Saved: "${pres.name}"`);
+  window.electronAPI?.on('pres-editor-saved', async (incoming) => {
+    if(!incoming)return;
+    try {
+      const pres=PresentationData.normalize(incoming,'created');
+      // New editor notifies only after acknowledged native persistence. Do not
+      // write its snapshot again over another editor/deletion operation.
+      if(!incoming._persisted)await _saveLocalPresentation(pres);
+      _createdPresCache=null;
+      const stored=await _getLocalPresentations();
+      if(!stored.some(p=>p.id===pres.id))return;
+      const idx=State.presentations.findIndex(p=>String(p.id)===pres.id);
+      if(idx>=0)State.presentations[idx]=pres;else State.presentations.unshift(pres);
+      State.currentPresId=pres.id;
+      if(document.getElementById('presLibContent')?.style.display!=='none')await selectPresentation(pres.id);
+      renderPresLibStrip();toast('💾 Saved: "'+pres.name+'"');
+    }catch(e){toast('⚠ Presentation save failed: '+e.message);}
   });
 }
 
-// ── Created presentations — persisted to assets/Data/created_presentations.json ─
-// In-memory cache so we don't hit IPC on every read
 let _createdPresCache = null;
-
 async function _getLocalPresentations() {
-  if (_createdPresCache !== null) return _createdPresCache;
-  try {
-    if (window.electronAPI?.getCreatedPresentations) {
-      _createdPresCache = await window.electronAPI.getCreatedPresentations() || [];
-    } else {
-      // Web fallback
-      _createdPresCache = JSON.parse(localStorage.getItem('anchorcast_presentations') || '[]');
-    }
-  } catch(e) { _createdPresCache = []; }
+  if(_createdPresCache!==null)return _createdPresCache;
+  let list;
+  if(window.electronAPI) {
+    if(!window.electronAPI.getCreatedPresentations)throw Error('Presentation storage interface is missing. Apply the complete patch and restart.');
+    list=await window.electronAPI.getCreatedPresentations();
+  } else list=JSON.parse(localStorage.getItem('anchorcast_presentations')||'[]');
+  if(!Array.isArray(list))throw Error('The saved presentation library is not a list.');
+  _createdPresCache=list.map(p=>PresentationData.normalize(p,'created'));
   return _createdPresCache;
 }
-
-async function _saveLocalPresentation(pres) {
-  const list = (await _getLocalPresentations()).filter(p => p.id !== pres.id);
-  list.unshift(pres);
-  _createdPresCache = list;
-  if (window.electronAPI?.saveCreatedPresentations) {
-    await window.electronAPI.saveCreatedPresentations(list);
+async function _saveLocalPresentation(value) {
+  const pres=PresentationData.normalize(value,'created');
+  if(window.electronAPI && !window.electronAPI.isWeb) {
+    if(!window.electronAPI.saveCreatedPresentations)throw Error('Presentation storage interface is missing.');
+    const result=await window.electronAPI.saveCreatedPresentations({operation:'upsert',presentation:pres});
+    if(result?.success!==true)throw Error(result?.error||'Presentation was not saved. Check the main.js presentation hook.');
+    _createdPresCache=null;
   } else {
-    localStorage.setItem('anchorcast_presentations', JSON.stringify(list));
+    const list=(await _getLocalPresentations()).filter(p=>String(p.id)!==pres.id);list.unshift(pres);
+    if(window.electronAPI?.isWeb) {
+      const result=await window.electronAPI.saveCreatedPresentations(list);
+      if(result?.success!==true&&result?.ok!==true)throw Error(result?.error||'Presentation was not saved.');
+    } else localStorage.setItem('anchorcast_presentations',JSON.stringify(list));
+    _createdPresCache=list;
   }
+  return pres;
 }
-
 async function _deleteLocalPresentation(id) {
-  const list = (await _getLocalPresentations()).filter(p => p.id !== id);
-  _createdPresCache = list;
-  if (window.electronAPI?.saveCreatedPresentations) {
-    await window.electronAPI.saveCreatedPresentations(list);
-  } else {
-    localStorage.setItem('anchorcast_presentations', JSON.stringify(list));
-  }
+  const list=(await _getLocalPresentations()).filter(p=>String(p.id)!==String(id));
+  if(window.electronAPI?.saveCreatedPresentations) {
+    const result=await window.electronAPI.saveCreatedPresentations(list);
+    if(result?.success!==true&&result?.ok!==true)throw Error(result?.error||'Presentation was not deleted.');
+  }else localStorage.setItem('anchorcast_presentations',JSON.stringify(list));
+  _createdPresCache=list;
 }
 
 // ── Import presentation file (PPTX / PDF) via native dialog ──────────────────
@@ -8736,53 +9059,73 @@ async function importPresentation(pptxOnly = false) {
         <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">
           Importing ${escapeHtml(filePath.split(/[/\\]/).pop())}</div>
         <div style="font-size:11px;color:var(--text-dim);margin-bottom:16px">
-          ${ext === 'pdf' ? 'Rendering pages…' : 'Converting via LibreOffice…'}</div>
+          ${ext === 'pdf' ? 'Rendering PDF pages…' : 'Checking installed presentation converters…'}</div>
         <div style="background:var(--border);border-radius:2px;overflow:hidden;height:4px">
           <div class="pres-progress-bar"></div></div>
         <div style="font-size:10px;color:var(--text-dim);margin-top:10px">
-          Large files may take up to a minute</div>
+          Large files take longer; keep AnchorCast open until import finishes</div>
       </div>`;
   }
 
   try {
     const result = await window.electronAPI.importPresentation({ filePath });
     if (overlay) overlay.style.display = 'none';
-    if (!result.success) { toast(`⚠ Import failed: ${result.error}`); return; }
+    if (result?.cancelled) { toast('PDF import cancelled — your original file is unchanged.'); return; }
+    if (!result.success) { _showPresentationImportError(result.error, ext === 'pdf' ? 'PDF import failed' : 'Presentation import failed'); return; }
 
     const pres = { id: result.id, name: result.name, type: 'imported',
-      slideCount: result.slideCount, outDir: result.outDir || '' };
+      slideCount: result.slideCount, outDir: result.outDir || '', thumbnailPath: result.slides?.[0]?.imagePath || '' };
     State.presentations.unshift(pres);
     renderPresLibStrip();
     await selectPresentation(result.id);
     toast(`📑 Imported "${result.name}" — ${result.slideCount} slides`);
+    if(result.warning)_showPresentationImportError(result.warning,'Imported with limitations');
   } catch(e) {
     if (overlay) overlay.style.display = 'none';
     toast(`⚠ Import error: ${e.message}`);
   }
 }
 
+function _showPresentationImportError(message,title='Presentation import failed') {
+  document.getElementById('presImportErrorDialog')?.remove();
+  const overlay=document.createElement('div');overlay.id='presImportErrorDialog';
+  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:#000a;display:flex;align-items:center;justify-content:center;padding:20px';
+  const box=document.createElement('div');box.style.cssText='background:var(--panel);border:1px solid var(--border-lit);border-radius:10px;padding:24px;max-width:640px;max-height:80vh;overflow:auto';
+  box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label',title);
+  const h=document.createElement('h3');h.textContent=title;box.appendChild(h);
+  const text=document.createElement('p');text.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5';text.textContent=String(message||'Unknown conversion error.');box.appendChild(text);
+  const close=document.createElement('button');close.className='btn-sm';close.textContent='Close';close.onclick=()=>overlay.remove();box.appendChild(close);
+  overlay.appendChild(box);document.body.appendChild(overlay);close.focus();
+  overlay.onkeydown=e=>{if(e.key==='Escape'){e.stopPropagation();overlay.remove();}};
+}
 async function deleteCurrentPresentation() {
-  const pres = State.presentations.find(p => String(p.id) === String(State.currentPresId));
-  if (!pres) { toast('Select a presentation first'); return; }
-  // BUG-12 FIX: native confirm() is blocked in Electron contextIsolation builds.
-  _confirmModal(`Delete "${pres.name}"? This cannot be undone.`, async () => {
-    if (pres.type === 'imported' && window.electronAPI) {
-      window.electronAPI.deletePresentation({ id: pres.id });
-    } else {
-      await _deleteLocalPresentation(pres.id);
-    }
-    State.presentations = State.presentations.filter(p => p.id !== pres.id);
-    State.currentPresId = null;
-    State.currentPresSlides = [];
-    State.currentPresSlideIdx = 0;
-    renderPresLibStrip();
-    const presPA = document.getElementById('presPreviewArea');
-    if (presPA) presPA.style.display = 'none';
-    const vpa = document.getElementById('versePreviewArea');
-    if (vpa) vpa.style.display = 'flex';
-    const pt = document.getElementById('previewPanelTitle');
-    if (pt) pt.textContent = '👁 Program Preview';
-    toast(`🗑 Deleted: "${pres.name}"`);
+  const value=State.presentations.find(p=>String(p.id)===String(State.currentPresId));
+  if(!value){toast('Select a presentation first');return;}
+  const pres=PresentationData.normalize(value);
+  _confirmModal('Delete "'+pres.name+'"? This cannot be undone.',async()=>{
+    try {
+      if(window.electronAPI && !window.electronAPI.isWeb) {
+        const result=await window.electronAPI.deletePresentation({id:pres.id,type:pres.type});
+        if(result?.success!==true)throw Error(result?.error||'Deletion was not saved.');
+        if(result.warning)toast('⚠ '+result.warning);
+      }else if(pres.type==='created')await _deleteLocalPresentation(pres.id);
+      else {
+        const result=await window.electronAPI?.deletePresentation({id:pres.id});
+        if(result?.success!==true&&result?.ok!==true)throw Error(result?.error||'Deletion was not saved.');
+      }
+      ++_presentationLoadToken;_createdPresCache=null;
+      State.presentations=State.presentations.filter(p=>String(p.id)!==pres.id);
+      State.queue=(State.queue||[]).filter(q=>!(q.type==='presentation'&&String(q.presId)===pres.id));
+      renderQueue();
+      if(String(State.currentPresId)===pres.id) {
+        ++_presentationSelectionToken;State.currentPresId=null;State.currentPresSlides=[];State.currentPresSlideIdx=0;
+        const pa=document.getElementById('presPreviewArea');if(pa)pa.style.display='none';
+        const vpa=document.getElementById('versePreviewArea');if(vpa)vpa.style.display='flex';
+        const pt=document.getElementById('previewPanelTitle');if(pt)pt.textContent='👁 Program Preview';
+      }
+      renderPresLibStrip(document.getElementById('presSearchInput')?.value||'');
+      toast('🗑 Deleted: "'+pres.name+'"');
+    }catch(e){toast('⚠ Could not delete presentation: '+e.message);}
   });
 }
 
@@ -9738,12 +10081,33 @@ function toggleMode() {
     : '📴 Offline — keyword & verbal detection active');
 }
 
-function setDisplayMode(auto) {
-  State.isAutoMode = auto;
-  const badge = document.getElementById('displayModeBadge');
-  badge.textContent = auto ? 'Auto' : 'Manual';
-  badge.className = 'mode-badge ' + (auto ? 'auto' : 'manual');
-  toast(auto ? '🤖 Auto mode active' : '🖐 Manual mode active');
+let _modeSaveChain=Promise.resolve(), _modeWritePending=0, _modeRevision=0;
+function setDisplayMode(auto, options={}) {
+  const persist=options.persist!==false;
+  if(!persist && _modeWritePending)auto=State.isAutoMode;
+  auto=!!auto;
+  const changed=State.isAutoMode!==auto;
+  State.isAutoMode=auto;State.settings.displayMode=auto?'auto':'manual';
+  const badge=document.getElementById('displayModeBadge');
+  if(badge){badge.textContent=auto?'Auto':'Manual';badge.className='mode-badge '+State.settings.displayMode;}
+  if(changed||!auto)cancelAutomaticScripture(auto?'auto-enabled':'manual-mode',false);
+  if(changed&&auto){
+    // Reconsider only the newest fresh occurrence, never the old service backlog.
+    const latest=newestAutomaticDetection();
+    if(latest)getAutoScriptureController()?.offer(latest);
+  }
+  if(options.notify!==false&&changed)toast(auto?'🤖 Auto mode active — confirmed Scripture only':'🖐 Manual mode active');
+  renderDetections();
+  if(!persist||!window.electronAPI?.saveSettings)return;
+  const revision=++_modeRevision,mode=State.settings.displayMode;_modeWritePending++;
+  _modeSaveChain=_modeSaveChain.catch(()=>{}).then(async()=>{
+    // Sequential writes prevent a slower previous toggle overwriting a later one.
+    const saved=await window.electronAPI.getSettings();
+    const result=await window.electronAPI.saveSettings({...saved,displayMode:mode},{changedKeys:['displayMode']});
+    if(result?.success===false)throw new Error(result.error||'Display mode could not be saved');
+  }).catch(err=>{window.AIDetection?.recordDecision?.('mode-save-failed',{detail:err.message});if(revision===_modeRevision)toast('⚠ Mode changed for this session but could not be saved.');})
+    .finally(()=>{_modeWritePending=Math.max(0,_modeWritePending-1);});
+  return _modeSaveChain;
 }
 
 // ─── PROJECTION ───────────────────────────────────────────────────────────────
@@ -10351,7 +10715,7 @@ function showAboutModal() {
     <div style="background:#1a1a2e;border:1px solid #333;border-radius:14px;padding:36px 40px;max-width:440px;width:90%;color:#e0e0e0;font-family:inherit;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.6);position:relative;">
       <div style="font-size:14px;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:6px;">&#10022;</div>
       <h2 style="margin:0 0 4px;font-size:24px;color:#fff;font-weight:700;">AnchorCast</h2>
-      <div style="font-size:13px;color:#888;margin-bottom:18px;">v1.2.0</div>
+      <div style="font-size:13px;color:#888;margin-bottom:18px;">v1.8.2</div>
       <p style="font-size:14px;line-height:1.7;color:#bbb;margin:0 0 18px;">
         AI-powered worship presentation, live sermon transcription &amp; Bible verse display for churches.
       </p>

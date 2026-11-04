@@ -31,12 +31,9 @@ const TranscriptMemory = (function () {
       tgt: (_, b) => `2 ${b.charAt(0).toUpperCase()}${b.slice(1)}` },
     { src: /\bthird\s+(john)\b/gi,
       tgt: (_, b) => `3 ${b.charAt(0).toUpperCase()}${b.slice(1)}` },
-    // Verbal verse references: "chapter three verse sixteen" → "3:16"
-    { src: /\bchapter\s+(\w+)\s+verse\s+(\w+)\b/gi,
-      tgt: (_, ch, v) => `${_wordToNum(ch)}:${_wordToNum(v)}` },
-    // "psalm twenty three" → "Psalm 23"
-    { src: /\bpsalm\s+(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|twenty.one|twenty.two|twenty.three|twenty.four|twenty.five|twenty.six|twenty.seven|twenty.eight|twenty.nine|thirty.one|thirty.two|thirty.three|one.hundred|one.hundred.and.nineteen)\b/gi,
-      tgt: (_, n) => `Psalm ${_wordToNum(n)}` },
+    // Numeric references are normalized by the shared full-number grammar below.
+    // Do not consume only "twenty" from "twenty three" or sum "eight eleven".
+
   ];
 
   // Word → number map for verbal references
@@ -94,6 +91,7 @@ const TranscriptMemory = (function () {
 
     // Step 3 — Apply built-in Bible normalization (always on)
     text = _applyBuiltinBibleRules(text);
+    if (window.ScriptureReferences) text = window.ScriptureReferences.normalizeSpokenReferences(text);
 
     // Step 4 — Apply learned correction rules (sorted by priority)
     const { text: afterRules, appliedRules } = _applyCorrectionRules(text);
