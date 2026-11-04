@@ -1,5 +1,40 @@
 const{contextBridge,ipcRenderer}=require('electron');
 contextBridge.exposeInMainWorld('electronAPI',{
+  // BEGIN ANCHORCAST RECORDING BRANDING PRELOAD v8
+  recordingBranding: {
+    get: () => ipcRenderer.invoke('audio-branding:get'),
+    save: data => ipcRenderer.invoke('audio-branding:save', data),
+    generate: data => ipcRenderer.invoke('audio-branding:generate', data),
+    importVoice: data => ipcRenderer.invoke('audio-branding:import-voice', data),
+    importMusic: data => ipcRenderer.invoke('audio-branding:import-music', data),
+    prepare: data => ipcRenderer.invoke('audio-branding:prepare', data),
+    preview: data => ipcRenderer.invoke('audio-branding:preview', data),
+    previewMusic: () => ipcRenderer.invoke('audio-branding:preview-music'),
+    compose: data => ipcRenderer.invoke('audio-branding:compose', data),
+    releaseRecordingPreview: data => ipcRenderer.invoke('audio-branding:release-recording-preview', data),
+    recordingInfo: data => ipcRenderer.invoke('audio-branding:recording-info', data),
+    cancel: data => ipcRenderer.invoke('audio-branding:cancel', data),
+    openSettings: () => ipcRenderer.invoke('audio-branding:open-settings'),
+    openExports: () => ipcRenderer.invoke('audio-branding:open-exports'),
+    saveExportAs: data => ipcRenderer.invoke('audio-branding:save-export-as', data),
+    onProgress: fn => { const listener = (_e, data) => fn(data); ipcRenderer.on('audio-branding:progress', listener); return () => ipcRenderer.removeListener('audio-branding:progress', listener); },
+    onChanged: fn => { const listener = () => fn(); ipcRenderer.on('audio-branding:changed', listener); return () => ipcRenderer.removeListener('audio-branding:changed', listener); },
+    onOpenRecording: fn => { const listener = () => fn(); ipcRenderer.on('audio-branding:open-recording', listener); return () => ipcRenderer.removeListener('audio-branding:open-recording', listener); },
+  },
+  // END ANCHORCAST RECORDING BRANDING PRELOAD v8
+  // BEGIN ANCHORCAST SERMON AUDIO PRELOAD v1
+  sermonAudio: {
+    info: () => ipcRenderer.invoke('sermon-audio:info'),
+    permission: () => ipcRenderer.invoke('sermon-audio:permission'),
+    begin: data => ipcRenderer.invoke('sermon-audio:begin', data),
+    append: data => ipcRenderer.invoke('sermon-audio:append', data),
+    finish: data => ipcRenderer.invoke('sermon-audio:finish', data),
+    saveCopy: data => ipcRenderer.invoke('sermon-audio:save-copy', data),
+    openFolder: () => ipcRenderer.invoke('sermon-audio:open-folder'),
+    onStopRequest: fn => { const listener = () => fn(); ipcRenderer.on('sermon-audio-stop-request', listener); return () => ipcRenderer.removeListener('sermon-audio-stop-request', listener); },
+    onFault: fn => { const listener = (_event, message) => fn(String(message || 'Audio recording failed.')); ipcRenderer.on('sermon-audio-fault', listener); return () => ipcRenderer.removeListener('sermon-audio-fault', listener); },
+  },
+  // END ANCHORCAST SERMON AUDIO PRELOAD v1
   // Projection
   openProjection: (id)   =>ipcRenderer.invoke('open-projection',id),
   closeProjection:()     =>ipcRenderer.invoke('close-projection'),
@@ -153,6 +188,7 @@ contextBridge.exposeInMainWorld('electronAPI',{
   skipRegistration:     () => ipcRenderer.invoke('skip-registration'),
   openRegistrationWindow: () => ipcRenderer.invoke('open-registration-window'),
   getTimerState:     ()     => ipcRenderer.invoke('get-timer-state'),
+  setTimerProjectionVisible: (data) => ipcRenderer.invoke('set-timer-projection-visible', data),
   timerFlashSpeed: (data)  => ipcRenderer.invoke('timer-flash-speed', data),
   isTimerStandalone: ()    => ipcRenderer.invoke('is-timer-standalone'),
   showClock: (data)        => ipcRenderer.invoke('show-clock', data),
@@ -230,7 +266,7 @@ contextBridge.exposeInMainWorld('electronAPI',{
       'logo-overlay-drag-update',
       'theme-designer-open',
       'themes-updated',
-      'song-manager-new-song','song-manager-open-song','license-file-opened','registration-complete','display-warning','timer-state-sync','timer-stopped','timer-flash-speed','set-projection-bg','show-clock','hide-clock','confirm-quit-with-transcript','update-available','update-available-mac','update-downloaded','update-download-progress','update-checking',
+      'song-manager-new-song','song-manager-open-song','license-file-opened','registration-complete','display-warning','timer-state-sync','timer-stopped','timer-visibility','timer-scale-sync','timer-flash-speed','set-projection-bg','show-clock','hide-clock','confirm-quit-with-transcript','update-available','update-available-mac','update-downloaded','update-download-progress','update-checking',
     ];
     if(!allowed.includes(channel)) return()=>{};
     const sub=(_,...args)=>cb(...args);

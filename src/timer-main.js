@@ -8,6 +8,7 @@ const { app, BrowserWindow, ipcMain, screen, Menu, shell } = require('electron')
 const path = require('path');
 const fs   = require('fs');
 const os   = require('os');
+const TimerUtils = require('./renderer/js/timer-utils');
 
 // Force userData to AnchorCast (capital) to match main app and NSIS paths
 if (process.platform === 'win32') {
@@ -86,19 +87,8 @@ function createStandaloneProjection() {
     if (!isSame && IS_WIN) projWin.setAlwaysOnTop(true, 'screen-saver');
   });
   projWin.webContents.on('did-finish-load', () => {
-    // Sync current timer state to new projection window
-    if (_activeTimer) {
-      const elapsed = (Date.now() - _activeTimer.startedAt) / 1000;
-      const remaining = _activeTimer.mode === 'countdown'
-        ? Math.max(0, _activeTimer.seconds - elapsed)
-        : elapsed;
-      if (remaining > 0) {
-        projWin.webContents.send('show-timer', {
-          ..._activeTimer.data,
-          seconds: Math.ceil(remaining),
-        });
-      }
-    }
+    // Reconstruct from the same start timestamp; never restart or discard overtime.
+    if (_activeTimer) projWin.webContents.send('show-timer', TimerUtils.payload(_activeTimer));
     // Sync clock state if active
     if (_activeClockData) {
       projWin.webContents.send('show-clock', _activeClockData);
@@ -109,22 +99,12 @@ function createStandaloneProjection() {
 
 // ── IPC handlers ──────────────────────────────────────────────────────────────
 ipcMain.handle('show-timer', (_, data) => {
-  _activeTimer = {
-    data,
-    startedAt: Date.now(),
-    seconds:   data.seconds || 0,
-    mode:      data.mode    || 'countdown',
-    label:     data.label   || '',
-    scale:     data.scale   || 1,
-    position:  data.position || 'edge',
-  };
+  _activeTimer = TimerUtils.createState(data);
   if (!projWin || projWin.isDestroyed()) createStandaloneProjection();
-  else projWin.webContents.send('show-timer', data);
-
-  // Sync to timer control window
-  const syncPayload = { ..._activeTimer, running: true, remaining: _activeTimer.seconds };
-  timerWin?.webContents.send('timer-state-sync', syncPayload);
-  return { success: true };
+  else projWin.webContents.send('show-timer', TimerUtils.payload(_activeTimer));
+  const state = TimerUtils.snapshot(_activeTimer);
+  timerWin?.webContents.send('timer-state-sync', state);
+  return { success: true, projected: true, state };
 });
 
 ipcMain.handle('stop-timer', () => {
@@ -134,22 +114,27 @@ ipcMain.handle('stop-timer', () => {
   return { success: true };
 });
 
-ipcMain.handle('get-timer-state', () => {
-  if (!_activeTimer) return { running: false };
-  const elapsed = (Date.now() - _activeTimer.startedAt) / 1000;
-  const remaining = _activeTimer.mode === 'countdown'
-    ? Math.max(0, _activeTimer.seconds - elapsed)
-    : elapsed;
-  if (_activeTimer.mode === 'countdown' && remaining <= 0) {
-    _activeTimer = null;
-    return { running: false };
+ipcMain.handle('get-timer-state', () => TimerUtils.snapshot(_activeTimer));
+
+// Hide/show only the timer overlay. Do not stop, recreate or rebase the timer,
+// clear the current slide, touch the clock, or open/close a projection window.
+ipcMain.handle('set-timer-projection-visible', (_, data) => {
+  if (typeof data?.visible !== 'boolean') {
+    return { success: false, error: 'Timer visibility must be true or false.' };
   }
-  return {
-    running: true, data: _activeTimer.data,
-    mode: _activeTimer.mode, label: _activeTimer.label,
-    scale: _activeTimer.scale, position: _activeTimer.position,
-    seconds: _activeTimer.seconds, remaining: Math.ceil(remaining),
-  };
+  if (!_activeTimer) {
+    return { success: false, error: 'Start a timer before changing its projection visibility.', state: { running: false } };
+  }
+  // A delayed click from an older timer must not hide a newly started session.
+  if (data.expectedStartedAt !== undefined && data.expectedStartedAt !== _activeTimer.startedAt) {
+    return { success: false, error: 'The running timer changed. Please try again.', state: TimerUtils.snapshot(_activeTimer) };
+  }
+  _activeTimer = TimerUtils.setProjectionVisibility(_activeTimer, data.visible);
+  const state = TimerUtils.snapshot(_activeTimer);
+  for (const win of [projWin, timerWin]) {
+    if (win && !win.isDestroyed()) win.webContents.send('timer-visibility', state);
+  }
+  return { success: true, projectionVisible: state.projectionVisible, state };
 });
 
 ipcMain.handle('timer-scale', (_, data) => {
@@ -159,7 +144,10 @@ ipcMain.handle('timer-scale', (_, data) => {
 });
 
 ipcMain.handle('timer-flash-speed', (_, data) => {
-  projWin?.webContents.send('timer-flash-speed', data);
+  const speed = TimerUtils.flashSpeed(data?.speed);
+  if (_activeTimer) _activeTimer.data.flashSpeed = speed;
+  projWin?.webContents.send('timer-flash-speed', { speed });
+  timerWin?.webContents.send('timer-flash-speed', { speed });
   return { success: true };
 });
 
