@@ -1,6 +1,9 @@
 # ⚓ AnchorCast v1.8.2
 ### *Free & Open-Source AI Church Presentation Software*
 
+**v8.0.0:** reusable intro/closing voiceovers, original instrumental background, non-destructive finished MP3 exports, and the preceding detection/recorder/timer improvements. See [release notes](RELEASE_NOTE_v8.0.0.md) and [source installation guide](V8_INSTALL_AND_TEST_NOTES.md). Optional OpenAI voice generation uses your API account and may incur provider charges; prepared clips and imported narration can be reused offline.
+
+
 <p align="center">
   <a href="https://github.com/anchorcastapp-team/anchorcastapp/stargazers">
     <img src="https://img.shields.io/github/stars/anchorcastapp-team/anchorcastapp?style=for-the-badge" />
@@ -18,6 +21,21 @@
     <img src="https://img.shields.io/badge/website-anchorcastapp.com-blue?style=for-the-badge" />
   </a>
 </p>
+
+<!-- SourceForge recognition: image links only; no JavaScript required. -->
+<p align="center">
+  <strong>Recognized on SourceForge</strong>
+</p>
+<p align="center">
+  <a href="https://sourceforge.net/projects/anchorcastapp/">
+    <img src="https://sourceforge.net/cdn/syndication/badge_img/4094952/oss-users-love-us-white" alt="SourceForge Users Love Us badge for AnchorCast" width="125" />
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://sourceforge.net/projects/anchorcastapp/">
+    <img src="https://sourceforge.net/cdn/syndication/badge_img/4094952/oss-rising-star-white?achievement=oss-rising-star" alt="SourceForge Rising Star badge for AnchorCast" width="125" />
+  </a>
+</p>
+<!-- End SourceForge recognition. -->
 
 <p align="center">
   <strong>AnchorCast listens to your preacher, detects Bible verses in real time, and displays them on your projection screen — automatically.</strong><br/>
