@@ -1,4 +1,4 @@
-# ⚓ AnchorCast v1.8.2
+# ⚓ AnchorCast v1.7.0
 ### *Free & Open-Source AI Church Presentation Software*
 
 <p align="center">
@@ -18,21 +18,6 @@
     <img src="https://img.shields.io/badge/website-anchorcastapp.com-blue?style=for-the-badge" />
   </a>
 </p>
-
-<!-- SourceForge recognition: image links only; no JavaScript required. -->
-<p align="center">
-  <strong>Recognized on SourceForge</strong>
-</p>
-<p align="center">
-  <a href="https://sourceforge.net/projects/anchorcastapp/">
-    <img src="https://sourceforge.net/cdn/syndication/badge_img/4094952/oss-users-love-us-white" alt="SourceForge Users Love Us badge for AnchorCast" width="125" />
-  </a>
-  &nbsp;&nbsp;
-  <a href="https://sourceforge.net/projects/anchorcastapp/">
-    <img src="https://sourceforge.net/cdn/syndication/badge_img/4094952/oss-rising-star-white?achievement=oss-rising-star" alt="SourceForge Rising Star badge for AnchorCast" width="125" />
-  </a>
-</p>
-<!-- End SourceForge recognition. -->
 
 <p align="center">
   <strong>AnchorCast listens to your preacher, detects Bible verses in real time, and displays them on your projection screen — automatically.</strong><br/>
