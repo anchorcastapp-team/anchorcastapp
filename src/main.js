@@ -23,12 +23,40 @@ if (process.argv.includes('--timer')) {
   module.exports = require('./timer-main.js');
 } else {
 const crypto=require('crypto');
+const TimerUtils = require('./renderer/js/timer-utils');
 // BUG-A FIX: fs/http/https/spawn required here — BEFORE loadRegistration() at line 49 which uses fs
 const fs=require('fs');
 const http=require('http');
 const https=require('https');
 const AdmZip=require('adm-zip');
 const {spawn,spawnSync,execFileSync}=require('child_process');
+
+// BEGIN ANCHORCAST SERMON AUDIO BRIDGE v1
+const sermonAudioService = require('./sermon-audio-recorder').install({
+  app, ipcMain, dialog, shell, powerSaveBlocker,
+  systemPreferences: require('electron').systemPreferences,
+  getMainWindow: () => mainWindow,
+  getRendererPort: () => rendererPort,
+});
+// END ANCHORCAST SERMON AUDIO BRIDGE v1
+
+// BEGIN ANCHORCAST RECORDING BRANDING v8
+const recordingBrandingService = require('./recording-branding-bridge').install({
+  app, ipcMain, dialog, shell, powerSaveBlocker,
+  recordings: sermonAudioService,
+  getMainWindow: () => mainWindow,
+  getSettingsWindow: () => settingsWindow,
+  getRendererPort: () => rendererPort,
+  getSettings: () => loadSettings(),
+  openRecordingSettings: () => {
+    const win = createSettingsWindow('audio');
+    const showRecording = () => { if (!win.isDestroyed()) win.webContents.send('audio-branding:open-recording'); };
+    if (win.webContents.isLoading()) win.webContents.once('did-finish-load', showRecording);
+    else showRecording();
+  },
+});
+// END ANCHORCAST RECORDING BRANDING v8
+
 
 
 // ─── REGISTRATION SYSTEM ─────────────────────────────────────────────────────
@@ -515,28 +543,9 @@ function projectionWindowReadySync(){
     if (currentLogoOverlayState) {
       projectionWindow.webContents.send('logo-overlay', currentLogoOverlayState);
     }
-    // If a timer was started before projection opened, resume it with correct remaining time
+    // Preserve the original baseline, including negative overtime, on reconnect.
     if (_activeTimer) {
-      const elapsed = (Date.now() - _activeTimer.startedAt) / 1000;
-      const remaining = _activeTimer.mode === 'countdown'
-        ? Math.max(0, _activeTimer.seconds - elapsed)
-        : elapsed;
-      if (_activeTimer.mode === 'countdown' && remaining <= 0) {
-        // Timer already finished — clear it
-        _activeTimer = null;
-      } else {
-        // Send original timer baseline to projection so it reconstructs the same live timer
-        projectionWindow.webContents.send('show-timer', {
-          ..._activeTimer.data,
-          seconds: _activeTimer.seconds,
-          startedAt: _activeTimer.startedAt,
-          mode: _activeTimer.mode,
-          label: _activeTimer.label || _activeTimer.data?.label || '',
-          position: _activeTimer.position || _activeTimer.data?.position || 'edge',
-          scale: _activeTimer.scale ?? _activeTimer.data?.scale ?? 1,
-          serverNow: Date.now(),
-        });
-      }
+      projectionWindow.webContents.send('show-timer', TimerUtils.payload(_activeTimer));
     }
     // Sync clock state if clock was active
     if (_activeClockData) {
@@ -1056,6 +1065,7 @@ ipcMain.on('transcript-unsaved-state', (_, unsaved) => { _transcriptUnsaved = un
 
 // Before closing: if there's an unsaved transcript, ask the user
 app.on('before-quit', (e) => {
+  if (e.defaultPrevented) return; // Audio recorder may be finishing an MP3.
   if (_transcriptUnsaved && mainWindow && !mainWindow.isDestroyed()) {
     e.preventDefault();
     _registrationAppQuitting = false;
@@ -9283,70 +9293,40 @@ ipcMain.handle('show-timer', (_, data) => {
     return { success: false, projected: false, error: 'Projection screen is not open. Click Projection to open it first.' };
   }
 
-  const startedAt = Date.now();
-  _activeTimer = {
-    data,
-    startedAt,
-    seconds:   data.seconds || 0,
-    mode:      data.mode    || 'countdown',
-    label:     data.label   || '',
-    scale:     data.scale   || 1,
-    position:  data.position || 'edge',
-  };
-
-  const livePayload = {
-    ...data,
-    seconds: _activeTimer.seconds,
-    startedAt,
-    mode: _activeTimer.mode,
-    label: _activeTimer.label || data.label || '',
-    scale: _activeTimer.scale,
-    position: _activeTimer.position,
-    serverNow: Date.now(),
-  };
-
-  const projected = !!(projectionWindow && !projectionWindow.isDestroyed());
-  if (projected) projectionWindow.webContents.send('show-timer', livePayload);
-
-  const syncPayload = {
-    ..._activeTimer,
-    running: true,
-    remaining: _activeTimer.seconds,
-    startedAt,
-    serverNow: Date.now(),
-  };
+  _activeTimer = TimerUtils.createState(data);
+  const livePayload = TimerUtils.payload(_activeTimer);
+  projectionWindow.webContents.send('show-timer', livePayload);
+  const syncPayload = TimerUtils.snapshot(_activeTimer);
   if (countdownWindow && !countdownWindow.isDestroyed()) {
     countdownWindow.webContents.send('timer-state-sync', syncPayload);
   }
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('timer-state-sync', syncPayload);
   }
-
-  return { success: true, projected };
+  return { success: true, projected: true, state: syncPayload };
 });
 
-ipcMain.handle('get-timer-state', () => {
-  if (!_activeTimer) return { running: false };
-  const elapsed = (Date.now() - _activeTimer.startedAt) / 1000;
-  const remaining = _activeTimer.mode === 'countdown'
-    ? Math.max(0, _activeTimer.seconds - elapsed)
-    : elapsed;
-  if (_activeTimer.mode === 'countdown' && remaining <= 0) {
-    _activeTimer = null;
-    return { running: false };
+ipcMain.handle('get-timer-state', () => TimerUtils.snapshot(_activeTimer));
+
+// Hide/show only the timer overlay. Do not stop, recreate or rebase the timer,
+// clear the current slide, touch the clock, or open/close a projection window.
+ipcMain.handle('set-timer-projection-visible', (_, data) => {
+  if (typeof data?.visible !== 'boolean') {
+    return { success: false, error: 'Timer visibility must be true or false.' };
   }
-  return {
-    running:   true,
-    data:      _activeTimer.data,
-    mode:      _activeTimer.mode,
-    label:     _activeTimer.label,
-    scale:     _activeTimer.scale,
-    position:  _activeTimer.position,
-    seconds:   _activeTimer.seconds,
-    remaining: remaining,
-    startedAt: _activeTimer.startedAt,
-    serverNow: Date.now(),
-  };
+  if (!_activeTimer) {
+    return { success: false, error: 'Start a timer before changing its projection visibility.', state: { running: false } };
+  }
+  // A delayed click from an older timer must not hide a newly started session.
+  if (data.expectedStartedAt !== undefined && data.expectedStartedAt !== _activeTimer.startedAt) {
+    return { success: false, error: 'The running timer changed. Please try again.', state: TimerUtils.snapshot(_activeTimer) };
+  }
+  _activeTimer = TimerUtils.setProjectionVisibility(_activeTimer, data.visible);
+  const state = TimerUtils.snapshot(_activeTimer);
+  for (const win of [projectionWindow, countdownWindow, mainWindow]) {
+    if (win && !win.isDestroyed()) win.webContents.send('timer-visibility', state);
+  }
+  return { success: true, projectionVisible: state.projectionVisible, state };
 });
 
 ipcMain.handle('timer-scale', (_, data) => {
@@ -9360,8 +9340,10 @@ ipcMain.handle('timer-scale', (_, data) => {
 // Flash speed control — sent by timer control window's Flash Faster button
 // Forwards to projection so the blink animates faster while button is held
 ipcMain.handle('timer-flash-speed', (_, data) => {
-  if (projectionWindow && !projectionWindow.isDestroyed()) {
-    projectionWindow.webContents.send('timer-flash-speed', data);
+  const speed = TimerUtils.flashSpeed(data?.speed);
+  if (_activeTimer) _activeTimer.data.flashSpeed = speed;
+  for (const win of [projectionWindow, countdownWindow, mainWindow]) {
+    if (win && !win.isDestroyed()) win.webContents.send('timer-flash-speed', { speed });
   }
   return { success: true };
 });
@@ -9837,5 +9819,16 @@ ipcMain.handle('save-detection-phrase', (_, payload = {}) => {
     return { success:true, count: phrases.length };
   }catch(e){ return { success:false, error:e.message }; }
 });
-
+// AnchorCast v1.8.1 — presentation persistence and import fix
+require('./presentation-library').install({
+  app,
+  ipcMain,
+  dataDir: DATA_DIR,
+  presentationDir: PRES_ASSETS,
+  userDataDir: UD,
+  getRendererPort: () => rendererPort,
+  getMainWindow: () => mainWindow,
+  getEditorWindow: () => presEditorWindow,
+  getPythonCandidates: () => _songLibraryPythonCandidates(),
+});
 } // end timer mode else block
