@@ -1,31 +1,59 @@
 # Changelog
 
-## [1.8.1] — Unreleased
+All notable changes to **AnchorCast** are documented here.
 
-### Fixed — detection panel ordering
+## [1.8.2] — Unreleased
 
-- Confirmed Scripture cards and **Suggestions / Review** now show the latest accepted detection or meaningful evidence update first within their own section.
-- A newer supporting match refreshes its existing discussion card rather than leaving it at its original transcript position or creating another card.
-- An existing suggestion upgraded to a confirmed quotation/reference moves to the confirmed section with its current activity order.
-- Identical repeated results, routine redraws and presentation-status changes do not falsely make older detections new. A stable sequence resolves same-millisecond updates.
-- Display activity is separate from spoken evidence order. Late online results may move a card visually, but cannot make an old passage fresh for Auto or take priority over newer spoken evidence.
-- The Suggestions section's expanded/collapsed state, passage expansion and keyboard focus are retained while cards reorder. Supporting updates do not force the operator's scroll position to the top.
+The presentation-library and import fixes previously prepared under the v1.8.1 draft are assigned to **v1.8.2**. **v1.8.0 and v1.8.1 have already been released**; their history is retained below. Release dates have not been added where none were supplied.
+
+### Fixed — presentation library, saved previews and import diagnostics
+
+- Cross-platform interpreter discovery now builds paths with the explicitly requested platform's path rules. Fixed the Mac candidate assertion failing when the suite runs on Windows (`/Resources/...` becoming `\Resources\...`); added Windows/POSIX host simulations without relaxing assertions. Mac per-user LibreOffice paths follow the same rule; Windows `py.exe` launcher paths also receive `-3`.
+- Imported PowerPoint/PDF records now retain an explicit imported type. Legacy imported entries are normalized on load, so restarting does not send them to the editable-slide path or the wrong deletion store.
+- Persist deletions before removing cards from the interface. Both imported and custom decks use consistent string IDs; failed writes leave the card visible and report an error. Remove corresponding entries from the current in-memory schedule.
+- Atomic library replacement with an adjacent previous-content `.bak` file; malformed saved JSON is reported, not silently replaced with an empty library.
+- Editor Save awaits acknowledged disk persistence before notifying the main window and closing. Targeted upserts avoid rewriting an unrelated stale list.
+- Editor images/backgrounds are copied into persistent managed storage through the existing media bridge. Removed temporary blob URLs and direct `file://` previews for new image imports. Already-expired blob assets must be reselected; this update cannot reconstruct them.
+- Normalize older title/body slide layouts and generated text style aliases. Render only after the preview container is visible, remove stale imported-image elements when switching to custom slides, and include image objects in custom thumbnails.
+- Imported slides use their actual saved filenames, including padded and uppercase names. Repair managed paths when the existing slide folder can be found; retain missing-asset entries with an explicit re-import message.
+- Late async slide fetches cannot overwrite a newer selection. Keep a persistent explanatory import-error dialog instead of an easily missed toast.
+- Move **New** out of each presentation row into the library toolbar beside **Import** and **Schedule**.
+- Presentation import checks bundled Python plus system interpreters, including common macOS GUI-launch paths and Windows `py -3`. Missing interpreters, missing Python packages, missing conversion tools, invalid documents and helper failures are no longer all reported as “Python not found.”
+- Discover the macOS LibreOffice application and common PDF-tool locations. Stage the Python helper outside Electron's virtual ASAR archive. The optional basic PPTX fallback reports its layout limitations; no dependencies are downloaded automatically.
+
+### Release scope
+
+- Retains the already-released v1.8.1 global newest-first timeline for confirmed detections and Suggestions / Review. Detection thresholds, grouping, History, Auto/Manual behavior, recording, voiceovers, trimming, timers and registration remain unchanged by this maintenance patch.
+- Includes the cross-platform Python discovery correction together with presentation persistence, restored previews, durable deletion and the relocated **New** toolbar action.
+- The release is numbered **1.8.2**. Source builds must use matching application-version metadata; the documentation update alone does not change `package.json`, lockfiles or displayed application labels.
+- No new Node dependency or preload permission is introduced. The existing presentation-library hook in `src/main.js` must remain installed once; do not add a second copy.
+- The separate Intel Mac Settings-window loop and earlier macOS audio-duration/path test failures are not claimed as fixed by this release.
+
+---
+
+## [1.8.1] — Released
+
+### Fixed — global detection panel ordering (corrective revision r2)
+
+- Confirmed references, quotations and **Suggestions / Review** now share **one newest-first timeline**. Fixed the first v1.8.1 update's remaining layout error: correctly sorted suggestions were still pinned below all confirmed cards by separate rendering containers.
+- Order uses the latest accepted detection or meaningful evidence update across all categories. A suggestion can appear above older confirmed cards; a later confirmed update can move ahead of that suggestion.
+- Each suggestion retains an amber indicator and an explicit **Suggestion / Review — not a confirmed citation** label. Removed the separate bottom-pinned Suggestions wrapper, not the underlying suggestions.
+- Meaningful supporting evidence updates its existing card. Identical repeated results, routine redraws and presentation-state changes do not fabricate activity or duplicate events. Same-millisecond updates use the existing stable sequence.
+- Promoted suggestions keep one card in the shared timeline with updated confirmation and correct chronology.
+- Passage expansion, keyboard focus and individual Present/Schedule/Review actions survive reordering. Scrolled operators are not forcibly returned to the top by new arrivals or supporting updates.
+- Display activity remains separate from spoken evidence, Auto freshness and projection authorization. Showing a suggestion higher does not grant Auto permission or allow stale speech to replace a newer passage.
 
 ### Changed
 
-- Added `updatedAt` and `activitySequence` to persisted detection-event exports and group activity fields to the Debug log. Existing records without these fields fall back to their creation/source times.
-- Updated application, Help, Options, About, diagnostic and root lockfile version metadata to **1.8.1**.
-- Added a checked incremental updater, verifier and regression coverage. No new runtime dependency.
+- Retained v1.8.1 `updatedAt`, `activitySequence` and grouped activity timestamps; legacy records keep their creation/source-time fallback.
+- Debug export reports `interfaceRevision: detection-global-order-v1.8.1-r2`, `panelLayout: unified-timeline`, and **actual rendered card order** in addition to model order.
+- Application metadata remains **1.8.1**. This correction includes a complete manually replaceable `app.js`, read-only verification and regression checks. No new runtime dependency or installation script.
 
-This maintenance update retains the v1.8.0 confidence benchmarks, grouping, History, Auto/Manual controls, MP3 recording, voiceovers, trimming, timers and registration behavior. It does not address the separately reported Intel Mac Settings-window loop or the earlier audio-duration/macOS-path test failures.
-
----
-
-All notable changes to **AnchorCast** are documented here.
+This maintenance update retains v1.8.0 confidence benchmarks, grouping, History, Auto/Manual controls, MP3 recording, voiceovers, trimming, timers and registration behavior. It does not address the separate Intel Mac Settings-window loop or macOS audio-duration/path test failures.
 
 ---
 
-## [1.8.0] — Unreleased
+## [1.8.0] — Released
 
 This release combines the changes prepared for the **unpublished v1.7.2 draft** with the complete **v1.8.0 Sermon Audio Studio** updates. There is no separate v1.7.2 release entry; those changes are included below as part of v1.8.0. The v1.7.1 and earlier history is preserved unchanged.
 
