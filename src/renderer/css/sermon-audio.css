@@ -1,0 +1,79 @@
+/* recorder-indicator-v1. The production theme uses !important on .btn-sm,
+   including :hover; recorder-specific states must win against those rules. */
+.sermon-audio-launch{width:100%;margin:4px 0;min-height:30px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:7px;}
+.sermon-audio-button-text{font-variant-numeric:tabular-nums;min-width:0;}
+#sermonAudioBtn.sermon-audio-launch.is-recording{
+  border:1px solid #f87171 !important;color:#fff1f2 !important;background:#521b29 !important;
+  box-shadow:inset 0 0 0 1px #f8717133 !important;font-weight:700;
+}
+#sermonAudioBtn.sermon-audio-launch.is-recording:hover{background:#672234 !important;}
+#sermonAudioBtn.sermon-audio-launch.is-paused{
+  border:1px solid #fbbf24 !important;color:#fde68a !important;background:#362809 !important;box-shadow:none !important;
+}
+#sermonAudioBtn.sermon-audio-launch[data-recorder-state=error]{
+  border:1px solid #fb923c !important;color:#fed7aa !important;background:#3d230f !important;
+}
+#sermonAudioBtn.sermon-audio-launch:focus-visible{outline:2px solid #f8fafc;outline-offset:3px;}
+.sermon-audio-record-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:currentColor;opacity:.6;animation:none;}
+#sermonAudioBtn[data-recorder-state=recording] .sermon-audio-record-dot,
+#sermonAudioDialog[data-recorder-state=recording] #sermonAudioState .sermon-audio-record-dot{
+  background:#ff656d;opacity:1;box-shadow:0 0 0 3px #ff656d26;
+  animation:sermon-record-pulse 1.6s ease-in-out infinite;
+}
+#sermonAudioBtn[data-recorder-state=paused] .sermon-audio-record-dot,
+#sermonAudioDialog[data-recorder-state=paused] #sermonAudioState .sermon-audio-record-dot{
+  border-radius:0;background:linear-gradient(to right,#fbbf24 0 30%,transparent 30% 70%,#fbbf24 70% 100%);opacity:1;animation:none;
+}
+#sermonAudioDialog[data-recorder-state=recording] #sermonAudioState{color:#fda4af;font-weight:700;}
+#sermonAudioDialog[data-recorder-state=paused] #sermonAudioState{color:#fde68a;}
+/* Gently pulse only the dot. Text stays readable and the light never vanishes. */
+@keyframes sermon-record-pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.85);}}
+@media(prefers-reduced-motion:reduce){
+  #sermonAudioBtn[data-recorder-state] .sermon-audio-record-dot,#sermonAudioDialog[data-recorder-state] #sermonAudioState .sermon-audio-record-dot{animation:none;opacity:1;transform:none;}
+}
+@media(forced-colors:active){
+  #sermonAudioBtn.sermon-audio-launch.is-recording,#sermonAudioBtn.sermon-audio-launch.is-paused{border-color:Highlight !important;color:ButtonText !important;background:ButtonFace !important;}
+  #sermonAudioBtn[data-recorder-state] .sermon-audio-record-dot,#sermonAudioDialog[data-recorder-state] #sermonAudioState .sermon-audio-record-dot{background:Highlight;outline:1px solid CanvasText;animation:none;opacity:1;}
+}
+.sermon-audio-dialog{color:var(--text,#eef2ff);background:var(--bg,#101827);border:1px solid var(--border-lit,#37465c);border-radius:14px;width:540px;max-width:calc(100vw - 36px);max-height:calc(100vh - 36px);padding:0;overflow:auto;margin:auto;box-shadow:0 20px 70px #000b;}
+.sermon-audio-dialog::backdrop{background:#0009;}
+.sermon-audio-dialog header{display:flex;justify-content:space-between;gap:15px;align-items:center;padding:20px;border-bottom:1px solid var(--border,#303b50);}
+.sermon-audio-dialog h2{font-size:19px;color:var(--gold,#d6b65c);margin:0 0 6px;}
+.sermon-audio-dialog p{line-height:1.5;overflow-wrap:anywhere;}
+.sermon-audio-dialog header p{font-size:12px;margin:0;color:var(--text-dim,#b4bfd4);}
+.sermon-audio-body{padding:18px 20px;}
+.sermon-audio-dialog button{font:inherit;font-size:12px;background:var(--card,#172134);border:1px solid var(--border-lit,#425069);border-radius:8px;padding:9px 12px;color:inherit;cursor:pointer;}
+.sermon-audio-dialog button:disabled{opacity:.45;cursor:default;}
+.sermon-audio-dialog button:focus-visible,.sermon-audio-dialog select:focus-visible{outline:2px solid #38bdf8;outline-offset:2px;}
+.sermon-audio-monitor{margin:14px 0;border-radius:10px;padding:16px;background:#081322;display:flex;flex-direction:column;align-items:center;gap:9px;}
+#sermonAudioElapsed{font:36px ui-monospace,monospace;letter-spacing:2px;}
+#sermonAudioState{font-size:12px;color:#f7d477;display:inline-flex;align-items:center;gap:8px;}
+#sermonAudioLevel{width:90%;height:16px;}
+#sermonAudioLevelText{font-size:11px;text-align:center;color:#c1cce0;}
+.sermon-audio-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}
+#sermonAudioStart{border-color:var(--gold,#d6b65c);}
+#sermonAudioStatus{font-size:12px;min-height:36px;color:var(--text,#eef2ff);}
+#sermonAudioStatus.error{color:#fecaca;}
+.sermon-audio-note{font-size:11px;color:var(--text-dim,#b4bfd4);margin:6px 0;}
+.sermon-audio-dialog hr{border:0;border-top:1px solid var(--border,#303b50);margin:20px 0 14px;}
+.sermon-audio-dialog label{font-size:12px;display:block;margin-bottom:7px;}
+#sermonAudioFiles{width:100%;font:inherit;font-size:11px;min-height:34px;color:inherit;background:var(--card,#172134);border:1px solid var(--border-lit,#425069);border-radius:7px;padding:4px;}
+
+/* recorder-window-v2: controls stay usable when the recorder is narrow. */
+.sermon-audio-heading{min-width:0;flex:1;}
+.sermon-audio-window-actions{display:flex;gap:7px;flex-shrink:0;align-items:center;}
+.sermon-audio-window-actions button{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;font:22px/1 ui-sans-serif,system-ui,sans-serif;}
+.sermon-audio-window-actions button:hover{border-color:var(--gold,#d6b65c);}
+#sermonAudioClose:hover{background:#4a202c;border-color:#f87171;}
+.sermon-audio-close-dialog{width:420px;}
+.sermon-audio-close-dialog .sermon-audio-body{padding:22px;}
+.sermon-audio-close-dialog h2{line-height:1.35;}
+#sermonAudioCloseMessage{font-size:13px;color:var(--text,#eef2ff);}
+#sermonAudioCloseSave{border-color:var(--gold,#d6b65c);}
+.sermon-audio-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;}
+@media(max-width:440px){
+  .sermon-audio-dialog header{padding:14px;align-items:flex-start;gap:9px;}
+  .sermon-audio-dialog h2{font-size:16px;}
+  .sermon-audio-dialog header p{font-size:11px;}
+  .sermon-audio-body{padding:14px;}
+}
